@@ -1,0 +1,87 @@
+<section class="form-page">
+  <p class="breadcrumbs"><a href="/hikes">Hikes</a></p>
+  <header class="form-header">
+    <p class="kicker"><%= h(@form_values[:account_name]) %></p>
+    <h1><%= h(@form_heading) %></h1>
+  </header>
+
+  <% unless @form_errors.empty? %>
+    <div class="form-errors" role="alert">
+      <p>Fix these fields before saving:</p>
+      <ul>
+        <% @form_errors.each do |error| %>
+          <li><%= h(error) %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <form class="trip-form" action="<%= h(@form_action) %>" method="post">
+    <div class="form-grid">
+      <div class="form-row form-row-full">
+        <label for="trip-name">Name</label>
+        <input id="trip-name" name="name" value="<%= h(@form_values[:name]) %>" autocomplete="off" required>
+      </div>
+
+      <div class="form-row">
+        <label for="trip-hiked-at">Date</label>
+        <input id="trip-hiked-at" name="hiked_at" type="date" value="<%= h(@form_values[:hiked_at]) %>" required>
+      </div>
+
+      <div class="form-row">
+        <label for="trip-nights">Nights</label>
+        <input id="trip-nights" name="nights" type="number" min="0" step="1" value="<%= h(@form_values[:nights]) %>">
+      </div>
+
+      <div class="form-row">
+        <label for="trip-mileage">Mileage</label>
+        <input id="trip-mileage" name="mileage" type="number" min="0" step="0.1" value="<%= h(@form_values[:mileage]) %>">
+      </div>
+
+      <div class="form-row">
+        <label for="trip-elevation">Elevation gain</label>
+        <input id="trip-elevation" name="elevation" type="number" min="0" step="1" value="<%= h(@form_values[:elevation]) %>">
+      </div>
+
+      <div class="form-row form-row-full">
+        <label for="trip-source-url">Reference URL</label>
+        <input id="trip-source-url" name="source_url" type="url" value="<%= h(@form_values[:source_url]) %>" placeholder="https://">
+      </div>
+
+      <div class="form-row">
+        <label for="trip-lat">Latitude</label>
+        <input id="trip-lat" name="lat" type="number" min="-90" max="90" step="any" value="<%= h(@form_values[:lat]) %>">
+      </div>
+
+      <div class="form-row">
+        <label for="trip-lng">Longitude</label>
+        <input id="trip-lng" name="lng" type="number" min="-180" max="180" step="any" value="<%= h(@form_values[:lng]) %>">
+      </div>
+    </div>
+
+    <div class="markdown-editor" data-markdown-editor>
+      <div class="form-row">
+        <label for="trip-report">Trip report</label>
+        <textarea id="trip-report" name="report_markdown" rows="16" data-markdown-input><%= h(@form_values[:report_markdown]) %></textarea>
+      </div>
+      <section class="markdown-preview" aria-live="polite">
+        <div class="preview-heading">
+          <h2>Preview</h2>
+          <span class="meta" data-markdown-status>Markdown</span>
+        </div>
+        <div class="preview-body trip-body" data-markdown-preview>
+          <% if @form_values[:report_markdown].to_s.empty? %>
+            <p class="empty">Start writing to preview the trip report.</p>
+          <% else %>
+            <%= markdown(@form_values[:report_markdown]) %>
+          <% end %>
+        </div>
+      </section>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit"><%= h(@form_submit_label) %></button>
+      <a href="/hikes">Cancel</a>
+    </div>
+  </form>
+</section>

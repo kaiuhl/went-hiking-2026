@@ -4,6 +4,9 @@
     <h1><%= h(@trip.name) %></h1>
     <p class="lede"><%= h(trip_date_label(@trip)) %></p>
     <p class="meta"><%= [number_label(@trip.mileage, "miles"), number_label(@trip.elevation, "feet gained"), (@trip.nights.to_i.positive? ? "#{@trip.nights} nights" : nil)].compact.join(" · ") %></p>
+    <% if rodauth.logged_in? && rodauth.session_value == @trip.account_id %>
+      <p class="trip-actions"><a href="<%= h(@trip.public_path) %>/edit">Edit hike</a></p>
+    <% end %>
   </header>
 
   <% if @trip.lat && @trip.lng %>

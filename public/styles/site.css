@@ -72,6 +72,7 @@ main {
 .section,
 .narrow,
 .trip-page,
+.form-page,
 .profile-header,
 .photo-page {
   width: min(var(--max), calc(100vw - 32px));
@@ -177,6 +178,11 @@ h3 {
   padding: 72px 0 36px;
 }
 
+.trip-actions {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
 .map-panel {
   width: 100%;
   height: 360px;
@@ -257,10 +263,59 @@ h3 {
   color: var(--muted);
 }
 
+.form-page {
+  padding: 64px 0 80px;
+}
+
+.form-header {
+  max-width: 760px;
+  margin-bottom: 32px;
+}
+
+.form-errors {
+  max-width: 760px;
+  margin-bottom: 28px;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.form-errors p {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.form-errors ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.trip-form {
+  display: grid;
+  gap: 32px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  max-width: 760px;
+}
+
 .form-row {
   display: grid;
   gap: 6px;
   margin-bottom: 14px;
+}
+
+.form-row-full {
+  grid-column: 1 / -1;
+}
+
+label {
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
 }
 
 input,
@@ -274,10 +329,22 @@ button {
 input,
 textarea,
 select {
-  width: min(100%, 440px);
+  width: min(100%, 760px);
   border: 1px solid var(--line);
   background: var(--paper);
   padding: 10px 12px;
+}
+
+textarea {
+  min-height: 320px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 button,
@@ -288,6 +355,82 @@ input[type="submit"] {
   color: var(--paper);
   padding: 10px 14px;
   cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+form.rodauth,
+.rodauth-login-form-footer-links-heading,
+.rodauth-links {
+  width: min(520px, calc(100vw - 32px));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+form.rodauth {
+  padding-top: 80px;
+}
+
+.rodauth .form-group {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.rodauth .form-control {
+  width: 100%;
+}
+
+.rodauth-login-form-footer-links-heading {
+  margin-top: 32px;
+  font-size: 18px;
+}
+
+.rodauth-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 0 0 80px;
+  list-style: none;
+  font-size: 14px;
+}
+
+.markdown-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+  gap: 32px;
+}
+
+.markdown-preview {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.preview-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.preview-heading h2 {
+  margin-bottom: 0;
+}
+
+.preview-body {
+  max-width: none;
+  min-height: 320px;
+  margin-bottom: 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 18px;
+  overflow-wrap: anywhere;
 }
 
 .honey-field {
@@ -319,8 +462,14 @@ input[type="submit"] {
   }
 
   .trip-grid,
-  .photo-strip {
+  .photo-strip,
+  .form-grid,
+  .markdown-editor {
     grid-template-columns: 1fr;
+  }
+
+  .form-page {
+    padding: 44px 0 64px;
   }
 
   .map-panel {

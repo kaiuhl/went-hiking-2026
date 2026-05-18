@@ -31,8 +31,52 @@
     }
   };
 
+  const buildMarkdownEditor = (element) => {
+    const input = element.querySelector("[data-markdown-input]");
+    const preview = element.querySelector("[data-markdown-preview]");
+    const status = element.querySelector("[data-markdown-status]");
+    let timeout;
+    let controller;
+
+    const render = () => {
+      const body = input.value;
+
+      if (!body.trim()) {
+        preview.innerHTML = '<p class="empty">Start writing to preview the trip report.</p>';
+        status.textContent = "Markdown";
+        return;
+      }
+
+      if (controller) controller.abort();
+      controller = new AbortController();
+      status.textContent = "Rendering";
+
+      fetch("/api/markdown-preview", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({body}),
+        signal: controller.signal
+      })
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error("preview failed")))
+        .then((payload) => {
+          preview.innerHTML = payload.html || '<p class="empty">Nothing to preview yet.</p>';
+          status.textContent = "Preview";
+        })
+        .catch((error) => {
+          if (error.name === "AbortError") return;
+          status.textContent = "Preview unavailable";
+        });
+    };
+
+    input.addEventListener("input", () => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(render, 250);
+    });
+  };
+
   window.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-map]").forEach(buildMap);
     document.querySelectorAll("[data-map-collection]").forEach(buildCollectionMap);
+    document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
   });
 })();

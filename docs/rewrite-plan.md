@@ -43,8 +43,8 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add Leaflet with USGS Topo tiles.
 - [x] Add responsive grayscale public UI.
 - [x] Add full-page photo treatment.
-- [ ] Add trip create/edit forms.
-- [ ] Add Markdown preview editor UI.
+- [x] Add trip create/edit forms.
+- [x] Add Markdown preview editor UI.
 - [ ] Add photo upload flow.
 - [ ] Add async variant generation through Que.
 - [ ] Add EXIF extraction into upload flow.
