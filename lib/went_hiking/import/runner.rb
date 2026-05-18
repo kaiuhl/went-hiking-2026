@@ -10,6 +10,7 @@ module WentHiking
   module Import
     class Runner
       REPORT_SAMPLE_LIMIT = 100
+      VARIANT_BATCH_SIZE = 2_000
 
       def initialize(source_db:, target_db: WentHiking.db)
         @source_db = source_db
@@ -24,6 +25,7 @@ module WentHiking
         @accounts_by_legacy_id = {}
         @accounts_by_id = {}
         @trips_by_legacy_id = {}
+        @pending_variants = []
       end
 
       def run
@@ -105,10 +107,11 @@ module WentHiking
           photo_id = upsert(:photos, :legacy_photo_id, transform.photo(row, account_id: account[:id], trip_id: trip[:id]))
           transform.photo_variants(row).each do |variant|
             variant[:photo_id] = photo_id
-            upsert_variant(variant)
+            queue_variant(variant)
           end
           increment(:photos)
         end
+        flush_photo_variants
       end
 
       def import_comments
@@ -200,6 +203,41 @@ module WentHiking
             cache[cache_key] = id
           end
         end
+      end
+
+      def queue_variant(values)
+        unless target_db.database_type == :postgres
+          upsert_variant(values)
+          return
+        end
+
+        @pending_variants << values
+        flush_photo_variants if @pending_variants.size >= VARIANT_BATCH_SIZE
+      end
+
+      def flush_photo_variants
+        return if @pending_variants.empty?
+
+        if target_db.database_type == :postgres
+          target_db[:photo_variants]
+            .insert_conflict(
+              target: [:photo_id, :style],
+              update: {
+                filename: Sequel[:excluded][:filename],
+                legacy_path: Sequel[:excluded][:legacy_path],
+                s3_key: Sequel[:excluded][:s3_key],
+                file_size: Sequel[:excluded][:file_size],
+                width: Sequel[:excluded][:width],
+                height: Sequel[:excluded][:height],
+                updated_at: Sequel[:excluded][:updated_at]
+              }
+            )
+            .multi_insert(@pending_variants)
+        else
+          @pending_variants.each { |variant| upsert_variant(variant) }
+        end
+      ensure
+        @pending_variants.clear
       end
 
       def account_for(legacy_user_id)
