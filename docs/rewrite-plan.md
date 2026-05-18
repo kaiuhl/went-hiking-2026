@@ -92,7 +92,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Start full legacy `system/images` photo sync to private S3.
 - [ ] Finish full legacy `system/images` photo sync to private S3.
 - [ ] Rerun photo sync and confirm skip-existing behavior after completion.
-- [ ] Run the import against a fresh legacy database export on Lightsail.
+- [x] Run the import against a fresh legacy database export on Lightsail.
 
 ## Current Preview Deployment
 
@@ -104,4 +104,4 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - S3 media bucket: `wenthiking-media-2026`
 - CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
 - Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
-- Preview caveats: no legacy data has been imported into Lightsail yet, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
+- Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, some imported photo URLs will be blank until their files arrive in S3, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.

@@ -38,6 +38,11 @@
 - Disposable local import from that archive completed:
   `276` durable accounts, `7,989` trips, `40,416` photos, `242,496` photo variants,
   `2,320` comments, and `3,510` hearts.
+- Lightsail import run `4` completed on 2026-05-18 at 09:43 PDT with the same
+  counts: `276` accounts, `7,989` trips, `40,416` photos, `242,496` variants,
+  `2,320` comments, and `3,510` hearts.
+- Desktop Safari visual smoke test confirmed the application layout and CSS are
+  loaded on the home page, a trip page, and a trip photo gallery.
 
 ## Photo Migration
 
@@ -49,6 +54,7 @@
 - Local log: `.deploy/photo-sync.log`.
 - Progress at 2026-05-18 08:21 PDT: `25,238` objects, `9,838,732,795` bytes.
 - Progress at 2026-05-18 08:49 PDT: `28,997` objects, `11,304,594,198` bytes.
+- Progress at 2026-05-18 09:52 PDT: `37,487` objects, `14,782,521,920` bytes.
 - Monitor:
 
 ```sh
@@ -78,8 +84,8 @@ HTTPS in `infra/caddy/Caddyfile`.
 
 ## Current Caveats
 
-- The production database schema is migrated, but the real legacy archive has only been imported into a disposable local test database so far.
-- The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo migration is in progress.
+- The production database schema is migrated and the real legacy archive has been imported into Lightsail.
+- The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo migration is in progress, so imported pages may reference images that return `403` from CloudFront until the corresponding object has synced.
 - Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
 - `EMAIL_DELIVERY=log` is set for the preview because SES sender/domain verification still needs to be completed.
 - A 1 GB swapfile was added to the Lightsail instance so Docker builds fit on the nano plan.

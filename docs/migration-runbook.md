@@ -96,6 +96,10 @@ photo variants, `2,320` comments, and `3,510` hearts. Most skipped rows were
 photos attached to missing legacy trip rows or comments/hearts attached to
 filtered users.
 
+The same archive was imported into the Lightsail production database on
+2026-05-18. The first attempts were canceled before commit while optimizing the
+importer for the nano host; import run `4` finished successfully.
+
 Before importing into the new app, create a clean transform/import step that can:
 
 - Map old integer IDs to new IDs while preserving old IDs where needed for legacy URLs.
