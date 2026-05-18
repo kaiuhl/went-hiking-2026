@@ -4,12 +4,12 @@ require "date"
 
 module PageRoutes
   RETIRED_FEATURES = {
-    "forecasts" => ["Forecasts are retired.", "The old weather integration rotted and is intentionally not part of V2."],
-    "map_layers" => ["Map layers are retired.", "Trip maps remain, but route drawing, GPX layers, and old map-layer uploads are not part of V2."],
-    "messages" => ["Messages are retired.", "Private messages were not durable trip content and are excluded from the rebuilt site."],
-    "notifications" => ["Notifications are retired.", "Legacy notifications are not being carried forward."],
-    "photos" => ["Global photo browsing is retired.", "Photos now live with their trip reports."],
-    "routes" => ["Route drawing is retired.", "The old route drawing tools are intentionally not part of V2."]
+    "forecasts" => ["Forecasts are taking a break.", "Trip pages are focused on where people went and what they found. Check your favorite weather source before heading out."],
+    "map_layers" => ["Custom map layers are off the route.", "Trip maps are still here, but GPX layers and route drawing are sitting out while the new site gets faster and friendlier."],
+    "messages" => ["Messages are off the pack list.", "Went Hiking is leaning into public trip sharing first: hikes, photos, maps, and comments people can discover."],
+    "notifications" => ["Notifications are paused.", "For now, keep an eye on the hikes and people you like directly."],
+    "photos" => ["Photos live with their hikes now.", "Open a hike to see its gallery, captions, camera details, and the story around the shots."],
+    "routes" => ["Route drawing is back at basecamp.", "Maps still make trip pages shine; drawing tools can return later if they earn their pack weight."]
   }.freeze
 
   def route_pages(r)
@@ -61,8 +61,8 @@ module PageRoutes
 
     r.get "map" do
       response.status = 410
-      @title = "Map Removed"
-      retired_feature("map", title: "The old map is gone.", body: "The original global map no longer worked and is intentionally not part of V2. Trip maps still appear on trip and profile pages.")
+      @title = "Map Trail Closed"
+      retired_feature("map", title: "The big map is off trail for now.", body: "Trip and profile maps are still alive. The all-site map needs a better comeback than a quick patch, so it is sitting out this round.")
     end
 
     RETIRED_FEATURES.each_key do |feature|
@@ -129,9 +129,9 @@ module PageRoutes
   end
 
   def retired_feature(feature, title: nil, body: nil)
-    default_title, default_body = RETIRED_FEATURES.fetch(feature, ["This feature is retired.", "This legacy feature is intentionally not part of V2."])
+    default_title, default_body = RETIRED_FEATURES.fetch(feature, ["This trail is closed for now.", "We simplified this corner of Went Hiking so hikes, photos, maps, and stories can move faster."])
     response.status = 410
-    @title = "Feature Retired"
+    @title = "Trail Closed"
     @retired_feature_title = title || default_title
     @retired_feature_body = body || default_body
     view("pages/gone")

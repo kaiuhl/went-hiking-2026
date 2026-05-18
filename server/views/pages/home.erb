@@ -1,12 +1,12 @@
 <section class="home-hero">
-  <p class="kicker">Trip reports, quietly preserved</p>
+  <p class="kicker">Hike it. Map it. Tell the story.</p>
   <h1>Went Hiking</h1>
-  <p class="lede">A rebuilt home for hiking and backpacking logs, with the photos and field notes treated as the main event.</p>
+  <p class="lede">Log the miles, share the photos, and discover where everyone is heading next.</p>
 </section>
 
 <% if @archive_stats[:trips].positive? %>
   <section class="section archive-overview">
-    <div class="stat-grid" aria-label="Archive totals">
+    <div class="stat-grid" aria-label="Community totals">
       <div>
         <span><%= h(format_number(@archive_stats[:trips])) %></span>
         <p>Trips</p>
@@ -37,7 +37,7 @@
     <a href="/hikes">View all</a>
   </div>
   <% if @recent_trips.empty? %>
-    <p class="empty">No trips have been imported yet.</p>
+    <p class="empty">No hikes yet. Be the first to get one on the map.</p>
   <% else %>
     <div class="trip-grid">
       <% @recent_trips.each do |trip| %>
@@ -59,7 +59,7 @@
   <section class="section leaderboard-section">
     <div class="section-heading">
       <h2><%= h(Date.today.year) %> Leaders</h2>
-      <span class="meta">From imported trip logs</span>
+      <span class="meta">This year's trail bragging rights</span>
     </div>
 
     <div class="leaderboard-grid">

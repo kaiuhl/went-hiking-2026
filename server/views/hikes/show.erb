@@ -32,7 +32,7 @@
 
   <section class="trip-body">
     <% if @trip.report_markdown.to_s.empty? %>
-      <p class="empty">No trip report was written for this hike.</p>
+      <p class="empty">No story yet for this hike. The map and photos still have plenty to say.</p>
     <% else %>
       <%= markdown(@trip.report_markdown) %>
     <% end %>
@@ -40,9 +40,9 @@
 
   <% unless @comments.empty? && @hearts.empty? %>
     <section class="legacy-social">
-      <h2>Legacy Conversation</h2>
+      <h2>Trail Talk</h2>
       <% unless @hearts.empty? %>
-        <p class="meta"><%= @hearts.size %> people hearted this trip.</p>
+        <p class="meta"><%= @hearts.size %> people cheered this trip.</p>
       <% end %>
       <% @comments.each do |comment| %>
         <article class="comment">

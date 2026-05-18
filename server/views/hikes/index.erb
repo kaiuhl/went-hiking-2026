@@ -1,5 +1,5 @@
 <section class="section">
-  <p class="kicker"><%= h(@kicker || "Archive") %></p>
+  <p class="kicker"><%= h(@kicker || "Explore") %></p>
   <h1><%= h(@heading || "Recent Hikes") %></h1>
   <form class="search-form" action="/search" method="get">
     <label for="hike-search">Search hikes</label>
@@ -9,7 +9,7 @@
     </div>
   </form>
   <% if @trips.empty? %>
-    <p class="empty">No hikes found.</p>
+    <p class="empty">No hikes match that search yet. Try another peak, lake, or trail name.</p>
   <% else %>
     <div class="trip-list">
       <% @trips.each do |trip| %>

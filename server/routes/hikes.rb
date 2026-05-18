@@ -67,7 +67,7 @@ module HikeRoutes
         @trip = trip_from_slug(trip_slug)
         not_found unless @trip.account_id == account.id
 
-        @title = "Add Photos"
+        @title = "Add Trail Photos"
         @photo_errors = []
         view("photos/new")
       end
@@ -87,7 +87,7 @@ module HikeRoutes
         if result.success?
           redirect @trip.public_path
         else
-          @title = "Add Photos"
+          @title = "Add Trail Photos"
           @photo_errors = result.errors
           response.status = 422
           view("photos/new")
@@ -102,11 +102,11 @@ module HikeRoutes
       end
 
       r.on String, "comments" do
-        retired_feature("comments", title: "New comments are retired.", body: "Legacy comments are preserved on trip pages, but new comments are not part of V2.")
+        retired_feature("comments", title: "New comments are taking a trail nap.", body: "The original conversations still show up on trip pages. Fresh commenting can come back once the new site has its boots under it.")
       end
 
       r.on String, "hearts" do
-        retired_feature("hearts", title: "Hearts are retired.", body: "Legacy hearts are preserved as read-only context, but new hearts are not part of V2.")
+        retired_feature("hearts", title: "Hearts are taking a trail nap.", body: "Past cheers still show up on trip pages. New reactions can come back when they are worth the pack space.")
       end
 
       r.get String, "edit" do |trip_slug|

@@ -5,7 +5,7 @@ module AccountRoutes
     r.on "account" do
       r.get do
         @account = authenticated_account
-        @title = "Account Settings"
+        @title = "Your Trail Profile"
         @account_errors = []
         view("accounts/show")
       end
@@ -19,12 +19,12 @@ module AccountRoutes
             name: request.POST["name"].to_s.strip,
             location: optional_string(request.POST["location"].to_s.strip)
           )
-          @account_notice = "Account updated."
+          @account_notice = "Profile saved."
         else
           response.status = 422
         end
 
-        @title = "Account Settings"
+        @title = "Your Trail Profile"
         view("accounts/show")
       end
     end

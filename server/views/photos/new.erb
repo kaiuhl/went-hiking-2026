@@ -2,13 +2,13 @@
   <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
   <header class="form-header">
     <p class="kicker">Photos</p>
-    <h1>Add Photos</h1>
-    <p class="lede"><%= h(@trip.name) %></p>
+    <h1>Add Trail Photos</h1>
+    <p class="lede">Bring back the good light from <%= h(@trip.name) %>.</p>
   </header>
 
   <% unless @photo_errors.empty? %>
     <div class="form-errors" role="alert">
-      <p>Fix these fields before uploading:</p>
+      <p>A couple things need fixing before these can hit the gallery:</p>
       <ul>
         <% @photo_errors.each do |error| %>
           <li><%= h(error) %></li>

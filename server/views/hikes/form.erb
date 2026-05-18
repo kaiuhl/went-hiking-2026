@@ -7,7 +7,7 @@
 
   <% unless @form_errors.empty? %>
     <div class="form-errors" role="alert">
-      <p>Fix these fields before saving:</p>
+      <p>A couple things need fixing before this hike can go live:</p>
       <ul>
         <% @form_errors.each do |error| %>
           <li><%= h(error) %></li>
@@ -71,7 +71,7 @@
         </div>
         <div class="preview-body trip-body" data-markdown-preview>
           <% if @form_values[:report_markdown].to_s.empty? %>
-            <p class="empty">Start writing to preview the trip report.</p>
+            <p class="empty">Start writing to see the story take shape.</p>
           <% else %>
             <%= markdown(@form_values[:report_markdown]) %>
           <% end %>

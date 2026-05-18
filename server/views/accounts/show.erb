@@ -1,7 +1,7 @@
 <section class="form-page">
   <header class="form-header">
     <p class="kicker">Account</p>
-    <h1>Settings</h1>
+    <h1>Your Trail Profile</h1>
     <p class="lede"><%= h(@account.email) %></p>
   </header>
 
@@ -11,7 +11,7 @@
 
   <% unless @account_errors.empty? %>
     <div class="form-errors" role="alert">
-      <p>Fix these fields before saving:</p>
+      <p>A couple things need fixing before your profile can hit the trail:</p>
       <ul>
         <% @account_errors.each do |error| %>
           <li><%= h(error) %></li>
@@ -34,7 +34,7 @@
     </div>
 
     <div class="form-actions">
-      <button type="submit">Save account</button>
+      <button type="submit">Save profile</button>
       <a href="<%= h(@account.public_path) %>">View profile</a>
       <a href="/change-password">Change password</a>
     </div>

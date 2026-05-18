@@ -45,21 +45,21 @@ RSpec.describe RodaApp do
     expect(last_response.location).to eq("https://media.example.test/system/images/32585/large/image.jpg")
   end
 
-  it "returns gone for the retired global map" do
+  it "returns gone for the unavailable global map" do
     get "/map"
 
     expect(last_response.status).to eq(410)
-    expect(last_response.body).to include("old map is gone")
+    expect(last_response.body).to include("big map is off trail")
   end
 
-  it "returns gone for retired legacy feature URLs" do
+  it "returns gone for unavailable feature URLs" do
     get "/forecasts"
     expect(last_response.status).to eq(410)
-    expect(last_response.body).to include("Forecasts are retired")
+    expect(last_response.body).to include("Forecasts are taking a break")
 
     get "/hikes/1-anything/comments"
     expect(last_response.status).to eq(410)
-    expect(last_response.body).to include("New comments are retired")
+    expect(last_response.body).to include("New comments are taking a trail nap")
   end
 
   it "renders auth entry points" do
@@ -110,7 +110,7 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Burnt Lake")
   end
 
-  it "renders archive totals and leaderboards on the home page" do
+  it "renders community totals and leaderboards on the home page" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, mileage: 8.5, elevation: 1700, hiked_at: Time.local(Date.today.year, 7, 1), lat: 45.4, lng: -121.7, report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
 
@@ -118,7 +118,7 @@ RSpec.describe RodaApp do
 
     expect(last_response).to be_ok
     expect(last_response.body).to include('<link rel="stylesheet" href="/styles/site.css">')
-    expect(last_response.body).to include("Archive totals")
+    expect(last_response.body).to include("Community totals")
     expect(last_response.body).to include("Miles logged")
     expect(last_response.body).to include("Leaders")
     expect(last_response.body).to include("data-map-collection")
@@ -240,7 +240,7 @@ RSpec.describe RodaApp do
     get "#{trip.public_path}/photos/9999"
 
     expect(last_response.status).to eq(404)
-    expect(last_response.body).to include("Nothing at this trailhead")
+    expect(last_response.body).to include("No trail here")
   end
 
   it "updates account settings for the authenticated account" do

@@ -2,7 +2,7 @@
   <% if (avatar = avatar_url(@account, "thumbnail")) %>
     <img class="avatar" src="<%= h(avatar) %>" alt="">
   <% end %>
-  <p class="kicker">Hiker</p>
+  <p class="kicker">Trail Log</p>
   <h1><%= h(@account.name) %></h1>
   <% if @account.location %>
     <p class="lede"><%= h(@account.location) %></p>
@@ -22,7 +22,7 @@
   </div>
 
   <% if @trips.empty? %>
-    <p class="empty">No trips for this year.</p>
+    <p class="empty">No hikes logged for this year yet.</p>
   <% else %>
     <div class="map-panel compact" data-map-collection data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(@trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} }.select { |point| point[:lat] && point[:lng] })) %>"></div>
     <div class="trip-list">

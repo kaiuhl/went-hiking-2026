@@ -1,13 +1,13 @@
 <section class="photo-gallery-page">
   <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
   <header class="gallery-header">
-    <p class="kicker">Trip Photos</p>
+    <p class="kicker">Trail Photos</p>
     <h1>Photos from <%= h(@trip.name) %></h1>
     <p class="lede"><%= h(trip_date_label(@trip)) %></p>
   </header>
 
   <% if @photos.empty? %>
-    <p class="empty">No photos have been added for this hike.</p>
+    <p class="empty">No photos yet. Time to bring back proof of the views.</p>
   <% else %>
     <div class="photo-gallery">
       <% @photos.each do |photo| %>
