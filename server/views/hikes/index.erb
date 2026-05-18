@@ -1,8 +1,15 @@
 <section class="section">
-  <p class="kicker">Archive</p>
-  <h1>Recent Hikes</h1>
+  <p class="kicker"><%= h(@kicker || "Archive") %></p>
+  <h1><%= h(@heading || "Recent Hikes") %></h1>
+  <form class="search-form" action="/search" method="get">
+    <label for="hike-search">Search hikes</label>
+    <div class="search-row">
+      <input id="hike-search" name="q" value="<%= h(@query) %>">
+      <button type="submit">Search</button>
+    </div>
+  </form>
   <% if @trips.empty? %>
-    <p class="empty">No trips have been imported yet.</p>
+    <p class="empty">No hikes found.</p>
   <% else %>
     <div class="trip-list">
       <% @trips.each do |trip| %>

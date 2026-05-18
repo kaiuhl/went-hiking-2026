@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "date"
+require "went_hiking/photo_upload"
 require "went_hiking/slug"
 
 module HikeRoutes
@@ -59,6 +60,46 @@ module HikeRoutes
         not_found unless @photo
         @title = "#{@trip.name} photo"
         view("photos/show")
+      end
+
+      r.get String, "photos", "new" do |trip_slug|
+        account = authenticated_account
+        @trip = trip_from_slug(trip_slug)
+        not_found unless @trip.account_id == account.id
+
+        @title = "Add Photos"
+        @photo_errors = []
+        view("photos/new")
+      end
+
+      r.post String, "photos" do |trip_slug|
+        account = authenticated_account
+        @trip = trip_from_slug(trip_slug)
+        not_found unless @trip.account_id == account.id
+
+        result = WentHiking::PhotoUpload.new(
+          account: account,
+          trip: @trip,
+          upload: request.POST["image"],
+          caption: request.POST["caption"]
+        ).call
+
+        if result.success?
+          redirect @trip.public_path
+        else
+          @title = "Add Photos"
+          @photo_errors = result.errors
+          response.status = 422
+          view("photos/new")
+        end
+      end
+
+      r.on String, "comments" do
+        retired_feature("comments", title: "New comments are retired.", body: "Legacy comments are preserved on trip pages, but new comments are not part of V2.")
+      end
+
+      r.on String, "hearts" do
+        retired_feature("hearts", title: "Hearts are retired.", body: "Legacy hearts are preserved as read-only context, but new hearts are not part of V2.")
       end
 
       r.get String, "edit" do |trip_slug|

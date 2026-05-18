@@ -42,7 +42,7 @@
 - Inventory expectation: about `203k` files and about `80 GB` under `system/images`.
 - Full resumable sync started on 2026-05-18 at 05:34 PDT in detached screen session `wenthiking-photo-sync`.
 - Local log: `.deploy/photo-sync.log`.
-- Progress at 2026-05-18 05:38 PDT: `572` objects, `231,857,384` bytes.
+- Progress at 2026-05-18 08:21 PDT: `25,238` objects, `9,838,732,795` bytes.
 - Monitor:
 
 ```sh

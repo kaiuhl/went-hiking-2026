@@ -19,6 +19,18 @@ module WentHiking
         durable_user_ids.include?(legacy_user_id.to_i)
       end
 
+      def avatar_only_user_ids
+        return [] unless source_db.table_exists?(:users)
+        return [] unless table_column?(:users, :avatar_file_name)
+
+        avatar_ids = source_db[:users]
+          .exclude(avatar_file_name: nil)
+          .exclude(avatar_file_name: "")
+          .select_map(:id)
+
+        (avatar_ids - durable_user_ids).compact.uniq.sort
+      end
+
       private
 
       attr_reader :source_db
@@ -27,6 +39,10 @@ module WentHiking
         return [] unless source_db.table_exists?(table)
 
         source_db[table].exclude(column => nil).select_map(column)
+      end
+
+      def table_column?(table, column)
+        source_db.schema(table).any? { |name, _metadata| name == column }
       end
     end
   end

@@ -52,6 +52,16 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("old map is gone")
   end
 
+  it "returns gone for retired legacy feature URLs" do
+    get "/forecasts"
+    expect(last_response.status).to eq(410)
+    expect(last_response.body).to include("Forecasts are retired")
+
+    get "/hikes/1-anything/comments"
+    expect(last_response.status).to eq(410)
+    expect(last_response.body).to include("New comments are retired")
+  end
+
   it "renders auth entry points" do
     get "/login"
     expect(last_response).to be_ok
@@ -87,6 +97,17 @@ RSpec.describe RodaApp do
     expect(last_response).to be_ok
     expect(last_response.body).to include("Burnt Lake")
     expect(last_response.body).to include("<strong>day</strong>")
+  end
+
+  it "searches imported trip names and reports" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, hiked_at: Time.utc(2025, 7, 1), report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
+
+    get "/search", {"q" => "burnt"}
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Search Results")
+    expect(last_response.body).to include("Burnt Lake")
   end
 
   it "renders the authenticated new hike form" do
@@ -152,6 +173,50 @@ RSpec.describe RodaApp do
     expect(last_response.status).to eq(302)
     expect(trip.refresh.name).to eq("New Name")
     expect(trip.report_markdown).to eq("Updated.")
+  end
+
+  it "uploads photos for trips owned by the authenticated account" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    fixture_path = File.join(WentHiking.root, "tmp/upload-photo.jpg")
+    FileUtils.mkdir_p(File.dirname(fixture_path))
+    File.binwrite(fixture_path, "jpeg-ish".ljust(2048, "x"))
+    allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1200, height: 800, camera_model: "Test Camera")
+    allow(WentHiking::PhotoVariantJob).to receive(:enqueue_photo)
+    login_as(account_id)
+
+    post "#{trip.public_path}/photos", {
+      "image" => Rack::Test::UploadedFile.new(fixture_path, "image/jpeg", true),
+      "caption" => "Lake light"
+    }
+
+    photo = WentHiking::Models::Photo.first(caption: "Lake light")
+    original = photo.variant("original")
+    uploaded_path = File.join(ENV.fetch("LOCAL_UPLOAD_ROOT"), original.s3_key)
+
+    expect(last_response.status).to eq(302)
+    expect(photo.account_id).to eq(account_id)
+    expect(photo.width).to eq(1200)
+    expect(photo.camera_model).to eq("Test Camera")
+    expect(original.s3_key).to eq("system/images/#{photo.id}/original/upload-photo.jpg")
+    expect(File.exist?(uploaded_path)).to be(true)
+    expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
+  end
+
+  it "updates account settings for the authenticated account" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    get "/account"
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Change password")
+
+    post "/account", {"name" => "Kai Updated", "location" => "Portland, OR"}
+
+    expect(last_response).to be_ok
+    expect(WentHiking::Models::Account[account_id].name).to eq("Kai Updated")
+    expect(WentHiking::Models::Account[account_id].location).to eq("Portland, OR")
   end
 
   it "redirects old hike ids to canonical paths" do

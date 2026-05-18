@@ -1,0 +1,38 @@
+<section class="form-page">
+  <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
+  <header class="form-header">
+    <p class="kicker">Photos</p>
+    <h1>Add Photos</h1>
+    <p class="lede"><%= h(@trip.name) %></p>
+  </header>
+
+  <% unless @photo_errors.empty? %>
+    <div class="form-errors" role="alert">
+      <p>Fix these fields before uploading:</p>
+      <ul>
+        <% @photo_errors.each do |error| %>
+          <li><%= h(error) %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <form class="photo-form" action="<%= h(@trip.public_path) %>/photos" method="post" enctype="multipart/form-data">
+    <div class="form-grid">
+      <div class="form-row form-row-full">
+        <label for="photo-image">Image</label>
+        <input id="photo-image" name="image" type="file" accept="image/jpeg,image/png,image/gif" required>
+      </div>
+
+      <div class="form-row form-row-full">
+        <label for="photo-caption">Caption</label>
+        <textarea id="photo-caption" name="caption" rows="4"></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Upload photo</button>
+      <a href="<%= h(@trip.public_path) %>">Cancel</a>
+    </div>
+  </form>
+</section>

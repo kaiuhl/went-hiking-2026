@@ -9,12 +9,17 @@ require "went_hiking/models"
 module WentHiking
   module Import
     class Runner
+      REPORT_SAMPLE_LIMIT = 100
+
       def initialize(source_db:, target_db: WentHiking.db)
         @source_db = source_db
         @target_db = target_db
         @filter = Filter.new(source_db)
         @transform = Transform.new
-        @summary = Hash.new(0)
+        @summary = {
+          orphan_references: Hash.new(0),
+          skipped_rows: []
+        }
       end
 
       def run
@@ -27,6 +32,7 @@ module WentHiking
         )
 
         target_db.transaction do
+          record_avatar_only_users
           import_accounts
           import_trips
           import_photos
@@ -57,7 +63,7 @@ module WentHiking
         durable_ids = filter.durable_user_ids
         source_db[:users].where(id: durable_ids).each do |row|
           upsert(:accounts, :legacy_user_id, transform.account(symbolize(row)))
-          summary[:accounts] += 1
+          increment(:accounts)
         end
       end
 
@@ -66,12 +72,12 @@ module WentHiking
           row = symbolize(row)
           account = account_for(row[:user_id])
           unless account
-            summary[:skipped_trips] += 1
+            record_skip(:trips, row, :missing_account, legacy_user_id: row[:user_id])
             next
           end
 
           upsert(:trips, :legacy_trip_id, transform.trip(row, account_id: account[:id]))
-          summary[:trips] += 1
+          increment(:trips)
         end
       end
 
@@ -81,7 +87,8 @@ module WentHiking
           account = account_for(row[:user_id])
           trip = trip_for(row[:trip_id])
           unless account && trip
-            summary[:skipped_photos] += 1
+            reason = account ? :missing_trip : :missing_account
+            record_skip(:photos, row, reason, legacy_user_id: row[:user_id], legacy_trip_id: row[:trip_id])
             next
           end
 
@@ -90,7 +97,7 @@ module WentHiking
             variant[:photo_id] = photo_id
             upsert_variant(variant)
           end
-          summary[:photos] += 1
+          increment(:photos)
         end
       end
 
@@ -102,12 +109,13 @@ module WentHiking
           account = account_for(row[:user_id])
           trip = trip_for(row[:trip_id])
           unless account && trip
-            summary[:skipped_comments] += 1
+            reason = account ? :missing_trip : :missing_account
+            record_skip(:comments, row, reason, legacy_user_id: row[:user_id], legacy_trip_id: row[:trip_id])
             next
           end
 
           upsert(:comments, :legacy_comment_id, transform.comment(row, account_id: account[:id], trip_id: trip[:id]))
-          summary[:comments] += 1
+          increment(:comments)
         end
       end
 
@@ -119,12 +127,40 @@ module WentHiking
           account = account_for(row[:user_id])
           trip = trip_for(row[:trip_id])
           unless account && trip
-            summary[:skipped_hearts] += 1
+            reason = account ? :missing_trip : :missing_account
+            record_skip(:hearts, row, reason, legacy_user_id: row[:user_id], legacy_trip_id: row[:trip_id])
             next
           end
 
           upsert(:hearts, :legacy_heart_id, transform.heart(row, account_id: account[:id], trip_id: trip[:id]))
-          summary[:hearts] += 1
+          increment(:hearts)
+        end
+      end
+
+      def record_avatar_only_users
+        ids = filter.avatar_only_user_ids
+        summary[:avatar_only_user_count] = ids.size
+        summary[:avatar_only_user_ids_sample] = ids.first(REPORT_SAMPLE_LIMIT)
+      end
+
+      def increment(key)
+        summary[key] ||= 0
+        summary[key] += 1
+      end
+
+      def record_skip(table, row, reason, references)
+        increment(:"skipped_#{table}")
+        summary[:orphan_references][reason] += 1
+
+        if summary[:skipped_rows].size < REPORT_SAMPLE_LIMIT
+          summary[:skipped_rows] << {
+            table: table,
+            legacy_id: row[:id],
+            reason: reason,
+            references: references
+          }
+        else
+          increment(:skipped_rows_truncated)
         end
       end
 

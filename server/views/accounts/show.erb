@@ -1,0 +1,42 @@
+<section class="form-page">
+  <header class="form-header">
+    <p class="kicker">Account</p>
+    <h1>Settings</h1>
+    <p class="lede"><%= h(@account.email) %></p>
+  </header>
+
+  <% if @account_notice %>
+    <p class="form-notice"><%= h(@account_notice) %></p>
+  <% end %>
+
+  <% unless @account_errors.empty? %>
+    <div class="form-errors" role="alert">
+      <p>Fix these fields before saving:</p>
+      <ul>
+        <% @account_errors.each do |error| %>
+          <li><%= h(error) %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <form class="account-form" action="/account" method="post">
+    <div class="form-grid">
+      <div class="form-row form-row-full">
+        <label for="account-name">Name</label>
+        <input id="account-name" name="name" value="<%= h(@account.name) %>" autocomplete="name" required>
+      </div>
+
+      <div class="form-row form-row-full">
+        <label for="account-location">Location</label>
+        <input id="account-location" name="location" value="<%= h(@account.location) %>" autocomplete="address-level2">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Save account</button>
+      <a href="<%= h(@account.public_path) %>">View profile</a>
+      <a href="/change-password">Change password</a>
+    </div>
+  </form>
+</section>

@@ -3,7 +3,10 @@ ENV["RACK_ENV"] = "test"
 ENV["TEST_DATABASE_URL"] ||= "sqlite::memory:"
 ENV["SESSION_SECRET"] ||= "test-session-secret-test-session-secret-test-session-secret-test-session-secret"
 ENV["MEDIA_BASE_URL"] ||= "https://media.example.test"
+ENV["UPLOAD_STORAGE"] ||= "local"
+ENV["LOCAL_UPLOAD_ROOT"] ||= File.expand_path("../tmp/test-uploads", __dir__)
 
+require "fileutils"
 require "rack/test"
 require "rspec"
 
@@ -36,5 +39,6 @@ RSpec.configure do |config|
 
   config.before do
     TestDatabase.reset!
+    FileUtils.rm_rf(ENV.fetch("LOCAL_UPLOAD_ROOT"))
   end
 end

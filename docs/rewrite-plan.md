@@ -11,7 +11,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add Caddy reverse proxy skeleton for `wenthiking.com`.
 - [x] Add OpenTofu configuration for AWS infrastructure.
 - [x] Add Ansible playbooks for Lightsail host setup and app deploys.
-- [ ] Add CI workflow.
+- [x] Add CI workflow.
 - [x] Add production deploy helper so the current manual tarball deploy is repeatable.
 
 ## Domain And Data
@@ -22,8 +22,8 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add import transforms for users, trips, photos, photo variants, comments, and hearts.
 - [x] Add idempotent import runner skeleton.
 - [ ] Test import against a real MySQL dump.
-- [ ] Add orphan and skipped-row reports to import output.
-- [ ] Decide final handling for users with only legacy avatar data and no durable content.
+- [x] Add orphan and skipped-row reports to import output.
+- [x] Decide final handling for users with only legacy avatar data and no durable content.
 
 ## Auth And Accounts
 
@@ -32,7 +32,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Implement password reset and account reclaim.
 - [x] Implement public signup with honeypot and signup audit records.
 - [x] Send auth email through AWS SES.
-- [ ] Add account settings and password change screens.
+- [x] Add account settings and password change screens.
 
 ## Trips, Photos, And Maps
 
@@ -45,16 +45,16 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add full-page photo treatment.
 - [x] Add trip create/edit forms.
 - [x] Add Markdown preview editor UI.
-- [ ] Add photo upload flow.
-- [ ] Add async variant generation through Que.
-- [ ] Add EXIF extraction into upload flow.
+- [x] Add photo upload flow.
+- [x] Add async variant generation through Que.
+- [x] Add EXIF extraction into upload flow.
 
 ## Dropped From V2
 
 - [x] Retire `/map` with `410 Gone`.
 - [x] Exclude forecasts from the import plan.
 - [x] Exclude messages, route drawing, GPX/map layers, empty attachment tables, tracks, and shapes from the import plan.
-- [ ] Add compatibility redirects or gone pages for retired feature URLs.
+- [x] Add compatibility redirects or gone pages for retired feature URLs.
 
 ## Testing
 
