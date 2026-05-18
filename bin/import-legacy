@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../config/boot"
+require "went_hiking/import/runner"
+
+source_url = ENV.fetch("LEGACY_DATABASE_URL") do
+  abort "Set LEGACY_DATABASE_URL to the loaded legacy MySQL database URL"
+end
+
+summary = WentHiking::Import::Runner.new(source_db: Sequel.connect(source_url)).run
+puts JSON.pretty_generate(summary)

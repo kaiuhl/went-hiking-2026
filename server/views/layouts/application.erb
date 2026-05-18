@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= h(@title || "Went Hiking") %></title>
+    <meta name="description" content="Hiking and backpacking trip reports, maps, and photos.">
+    <link rel="stylesheet" href="/styles/site.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="/scripts/site.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="wordmark" href="/">Went Hiking</a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="/hikes">Hikes</a>
+        <a href="/about">About</a>
+        <a href="/login">Log in</a>
+      </nav>
+    </header>
+    <main>
+      <%= yield %>
+    </main>
+    <footer class="site-footer">
+      <p>Went Hiking preserves trip reports, maps, and photographs from people who went outside and wrote it down.</p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+---
+- name: Deploy Went Hiking preview app
+  hosts: preview
+  become: true
+  vars:
+    app_dir: /srv/went-hiking-2026
+    release_archive: ../../.deploy/went-hiking-2026.tar.gz
+    env_file: ../../.deploy/prod.env
+
+  tasks:
+    - name: Ensure app directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy release archive
+      ansible.builtin.copy:
+        src: "{{ release_archive }}"
+        dest: /tmp/went-hiking-2026.tar.gz
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Copy production environment
+      ansible.builtin.copy:
+        src: "{{ env_file }}"
+        dest: "{{ app_dir }}/.env"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Clear previous release files
+      ansible.builtin.shell:
+        cmd: "find {{ app_dir | quote }} -mindepth 1 ! -name .env -exec rm -rf {} +"
+      changed_when: true
+
+    - name: Extract release
+      ansible.builtin.unarchive:
+        src: /tmp/went-hiking-2026.tar.gz
+        dest: "{{ app_dir }}"
+        remote_src: true
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Remove macOS resource fork files
+      ansible.builtin.command:
+        cmd: "find {{ app_dir }} -name '._*' -delete"
+      changed_when: false
+
+    - name: Build app image
+      ansible.builtin.command:
+        cmd: docker compose -f compose.yaml -f compose.production.yaml build web
+        chdir: "{{ app_dir }}"
+
+    - name: Start database
+      ansible.builtin.command:
+        cmd: docker compose -f compose.yaml -f compose.production.yaml up -d postgres
+        chdir: "{{ app_dir }}"
+
+    - name: Run database migrations
+      ansible.builtin.command:
+        cmd: docker compose -f compose.yaml -f compose.production.yaml run --rm web bundle exec rake db:migrate
+        chdir: "{{ app_dir }}"
+
+    - name: Start app stack
+      ansible.builtin.command:
+        cmd: docker compose -f compose.yaml -f compose.production.yaml up -d web caddy
+        chdir: "{{ app_dir }}"

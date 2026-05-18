@@ -1,0 +1,17 @@
+aws_region                  = "us-west-2"
+project_name                = "went-hiking-2026"
+media_bucket_name           = "wenthiking-media-2026"
+lightsail_instance_name     = "went-hiking-2026"
+lightsail_static_ip_name    = "went-hiking-2026-ip"
+lightsail_availability_zone = "us-west-2a"
+lightsail_blueprint_id      = "ubuntu_24_04"
+lightsail_bundle_id         = "nano_3_0"
+lightsail_key_pair_name     = "went-hiking-2026-good-20260517234635"
+lightsail_user_data_path    = "../../.deploy/user-data.sh"
+
+# The adopted preview already has these resources, but the AWS provider cannot
+# import their current state. Leave false for preview drift checks; set true for
+# a fresh environment.
+manage_lightsail_static_ip       = false
+manage_lightsail_public_ports    = false
+existing_lightsail_static_ip_address = "35.160.199.53"

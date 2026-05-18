@@ -1,0 +1,27 @@
+services:
+  web:
+    build: .
+    command: bundle exec puma -C config/puma.rb
+    env_file: .env
+    ports:
+      - "9292:9292"
+    depends_on:
+      - postgres
+  worker:
+    build: .
+    command: bundle exec ruby jobs/worker.rb
+    env_file: .env
+    profiles: ["jobs"]
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wenthiking_development}
+      POSTGRES_USER: ${POSTGRES_USER:-wenthiking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wenthiking}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

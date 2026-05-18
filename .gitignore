@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.bundle/
+.ruby-lsp/
+.deploy/
+coverage/
+log/
+tmp/
+vendor/bundle/
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log

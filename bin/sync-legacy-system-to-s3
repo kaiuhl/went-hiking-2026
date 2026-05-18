@@ -1,0 +1,235 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "aws-sdk-s3"
+require "optparse"
+require "open3"
+require "shellwords"
+
+options = {
+  bucket: ENV.fetch("S3_BUCKET", "wenthiking-media-2026"),
+  host: ENV.fetch("LEGACY_HOST", "wenthiking.com"),
+  port: ENV.fetch("LEGACY_PORT", "40000"),
+  user: ENV.fetch("LEGACY_USER", "kylemeyer"),
+  key_file: File.expand_path(ENV.fetch("LEGACY_KEY_FILE", "~/.ssh/kylemeyer-linode-recovery")),
+  root: ENV.fetch("LEGACY_PUBLIC_ROOT", "/home/kylemeyer/web/wenthiking/public"),
+  path: ENV.fetch("LEGACY_SYSTEM_PATH", "system"),
+  region: ENV.fetch("AWS_REGION", "us-west-2"),
+  dry_run: false,
+  skip_existing: true,
+  limit: nil
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: bin/sync-legacy-system-to-s3 [options]"
+
+  parser.on("--bucket BUCKET", "S3 bucket name") { |value| options[:bucket] = value }
+  parser.on("--host HOST", "Legacy SSH host") { |value| options[:host] = value }
+  parser.on("--port PORT", "Legacy SSH port") { |value| options[:port] = value }
+  parser.on("--user USER", "Legacy SSH user") { |value| options[:user] = value }
+  parser.on("--key-file PATH", "Legacy SSH private key") { |value| options[:key_file] = File.expand_path(value) }
+  parser.on("--root PATH", "Legacy public root") { |value| options[:root] = value }
+  parser.on("--path PATH", "Path under public root to sync") { |value| options[:path] = value }
+  parser.on("--region REGION", "AWS region") { |value| options[:region] = value }
+  parser.on("--limit N", Integer, "Stop after N files") { |value| options[:limit] = value }
+  parser.on("--[no-]skip-existing", "HEAD objects and skip matching sizes") { |value| options[:skip_existing] = value }
+  parser.on("--dry-run", "List remote files without uploading") { options[:dry_run] = true }
+end.parse!
+
+BLOCK_SIZE = 512
+
+class TarEntryBody
+  def initialize(io, size)
+    @io = io
+    @remaining = size
+  end
+
+  def read(length = nil, outbuf = nil)
+    return nil if @remaining <= 0
+
+    length = @remaining if length.nil? || length > @remaining
+    data = @io.read(length)
+    raise EOFError, "unexpected EOF while reading tar entry" if data.nil? || data.empty?
+
+    @remaining -= data.bytesize
+    if outbuf
+      outbuf.replace(data)
+    else
+      data
+    end
+  end
+
+  def drain
+    read([@remaining, 1024 * 1024].min) while @remaining > 0
+  end
+end
+
+def read_exact(io, length)
+  data = +""
+  while data.bytesize < length
+    chunk = io.read(length - data.bytesize)
+    raise EOFError, "unexpected EOF while reading tar stream" if chunk.nil? || chunk.empty?
+
+    data << chunk
+  end
+  data
+end
+
+def parse_octal(value)
+  number = value.delete("\0 ").strip
+  number.empty? ? 0 : number.to_i(8)
+end
+
+def tar_name(header, pending_long_name)
+  return pending_long_name if pending_long_name
+
+  name = header.byteslice(0, 100).delete("\0")
+  prefix = header.byteslice(345, 155).delete("\0")
+  [prefix, name].reject(&:empty?).join("/")
+end
+
+def drain_padding(io, size)
+  padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
+  read_exact(io, padding) if padding.positive?
+end
+
+def each_tar_file(io)
+  pending_long_name = nil
+
+  loop do
+    header = read_exact(io, BLOCK_SIZE)
+    break if header.bytes.all?(&:zero?)
+
+    size = parse_octal(header.byteslice(124, 12))
+    typeflag = header.byteslice(156, 1)
+    name = tar_name(header, pending_long_name)
+    pending_long_name = nil
+
+    case typeflag
+    when "0", "\0"
+      body = TarEntryBody.new(io, size)
+      yield name.sub(%r{\A\./}, ""), size, body
+      body.drain
+      drain_padding(io, size)
+    when "L"
+      long_name = read_exact(io, size)
+      pending_long_name = long_name.delete_suffix("\0")
+      drain_padding(io, size)
+    else
+      read_exact(io, size) if size.positive?
+      drain_padding(io, size)
+    end
+  rescue EOFError
+    break
+  end
+end
+
+def ssh_base(options)
+  [
+    "ssh",
+    "-o", "HostkeyAlgorithms=+ssh-rsa",
+    "-o", "PubkeyAcceptedAlgorithms=+ssh-rsa",
+    "-o", "BatchMode=yes",
+    "-i", options[:key_file],
+    "-p", options[:port],
+    "#{options[:user]}@#{options[:host]}"
+  ]
+end
+
+def remote_shell(command)
+  ["bash", "-lc", command.shellescape]
+end
+
+def content_type_for(key)
+  case File.extname(key).downcase
+  when ".jpg", ".jpeg" then "image/jpeg"
+  when ".png" then "image/png"
+  when ".gif" then "image/gif"
+  when ".webp" then "image/webp"
+  when ".tif", ".tiff" then "image/tiff"
+  when ".pdf" then "application/pdf"
+  else "application/octet-stream"
+  end
+end
+
+def dry_run(options)
+  limit = options[:limit] || 20
+  command = "cd #{options[:root].shellescape} && find #{options[:path].shellescape} -type f -printf '%p\\t%s\\n' | head -n #{limit.to_i}"
+  system(*(ssh_base(options) + remote_shell(command)), exception: true)
+end
+
+if options[:dry_run]
+  dry_run(options)
+  exit
+end
+
+s3 = Aws::S3::Client.new(region: options[:region])
+transfer_manager = Aws::S3::TransferManager.new(client: s3)
+uploaded = 0
+skipped = 0
+seen = 0
+limited = false
+
+command = "cd #{options[:root].shellescape} && tar -cf - #{options[:path].shellescape}"
+Open3.popen3(*(ssh_base(options) + remote_shell(command))) do |_stdin, stdout, stderr, wait_thread|
+  warning_thread = Thread.new do
+    begin
+      stderr.each_line { |line| warn line }
+    rescue IOError
+      nil
+    end
+  end
+
+  catch(:done) do
+    each_tar_file(stdout) do |key, size, body|
+      seen += 1
+
+      if options[:skip_existing]
+        begin
+          existing = s3.head_object(bucket: options[:bucket], key: key)
+          if existing.content_length == size
+            skipped += 1
+            warn "skip #{key} (#{size} bytes)"
+            if options[:limit] && seen >= options[:limit]
+              limited = true
+              throw :done
+            end
+            next
+          end
+        rescue Aws::S3::Errors::NotFound, Aws::S3::Errors::NoSuchKey
+          # Upload below.
+        end
+      end
+
+      warn "upload #{key} (#{size} bytes)"
+      transfer_manager.upload_stream(bucket: options[:bucket], key: key, content_type: content_type_for(key)) do |stream|
+        while (chunk = body.read(1024 * 1024))
+          stream.write(chunk)
+        end
+      end
+      uploaded += 1
+
+      if options[:limit] && seen >= options[:limit]
+        limited = true
+        throw :done
+      end
+    end
+  end
+
+  if limited
+    stdout.close unless stdout.closed?
+    begin
+      Process.kill("TERM", wait_thread.pid)
+    rescue Errno::ESRCH
+      nil
+    end
+  end
+
+  unless warning_thread.join(2)
+    warning_thread.kill
+  end
+  status = wait_thread.value
+  abort "legacy tar stream failed with #{status.exitstatus}" unless status.success? || limited
+end
+
+warn "done: seen=#{seen} uploaded=#{uploaded} skipped=#{skipped}"

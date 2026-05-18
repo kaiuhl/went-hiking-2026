@@ -1,0 +1,29 @@
+<section class="home-hero">
+  <p class="kicker">Trip reports, quietly preserved</p>
+  <h1>Went Hiking</h1>
+  <p class="lede">A rebuilt home for hiking and backpacking logs, with the photos and field notes treated as the main event.</p>
+</section>
+
+<section class="section">
+  <div class="section-heading">
+    <h2>Recent Hikes</h2>
+    <a href="/hikes">View all</a>
+  </div>
+  <% if @recent_trips.empty? %>
+    <p class="empty">No trips have been imported yet.</p>
+  <% else %>
+    <div class="trip-grid">
+      <% @recent_trips.each do |trip| %>
+        <article class="trip-card">
+          <% photo = trip.photos_dataset.first %>
+          <% if photo %>
+            <a href="<%= h(trip.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt=""></a>
+          <% end %>
+          <p class="meta"><%= h(date_label(trip.hiked_at)) %></p>
+          <h3><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h3>
+          <p><%= h(trip.account.name) %></p>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</section>

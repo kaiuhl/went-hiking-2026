@@ -1,0 +1,24 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+  web:
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      RACK_ENV: production
+  postgres:
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

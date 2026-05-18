@@ -1,0 +1,17 @@
+<section class="section">
+  <p class="kicker">Archive</p>
+  <h1>Recent Hikes</h1>
+  <% if @trips.empty? %>
+    <p class="empty">No trips have been imported yet.</p>
+  <% else %>
+    <div class="trip-list">
+      <% @trips.each do |trip| %>
+        <article class="trip-row">
+          <p class="meta"><%= h(date_label(trip.hiked_at)) %> · <%= h(trip.account.name) %></p>
+          <h2><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h2>
+          <p><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), (trip.nights.to_i.positive? ? "#{trip.nights} nights" : nil)].compact.join(" · ") %></p>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</section>

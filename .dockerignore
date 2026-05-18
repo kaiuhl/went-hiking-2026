@@ -1,0 +1,9 @@
+.deploy
+.git
+.bundle
+.DS_Store
+.env
+coverage
+log
+tmp
+vendor/bundle

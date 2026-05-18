@@ -1,0 +1,43 @@
+<article class="trip-page">
+  <header class="trip-header">
+    <p class="kicker"><a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a> went <%= @trip.backpacking? ? "backpacking" : "hiking" %></p>
+    <h1><%= h(@trip.name) %></h1>
+    <p class="lede"><%= h(trip_date_label(@trip)) %></p>
+    <p class="meta"><%= [number_label(@trip.mileage, "miles"), number_label(@trip.elevation, "feet gained"), (@trip.nights.to_i.positive? ? "#{@trip.nights} nights" : nil)].compact.join(" · ") %></p>
+  </header>
+
+  <% if @trip.lat && @trip.lng %>
+    <div class="map-panel" data-map data-lat="<%= h(@trip.lat) %>" data-lng="<%= h(@trip.lng) %>" data-title="<%= h(@trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>"></div>
+  <% end %>
+
+  <% unless @photos.empty? %>
+    <section class="photo-strip" aria-label="Trip photos">
+      <% @photos.first(8).each do |photo| %>
+        <a href="<%= h(photo.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
+      <% end %>
+    </section>
+  <% end %>
+
+  <section class="trip-body">
+    <% if @trip.report_markdown.to_s.empty? %>
+      <p class="empty">No trip report was written for this hike.</p>
+    <% else %>
+      <%= markdown(@trip.report_markdown) %>
+    <% end %>
+  </section>
+
+  <% unless @comments.empty? && @hearts.empty? %>
+    <section class="legacy-social">
+      <h2>Legacy Conversation</h2>
+      <% unless @hearts.empty? %>
+        <p class="meta"><%= @hearts.size %> people hearted this trip.</p>
+      <% end %>
+      <% @comments.each do |comment| %>
+        <article class="comment">
+          <p class="meta"><%= h(comment.account.name) %> · <%= h(date_label(comment.created_at)) %></p>
+          <%= markdown(comment.body_markdown) %>
+        </article>
+      <% end %>
+    </section>
+  <% end %>
+</article>
