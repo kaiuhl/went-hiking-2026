@@ -135,6 +135,10 @@ h3 {
   padding: 48px 0;
 }
 
+.archive-overview {
+  padding-top: 0;
+}
+
 .section-heading {
   display: flex;
   align-items: baseline;
@@ -142,6 +146,35 @@ h3 {
   gap: 24px;
   margin-bottom: 24px;
   border-bottom: 1px solid var(--line);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 28px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.stat-grid div {
+  min-width: 0;
+  background: var(--bg);
+  padding: 18px;
+}
+
+.stat-grid span {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.stat-grid p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
 }
 
 .trip-grid {
@@ -186,12 +219,20 @@ h3 {
   font-size: 14px;
 }
 
+.trip-photos {
+  margin-bottom: 48px;
+}
+
 .map-panel {
   width: 100%;
   height: 360px;
   margin: 0 0 44px;
   border: 1px solid var(--line);
   background: var(--soft);
+}
+
+.home-map {
+  height: min(58vh, 520px);
 }
 
 .map-panel.compact {
@@ -209,6 +250,67 @@ h3 {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
+}
+
+.leaderboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.leaderboard-grid h3 {
+  margin-bottom: 10px;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.leaderboard-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.leaderboard-list span {
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.member-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+
+.member-list a {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.member-list img {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 50%;
+  background: var(--soft);
+}
+
+.member-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trip-body,
@@ -244,6 +346,41 @@ h3 {
 
 .photo-page {
   padding: 40px 0 72px;
+}
+
+.photo-gallery-page {
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 40px 0 72px;
+}
+
+.gallery-header {
+  padding: 30px 0 36px;
+}
+
+.photo-gallery {
+  columns: 3 260px;
+  column-gap: 12px;
+}
+
+.photo-gallery a {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 12px;
+  break-inside: avoid;
+  text-decoration: none;
+}
+
+.photo-gallery img {
+  width: 100%;
+  background: var(--soft);
+}
+
+.photo-gallery span {
+  display: block;
+  padding-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .photo-page figure {
@@ -490,7 +627,10 @@ form.rodauth {
   .trip-grid,
   .photo-strip,
   .form-grid,
-  .markdown-editor {
+  .markdown-editor,
+  .stat-grid,
+  .leaderboard-grid,
+  .member-list {
     grid-template-columns: 1fr;
   }
 

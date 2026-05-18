@@ -84,10 +84,10 @@ module WentHiking
       def import_photos
         source_db[:photos].each do |row|
           row = symbolize(row)
-          account = account_for(row[:user_id])
           trip = trip_for(row[:trip_id])
-          unless account && trip
-            reason = account ? :missing_trip : :missing_account
+          account = account_for(row[:user_id]) || account_for_trip(trip)
+          unless trip && account
+            reason = trip ? :missing_account : :missing_trip
             record_skip(:photos, row, reason, legacy_user_id: row[:user_id], legacy_trip_id: row[:trip_id])
             next
           end
@@ -187,7 +187,15 @@ module WentHiking
       end
 
       def account_for(legacy_user_id)
+        return nil if legacy_user_id.nil?
+
         target_db[:accounts].where(legacy_user_id: legacy_user_id).first
+      end
+
+      def account_for_trip(trip)
+        return nil unless trip
+
+        target_db[:accounts].where(id: trip[:account_id]).first
       end
 
       def trip_for(legacy_trip_id)

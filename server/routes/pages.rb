@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "date"
+
 module PageRoutes
   RETIRED_FEATURES = {
     "forecasts" => ["Forecasts are retired.", "The old weather integration rotted and is intentionally not part of V2."],
@@ -13,6 +15,15 @@ module PageRoutes
   def route_pages(r)
     r.root do
       @recent_trips = WentHiking::Models::Trip.reverse_order(:hiked_at).limit(12).all
+      @map_points = WentHiking::Models::Trip
+        .exclude(lat: nil)
+        .exclude(lng: nil)
+        .reverse_order(:hiked_at)
+        .limit(100)
+        .all
+      @archive_stats = archive_stats
+      @leaderboards = leaderboards_for(Date.today.year)
+      @newest_members = WentHiking::Models::Account.reverse_order(:created_at).limit(8).all
       @title = "Went Hiking"
       view("pages/home")
     end
@@ -80,6 +91,41 @@ module PageRoutes
       .where(Sequel.lit("LOWER(name) LIKE ? OR LOWER(COALESCE(report_markdown, '')) LIKE ?", pattern, pattern))
       .limit(50)
       .all
+  end
+
+  def archive_stats
+    trips = WentHiking::Models::Trip.all
+    {
+      trips: trips.size,
+      photos: WentHiking::Models::Photo.count,
+      miles: trips.sum { |trip| trip.mileage.to_f },
+      nights: trips.sum { |trip| trip.nights.to_i }
+    }
+  end
+
+  def leaderboards_for(year)
+    start_at = Time.local(year, 1, 1)
+    end_at = Time.local(year + 1, 1, 1)
+    trips = WentHiking::Models::Trip
+      .where { hiked_at >= start_at }
+      .where { hiked_at < end_at }
+      .all
+    by_account = trips.group_by(&:account)
+
+    {
+      mileage: leaderboard(by_account) { |account_trips| account_trips.sum { |trip| trip.mileage.to_f } },
+      elevation: leaderboard(by_account) { |account_trips| account_trips.sum { |trip| trip.elevation.to_i } },
+      nights: leaderboard(by_account) { |account_trips| account_trips.sum { |trip| trip.nights.to_i } }
+    }
+  end
+
+  def leaderboard(grouped_trips)
+    grouped_trips.filter_map do |account, account_trips|
+      value = yield(account_trips)
+      next unless value.positive?
+
+      {account: account, value: value}
+    end.sort_by { |entry| -entry[:value] }.first(8)
   end
 
   def retired_feature(feature, title: nil, body: nil)

@@ -4,6 +4,33 @@
   <p class="lede">A rebuilt home for hiking and backpacking logs, with the photos and field notes treated as the main event.</p>
 </section>
 
+<% if @archive_stats[:trips].positive? %>
+  <section class="section archive-overview">
+    <div class="stat-grid" aria-label="Archive totals">
+      <div>
+        <span><%= h(format_number(@archive_stats[:trips])) %></span>
+        <p>Trips</p>
+      </div>
+      <div>
+        <span><%= h(format_number(@archive_stats[:photos])) %></span>
+        <p>Photos</p>
+      </div>
+      <div>
+        <span><%= h(format_number(@archive_stats[:miles], precision: 1)) %></span>
+        <p>Miles logged</p>
+      </div>
+      <div>
+        <span><%= h(format_number(@archive_stats[:nights])) %></span>
+        <p>Nights out</p>
+      </div>
+    </div>
+
+    <% unless @map_points.empty? %>
+      <div class="map-panel home-map" data-map-collection data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(@map_points.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} })) %>"></div>
+    <% end %>
+  </section>
+<% end %>
+
 <section class="section">
   <div class="section-heading">
     <h2>Recent Hikes</h2>
@@ -27,3 +54,66 @@
     </div>
   <% end %>
 </section>
+
+<% if @archive_stats[:trips].positive? %>
+  <section class="section leaderboard-section">
+    <div class="section-heading">
+      <h2><%= h(Date.today.year) %> Leaders</h2>
+      <span class="meta">From imported trip logs</span>
+    </div>
+
+    <div class="leaderboard-grid">
+      <section>
+        <h3>Mileage</h3>
+        <ol class="leaderboard-list">
+          <% @leaderboards[:mileage].each do |entry| %>
+            <li>
+              <a href="<%= h(entry[:account].public_path) %>"><%= h(entry[:account].name) %></a>
+              <span><%= h(format_number(entry[:value], precision: 1)) %> mi</span>
+            </li>
+          <% end %>
+        </ol>
+      </section>
+
+      <section>
+        <h3>Elevation</h3>
+        <ol class="leaderboard-list">
+          <% @leaderboards[:elevation].each do |entry| %>
+            <li>
+              <a href="<%= h(entry[:account].public_path) %>"><%= h(entry[:account].name) %></a>
+              <span><%= h(format_number(entry[:value])) %> ft</span>
+            </li>
+          <% end %>
+        </ol>
+      </section>
+
+      <section>
+        <h3>Nights</h3>
+        <ol class="leaderboard-list">
+          <% @leaderboards[:nights].each do |entry| %>
+            <li>
+              <a href="<%= h(entry[:account].public_path) %>"><%= h(entry[:account].name) %></a>
+              <span><%= h(format_number(entry[:value])) %></span>
+            </li>
+          <% end %>
+        </ol>
+      </section>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading">
+      <h2>Newest Members</h2>
+    </div>
+    <div class="member-list">
+      <% @newest_members.each do |account| %>
+        <a href="<%= h(account.public_path) %>">
+          <% if (avatar = avatar_url(account, "micro")) %>
+            <img src="<%= h(avatar) %>" alt="">
+          <% end %>
+          <span><%= h(account.name) %></span>
+        </a>
+      <% end %>
+    </div>
+  </section>
+<% end %>

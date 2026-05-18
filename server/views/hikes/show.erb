@@ -17,10 +17,16 @@
   <% end %>
 
   <% unless @photos.empty? %>
-    <section class="photo-strip" aria-label="Trip photos">
-      <% @photos.first(8).each do |photo| %>
-        <a href="<%= h(photo.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
-      <% end %>
+    <section class="trip-photos" aria-label="Trip photos">
+      <div class="section-heading">
+        <h2>Photos</h2>
+        <a href="<%= h(@trip.public_path) %>/photos">View all <%= h(@photos.size) %></a>
+      </div>
+      <div class="photo-strip">
+        <% @photos.first(8).each do |photo| %>
+          <a href="<%= h(photo.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
+        <% end %>
+      </div>
     </section>
   <% end %>
 

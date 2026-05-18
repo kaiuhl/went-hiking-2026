@@ -21,7 +21,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add durable-content migration filter.
 - [x] Add import transforms for users, trips, photos, photo variants, comments, and hearts.
 - [x] Add idempotent import runner skeleton.
-- [ ] Test import against a real MySQL dump.
+- [x] Test import against a real legacy database export.
 - [x] Add orphan and skipped-row reports to import output.
 - [x] Decide final handling for users with only legacy avatar data and no durable content.
 
@@ -43,6 +43,8 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Add Leaflet with USGS Topo tiles.
 - [x] Add responsive grayscale public UI.
 - [x] Add full-page photo treatment.
+- [x] Add trip photo gallery pages.
+- [x] Restore homepage archive stats, map, and leaderboard UI.
 - [x] Add trip create/edit forms.
 - [x] Add Markdown preview editor UI.
 - [x] Add photo upload flow.
@@ -90,7 +92,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Start full legacy `system/images` photo sync to private S3.
 - [ ] Finish full legacy `system/images` photo sync to private S3.
 - [ ] Rerun photo sync and confirm skip-existing behavior after completion.
-- [ ] Run the import against a fresh legacy database dump.
+- [ ] Run the import against a fresh legacy database export on Lightsail.
 
 ## Current Preview Deployment
 
@@ -102,4 +104,4 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - S3 media bucket: `wenthiking-media-2026`
 - CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
 - Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
-- Preview caveats: no legacy data has been imported yet, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
+- Preview caveats: no legacy data has been imported into Lightsail yet, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.

@@ -110,6 +110,19 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Burnt Lake")
   end
 
+  it "renders archive totals and leaderboards on the home page" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, mileage: 8.5, elevation: 1700, hiked_at: Time.local(Date.today.year, 7, 1), lat: 45.4, lng: -121.7, report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
+
+    get "/"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Archive totals")
+    expect(last_response.body).to include("Miles logged")
+    expect(last_response.body).to include("Leaders")
+    expect(last_response.body).to include("data-map-collection")
+  end
+
   it "renders the authenticated new hike form" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     login_as(account_id)
@@ -202,6 +215,20 @@ RSpec.describe RodaApp do
     expect(original.s3_key).to eq("system/images/#{photo.id}/original/upload-photo.jpg")
     expect(File.exist?(uploaded_path)).to be(true)
     expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
+  end
+
+  it "renders the trip photo gallery" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_photo_id: 123, legacy_image_file_name: "lake.jpg", caption: "Lake light", created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: photo_id, style: "large", filename: "lake.jpg", s3_key: "system/images/123/large/lake.jpg", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+
+    get "#{trip.public_path}/photos"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Photos from")
+    expect(last_response.body).to include("Lake light")
   end
 
   it "updates account settings for the authenticated account" do

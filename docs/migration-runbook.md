@@ -76,6 +76,26 @@ mysqldump \
 rm -f /tmp/wenthiking-mysql.cnf
 ```
 
+The current repeatable path avoids a local MySQL dependency by exporting the
+needed legacy tables through the old Rails app as JSONL:
+
+```sh
+mise exec -- bin/export-legacy-archive --output .deploy/legacy-archive-YYYYMMDD-HHMM
+```
+
+Then import that archive into the new schema:
+
+```sh
+LEGACY_ARCHIVE_PATH=.deploy/legacy-archive-YYYYMMDD-HHMM mise exec -- bin/import-legacy
+```
+
+The 2026-05-18 archive exported `69,356` users, `7,989` trips, `40,542`
+photos, `2,439` comments, and `3,522` hearts. A disposable local import
+produced `276` durable accounts, `7,989` trips, `40,416` photos, `242,496`
+photo variants, `2,320` comments, and `3,510` hearts. Most skipped rows were
+photos attached to missing legacy trip rows or comments/hearts attached to
+filtered users.
+
 Before importing into the new app, create a clean transform/import step that can:
 
 - Map old integer IDs to new IDs while preserving old IDs where needed for legacy URLs.

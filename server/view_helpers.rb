@@ -40,8 +40,16 @@ module ViewHelpers
   def number_label(value, unit)
     return nil if value.nil?
 
-    formatted = (value.to_f % 1).zero? ? value.to_i.to_s : value.to_s
+    formatted = format_number(value)
     "#{formatted} #{unit}"
+  end
+
+  def format_number(value, precision: nil)
+    number = precision ? value.to_f.round(precision) : value
+    string = (number.to_f % 1).zero? ? number.to_i.to_s : number.to_s
+    integer, decimal = string.split(".", 2)
+    integer = integer.reverse.scan(/.{1,3}/).join(",").reverse
+    [integer, decimal].compact.join(".")
   end
 
   def image_url(photo, style = "large")

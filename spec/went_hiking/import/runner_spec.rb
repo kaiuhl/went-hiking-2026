@@ -33,12 +33,15 @@ RSpec.describe WentHiking::Import::Runner do
     source[:users].insert(id: 1, email: "hiker@example.com", name: "Hiker", avatar_file_name: "avatar.jpg", created_at: now, updated_at: now)
     source[:users].insert(id: 2, email: "avatar@example.com", name: "Avatar Only", avatar_file_name: "avatar.jpg", created_at: now, updated_at: now)
     source[:trips].insert(id: 10, user_id: 1, name: "Durable Trip", hiked_at: now, created_at: now, updated_at: now)
+    source[:photos].insert(id: 19, user_id: nil, trip_id: 10, image_file_name: "owned-by-trip.jpg", created_at: now, updated_at: now)
     source[:photos].insert(id: 20, user_id: 1, trip_id: 999, image_file_name: "orphan.jpg", created_at: now, updated_at: now)
 
     summary = described_class.new(source_db: source).run
 
     expect(summary[:accounts]).to eq(1)
     expect(summary[:trips]).to eq(1)
+    expect(summary[:photos]).to eq(1)
+    expect(WentHiking::Models::Photo.first(legacy_photo_id: 19).account.legacy_user_id).to eq(1)
     expect(summary[:skipped_photos]).to eq(1)
     expect(summary[:orphan_references]).to include(missing_trip: 1)
     expect(summary[:skipped_rows]).to include(

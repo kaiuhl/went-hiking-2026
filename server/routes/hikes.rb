@@ -94,6 +94,13 @@ module HikeRoutes
         end
       end
 
+      r.get String, "photos" do |trip_slug|
+        @trip = trip_from_slug(trip_slug)
+        @photos = @trip.photos_dataset.order(:taken_at, :id).all
+        @title = "Photos from #{@trip.name}"
+        view("photos/index")
+      end
+
       r.on String, "comments" do
         retired_feature("comments", title: "New comments are retired.", body: "Legacy comments are preserved on trip pages, but new comments are not part of V2.")
       end

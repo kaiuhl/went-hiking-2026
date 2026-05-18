@@ -1,0 +1,128 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "json"
+require "open3"
+require "optparse"
+require "shellwords"
+require "time"
+
+TABLES = %w[users trips photos comments hearts].freeze
+
+options = {
+  host: ENV.fetch("LEGACY_HOST", "wenthiking.com"),
+  port: ENV.fetch("LEGACY_PORT", "40000"),
+  user: ENV.fetch("LEGACY_USER", "kylemeyer"),
+  key_file: File.expand_path(ENV.fetch("LEGACY_KEY_FILE", "~/.ssh/kylemeyer-linode-recovery")),
+  app_root: ENV.fetch("LEGACY_APP_ROOT", "/home/kylemeyer/web/wenthiking"),
+  output: File.expand_path(ENV.fetch("LEGACY_ARCHIVE_PATH", ".deploy/legacy-archive-#{Time.now.strftime("%Y%m%d-%H%M%S")}")),
+  batch_size: Integer(ENV.fetch("LEGACY_EXPORT_BATCH_SIZE", "1000"))
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: bin/export-legacy-archive [options]"
+
+  parser.on("--host HOST", "Legacy SSH host") { |value| options[:host] = value }
+  parser.on("--port PORT", "Legacy SSH port") { |value| options[:port] = value }
+  parser.on("--user USER", "Legacy SSH user") { |value| options[:user] = value }
+  parser.on("--key-file PATH", "Legacy SSH private key") { |value| options[:key_file] = File.expand_path(value) }
+  parser.on("--app-root PATH", "Legacy Rails app root") { |value| options[:app_root] = value }
+  parser.on("--output PATH", "Local archive directory") { |value| options[:output] = File.expand_path(value) }
+  parser.on("--batch-size N", Integer, "Rows fetched per remote query") { |value| options[:batch_size] = value }
+end.parse!
+
+def ssh_base(options)
+  [
+    "ssh",
+    "-o", "HostkeyAlgorithms=+ssh-rsa",
+    "-o", "PubkeyAcceptedAlgorithms=+ssh-rsa",
+    "-o", "BatchMode=yes",
+    "-i", options[:key_file],
+    "-p", options[:port],
+    "#{options[:user]}@#{options[:host]}"
+  ]
+end
+
+def remote_shell(command)
+  ["bash", "-lc", command.shellescape]
+end
+
+def remote_export_code(table, batch_size)
+  <<~RUBY
+    require "date"
+    require "json"
+    require "time"
+
+    table = #{table.inspect}
+    batch_size = #{batch_size.to_i}
+    connection = ActiveRecord::Base.connection
+
+    def serialize_value(value)
+      case value
+      when Time, DateTime
+        value.iso8601
+      when Date
+        value.iso8601
+      else
+        value
+      end
+    end
+
+    last_id = 0
+    loop do
+      rows = connection.select_all("SELECT * FROM `\#{table}` WHERE id > \#{last_id.to_i} ORDER BY id ASC LIMIT \#{batch_size}")
+      break if rows.empty?
+
+      rows.each do |row|
+        encoded = {}
+        row.each { |key, value| encoded[key] = serialize_value(value) }
+        STDOUT.puts(JSON.generate(encoded))
+        last_id = row["id"].to_i if row["id"].to_i > last_id
+      end
+    end
+  RUBY
+end
+
+FileUtils.mkdir_p(options[:output])
+manifest = {
+  exported_at: Time.now.iso8601,
+  source_host: options[:host],
+  source_app_root: options[:app_root],
+  tables: {}
+}
+
+TABLES.each do |table|
+  output_file = File.join(options[:output], "#{table}.jsonl")
+  command = [
+    "cd #{options[:app_root].shellescape}",
+    "RAILS_ENV=production LC_ALL=C LANG=C bundle exec rails runner #{remote_export_code(table, options[:batch_size]).shellescape}"
+  ].join(" && ")
+
+  warn "export #{table} -> #{output_file}"
+  count = 0
+
+  Open3.popen3(*(ssh_base(options) + remote_shell(command))) do |_stdin, stdout, stderr, wait_thread|
+    warning_thread = Thread.new do
+      stderr.each_line { |line| warn line unless line.include?("DEPRECATION WARNING") || line.include?("setlocale") }
+    rescue IOError
+      nil
+    end
+
+    File.open(output_file, "w") do |file|
+      stdout.each_line do |line|
+        file.write(line)
+        count += 1
+      end
+    end
+
+    warning_thread.join(2) || warning_thread.kill
+    status = wait_thread.value
+    abort "legacy export failed for #{table} with #{status.exitstatus}" unless status.success?
+  end
+
+  manifest[:tables][table] = {rows: count, file: "#{table}.jsonl"}
+end
+
+File.write(File.join(options[:output], "manifest.json"), JSON.pretty_generate(manifest))
+puts options[:output]

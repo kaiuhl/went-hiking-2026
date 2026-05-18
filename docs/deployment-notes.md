@@ -33,6 +33,11 @@
 - `ansible-playbook --syntax-check playbooks/site.yml` passes from `infra/ansible`.
 - `ansible-playbook --syntax-check playbooks/deploy.yml` passes from `infra/ansible`.
 - CloudFront spot-checks return `200` for original, large, thumbnail, micro, and bpl variants.
+- Real legacy archive export completed locally from the production Rails app:
+  `69,356` users, `7,989` trips, `40,542` photos, `2,439` comments, and `3,522` hearts.
+- Disposable local import from that archive completed:
+  `276` durable accounts, `7,989` trips, `40,416` photos, `242,496` photo variants,
+  `2,320` comments, and `3,510` hearts.
 
 ## Photo Migration
 
@@ -43,6 +48,7 @@
 - Full resumable sync started on 2026-05-18 at 05:34 PDT in detached screen session `wenthiking-photo-sync`.
 - Local log: `.deploy/photo-sync.log`.
 - Progress at 2026-05-18 08:21 PDT: `25,238` objects, `9,838,732,795` bytes.
+- Progress at 2026-05-18 08:49 PDT: `28,997` objects, `11,304,594,198` bytes.
 - Monitor:
 
 ```sh
@@ -51,9 +57,28 @@ tail -f .deploy/photo-sync.log
 aws s3 ls s3://wenthiking-media-2026/system/images/ --recursive --summarize
 ```
 
+## SES Verification
+
+The `wenthiking.com` SES domain identity exists in `us-west-2`, but verification
+is pending because the DNS records are not present in Linode DNS. Add these
+CNAME records:
+
+| Name | Value |
+| --- | --- |
+| `ic3zzhzke4ojcfrolopdmueokmobnv7e._domainkey.wenthiking.com` | `ic3zzhzke4ojcfrolopdmueokmobnv7e.dkim.amazonses.com` |
+| `yj7ptxlpmpyjs7ktelotcwvjjpsrjjnj._domainkey.wenthiking.com` | `yj7ptxlpmpyjs7ktelotcwvjjpsrjjnj.dkim.amazonses.com` |
+| `il4cqmx2dgayngkadj3giodp3di5arno._domainkey.wenthiking.com` | `il4cqmx2dgayngkadj3giodp3di5arno.dkim.amazonses.com` |
+
+## DNS Cutover
+
+`wenthiking.com` and `www.wenthiking.com` still resolve to the old Linode IP
+`173.255.199.39`; nameservers are `ns1.linode.com` through `ns5.linode.com`.
+Point both hostnames at the Lightsail static IP `35.160.199.53`, then restore
+HTTPS in `infra/caddy/Caddyfile`.
+
 ## Current Caveats
 
-- The production database schema is migrated, but no legacy data has been imported.
+- The production database schema is migrated, but the real legacy archive has only been imported into a disposable local test database so far.
 - The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo migration is in progress.
 - Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
 - `EMAIL_DELIVERY=log` is set for the preview because SES sender/domain verification still needs to be completed.
