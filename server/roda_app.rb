@@ -125,10 +125,6 @@ class RodaApp < Roda
     not_found
   end
 
-  def view(template)
-    render(template)
-  end
-
   def json_payload(payload, status: 200)
     response.status = status
     response["Content-Type"] = "application/json"
@@ -141,6 +137,6 @@ class RodaApp < Roda
 
   def not_found
     @title = "Not Found"
-    request.halt [404, {"Content-Type" => "text/html"}, [render("pages/not_found")]]
+    request.halt [404, {"Content-Type" => "text/html"}, [view("pages/not_found")]]
   end
 end

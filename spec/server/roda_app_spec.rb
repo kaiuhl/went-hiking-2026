@@ -117,6 +117,7 @@ RSpec.describe RodaApp do
     get "/"
 
     expect(last_response).to be_ok
+    expect(last_response.body).to include('<link rel="stylesheet" href="/styles/site.css">')
     expect(last_response.body).to include("Archive totals")
     expect(last_response.body).to include("Miles logged")
     expect(last_response.body).to include("Leaders")
