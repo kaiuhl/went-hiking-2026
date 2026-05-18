@@ -7,7 +7,8 @@ This is a working runbook for moving `wenthiking.com` off the old Linode into a 
 - Treat the Linode as read-only during discovery.
 - Do not store raw database credentials in docs or git.
 - Preserve legacy public URLs where practical, especially `/system/...` media URLs.
-- Move media directly to S3; do not stage 79 GB of uploaded files on the Lightsail instance.
+- Move media directly to private S3; do not stage 80 GB of uploaded files on the Lightsail instance.
+- Treat AWS infrastructure as code: OpenTofu owns cloud resources and Ansible owns host configuration/deploys.
 - Import the database through a repeatable script, not manual SQL edits.
 - Decide what to do with spam-like user data before the final production import.
 
@@ -83,54 +84,95 @@ Before importing into the new app, create a clean transform/import step that can
 - Preserve trip slugs/URLs and public route compatibility.
 - Preserve photo metadata, captions, EXIF-derived coordinates, and original filenames.
 
-## Media Transfer Plan
+## Infrastructure Plan
 
-Preferred S3 key layout:
+OpenTofu configuration lives in:
 
 ```text
-s3://<bucket>/system/images/<photo_id>/<style>/<filename>
-s3://<bucket>/system/avatars/<user_id>/<style>/<filename>
-s3://<bucket>/system/map_layers/...
+/Users/kaiuhl/Code/went-hiking-2026/infra/opentofu
+```
+
+It owns, or is prepared to own for a fresh environment:
+
+- Lightsail instance, static IP, static IP attachment, and public ports
+- Private S3 media bucket, versioning, public access block, and bucket policy
+- CloudFront Origin Access Control and distribution for private media reads
+
+The adopted preview has two AWS provider import limitations: the existing
+Lightsail static IP and public-port state cannot be imported cleanly, so those
+are documented as false-by-default toggles for this preview. For a fresh
+environment, set `manage_lightsail_static_ip=true` and
+`manage_lightsail_public_ports=true`.
+
+Ansible configuration lives in:
+
+```text
+/Users/kaiuhl/Code/went-hiking-2026/infra/ansible
+```
+
+It owns Docker, Docker Compose v2, UFW, swap, `/srv/went-hiking-2026`, release
+archive deployment, production environment upload, migrations, and service
+startup.
+
+## Media Transfer Plan
+
+Current S3 key layout for this run:
+
+```text
+s3://wenthiking-media-2026/system/images/<photo_id>/<style>/<filename>
 ```
 
 This mirrors the old Paperclip public paths:
 
 ```text
 /system/images/32585/large/image.jpg
-/system/avatars/32585/micro/photo1.jpg
 ```
 
-That gives the new app a simple compatibility strategy:
+The S3 bucket remains private. CloudFront distribution
+`E2502Q91SXFH32` with Origin Access Control `E2SDYZBFMCG2SJ` is allowed to read
+only `arn:aws:s3:::wenthiking-media-2026/system/images/*`. The preview app has:
 
-- Either proxy `/system/*` to S3/CloudFront.
-- Or issue permanent redirects from `/system/*` to the equivalent public object/CDN URL.
-- Or serve media through app routes backed by S3 keys.
-
-Draft direct sync from Linode to S3:
-
-```sh
-aws s3 sync \
-  /home/kylemeyer/web/wenthiking/public/system \
-  s3://<bucket>/system \
-  --only-show-errors
+```text
+MEDIA_BASE_URL=https://dec9ewwuufbq2.cloudfront.net
 ```
 
-If AWS CLI is too old or unavailable on the Linode, use a local relay:
+So `/system/images/...` redirects to CloudFront while direct S3 URLs return
+`403`.
+
+Validated sample sync:
 
 ```sh
-rsync -a --partial --progress \
-  -e "ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -i ~/.ssh/kylemeyer-linode-recovery -p 40000" \
-  kylemeyer@wenthiking.com:/home/kylemeyer/web/wenthiking/public/system/ \
-  /Volumes/<large-local-disk>/wenthiking-system/
+mise exec -- bin/sync-legacy-system-to-s3 --path system/images --limit 10
+```
 
-aws s3 sync \
-  /Volumes/<large-local-disk>/wenthiking-system \
-  s3://<bucket>/system \
-  --only-show-errors
+The full run is local and streaming over SSH from the Linode without staging the
+photo tree locally:
+
+```sh
+screen -dmS wenthiking-photo-sync zsh -lc '
+  cd /Users/kaiuhl/Code/went-hiking-2026 || exit 1
+  {
+    echo "started $(date) in screen session wenthiking-photo-sync"
+    caffeinate -dimsu mise exec -- bin/sync-legacy-system-to-s3 --path system/images
+    status=$?
+    echo "finished $(date) status=$status"
+    exit $status
+  } >> .deploy/photo-sync.log 2>&1
+'
+```
+
+Monitor:
+
+```sh
+screen -ls
+tail -f .deploy/photo-sync.log
+aws s3 ls s3://wenthiking-media-2026/system/images/ --recursive --summarize
 ```
 
 Do not sync:
 
+- `public/system/avatars` in the first photo-only run
+- `public/system/map_layers` in the first photo-only run
 - `/home/kylemeyer/web/wenthiking/log`
 - `/home/kylemeyer/web/wenthiking/tmp`
 - RVM directories

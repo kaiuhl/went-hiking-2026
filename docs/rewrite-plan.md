@@ -9,8 +9,10 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Model the app boot shape after BFP.
 - [x] Add Docker and Docker Compose production skeleton.
 - [x] Add Caddy reverse proxy skeleton for `wenthiking.com`.
+- [x] Add OpenTofu configuration for AWS infrastructure.
+- [x] Add Ansible playbooks for Lightsail host setup and app deploys.
 - [ ] Add CI workflow.
-- [ ] Add production deploy helper so the current manual tarball deploy is repeatable.
+- [x] Add production deploy helper so the current manual tarball deploy is repeatable.
 
 ## Domain And Data
 
@@ -71,8 +73,12 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 
 - [x] Confirm AWS CLI credentials and target region.
 - [x] Create S3 media bucket.
+- [x] Create private CloudFront distribution with Origin Access Control for media.
+- [x] Apply S3 bucket policy allowing CloudFront-only reads under `system/images/*`.
 - [x] Create Lightsail instance.
+- [x] Represent S3, CloudFront, and Lightsail resources in OpenTofu.
 - [x] Install Docker on Lightsail.
+- [x] Represent host setup and deploy flow in Ansible.
 - [x] Deploy app to Lightsail.
 - [x] Run migrations on Lightsail.
 - [x] Smoke-test public IP.
@@ -81,7 +87,9 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [ ] Re-enable HTTPS in Caddy after DNS cutover.
 - [ ] Verify SES sender/domain and switch preview email delivery from log mode to SES.
 - [x] Add and sample-test a streaming legacy `public/system` to S3 sync helper.
-- [ ] Run full legacy `public/system` media sync to S3.
+- [x] Start full legacy `system/images` photo sync to private S3.
+- [ ] Finish full legacy `system/images` photo sync to private S3.
+- [ ] Rerun photo sync and confirm skip-existing behavior after completion.
 - [ ] Run the import against a fresh legacy database dump.
 
 ## Current Preview Deployment
@@ -92,5 +100,6 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - Lightsail instance: `went-hiking-2026`
 - Static IP: `35.160.199.53`
 - S3 media bucket: `wenthiking-media-2026`
+- CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
 - Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
-- Preview caveats: no legacy data has been imported yet, `/system/*` redirects to the S3 bucket but the media sync is still pending, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
+- Preview caveats: no legacy data has been imported yet, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
