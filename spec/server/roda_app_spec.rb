@@ -231,6 +231,17 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Lake light")
   end
 
+  it "halts cleanly for missing nested photo routes" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+
+    get "#{trip.public_path}/photos/9999"
+
+    expect(last_response.status).to eq(404)
+    expect(last_response.body).to include("Nothing at this trailhead")
+  end
+
   it "updates account settings for the authenticated account" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     login_as(account_id)

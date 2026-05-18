@@ -140,8 +140,7 @@ class RodaApp < Roda
   end
 
   def not_found
-    response.status = 404
     @title = "Not Found"
-    render("pages/not_found")
+    request.halt [404, {"Content-Type" => "text/html"}, [render("pages/not_found")]]
   end
 end
