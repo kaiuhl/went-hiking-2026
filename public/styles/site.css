@@ -48,10 +48,15 @@ img {
 }
 
 .wordmark {
-  font-size: 14px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
   text-decoration: none;
-  text-transform: uppercase;
+}
+
+.wordmark img {
+  width: 108px;
+  height: auto;
 }
 
 .site-nav {
@@ -113,6 +118,18 @@ h1 {
   font-size: clamp(44px, 8vw, 112px);
   line-height: 0.95;
   font-weight: 600;
+}
+
+.home-logo-heading {
+  max-width: 520px;
+  margin-bottom: 24px;
+  font-size: 0;
+  line-height: 1;
+}
+
+.home-logo {
+  width: min(100%, 520px);
+  height: auto;
 }
 
 h2 {
