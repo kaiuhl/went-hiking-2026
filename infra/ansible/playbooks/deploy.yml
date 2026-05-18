@@ -24,17 +24,9 @@
         group: ubuntu
         mode: "0644"
 
-    - name: Copy production environment
-      ansible.builtin.copy:
-        src: "{{ env_file }}"
-        dest: "{{ app_dir }}/.env"
-        owner: ubuntu
-        group: ubuntu
-        mode: "0600"
-
     - name: Clear previous release files
       ansible.builtin.shell:
-        cmd: "find {{ app_dir | quote }} -mindepth 1 ! -name .env -exec rm -rf {} +"
+        cmd: "find {{ app_dir | quote }} -mindepth 1 -exec rm -rf {} +"
       changed_when: true
 
     - name: Extract release
@@ -49,6 +41,14 @@
       ansible.builtin.command:
         cmd: "find {{ app_dir }} -name '._*' -delete"
       changed_when: false
+
+    - name: Copy production environment
+      ansible.builtin.copy:
+        src: "{{ env_file }}"
+        dest: "{{ app_dir }}/.env"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
 
     - name: Build app image
       ansible.builtin.command:

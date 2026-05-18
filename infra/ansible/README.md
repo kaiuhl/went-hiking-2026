@@ -19,7 +19,7 @@ Create the release archive first from the repo root:
 ```sh
 COPYFILE_DISABLE=1 tar --no-xattrs \
   --exclude .deploy --exclude .git --exclude tmp --exclude log \
-  --exclude vendor/bundle --exclude .DS_Store \
+  --exclude vendor/bundle --exclude .DS_Store --exclude .env \
   -czf .deploy/went-hiking-2026.tar.gz .
 ```
 
@@ -30,5 +30,5 @@ cd infra/ansible
 ansible-playbook playbooks/deploy.yml
 ```
 
-The deploy playbook copies `.deploy/prod.env`, extracts the release, builds the
-web image, runs migrations, and starts `postgres`, `web`, and `caddy`.
+The deploy playbook extracts the release, copies `.deploy/prod.env` into place,
+builds the web image, runs migrations, and starts `postgres`, `web`, and `caddy`.
