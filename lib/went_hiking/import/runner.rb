@@ -22,6 +22,7 @@ module WentHiking
         }
         @upsert_cache = {}
         @accounts_by_legacy_id = {}
+        @accounts_by_id = {}
         @trips_by_legacy_id = {}
       end
 
@@ -67,7 +68,9 @@ module WentHiking
         source_db[:users].where(id: durable_ids).each do |row|
           values = transform.account(symbolize(row))
           account_id = upsert(:accounts, :legacy_user_id, values)
-          @accounts_by_legacy_id[values.fetch(:legacy_user_id)] = values.merge(id: account_id)
+          account = values.merge(id: account_id)
+          @accounts_by_legacy_id[values.fetch(:legacy_user_id)] = account
+          @accounts_by_id[account_id] = account
           increment(:accounts)
         end
       end
@@ -202,13 +205,15 @@ module WentHiking
       def account_for(legacy_user_id)
         return nil if legacy_user_id.nil?
 
-        @accounts_by_legacy_id[legacy_user_id] ||= target_db[:accounts].where(legacy_user_id: legacy_user_id).first
+        @accounts_by_legacy_id[legacy_user_id] ||= target_db[:accounts].where(legacy_user_id: legacy_user_id).first&.tap do |account|
+          @accounts_by_id[account[:id]] = account
+        end
       end
 
       def account_for_trip(trip)
         return nil unless trip
 
-        target_db[:accounts].where(id: trip[:account_id]).first
+        @accounts_by_id[trip[:account_id]] ||= target_db[:accounts].where(id: trip[:account_id]).first
       end
 
       def trip_for(legacy_trip_id)
