@@ -4,8 +4,8 @@
   become: true
   vars:
     app_dir: /srv/went-hiking-2026
-    release_archive: ../../.deploy/went-hiking-2026.tar.gz
-    env_file: ../../.deploy/prod.env
+    release_archive: "{{ playbook_dir }}/../../../.deploy/went-hiking-2026.tar.gz"
+    env_file: "{{ playbook_dir }}/../../../.deploy/prod.env"
 
   tasks:
     - name: Ensure app directory exists
