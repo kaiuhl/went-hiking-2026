@@ -20,6 +20,9 @@ module WentHiking
           orphan_references: Hash.new(0),
           skipped_rows: []
         }
+        @upsert_cache = {}
+        @accounts_by_legacy_id = {}
+        @trips_by_legacy_id = {}
       end
 
       def run
@@ -62,7 +65,9 @@ module WentHiking
       def import_accounts
         durable_ids = filter.durable_user_ids
         source_db[:users].where(id: durable_ids).each do |row|
-          upsert(:accounts, :legacy_user_id, transform.account(symbolize(row)))
+          values = transform.account(symbolize(row))
+          account_id = upsert(:accounts, :legacy_user_id, values)
+          @accounts_by_legacy_id[values.fetch(:legacy_user_id)] = values.merge(id: account_id)
           increment(:accounts)
         end
       end
@@ -76,7 +81,9 @@ module WentHiking
             next
           end
 
-          upsert(:trips, :legacy_trip_id, transform.trip(row, account_id: account[:id]))
+          values = transform.trip(row, account_id: account[:id])
+          trip_id = upsert(:trips, :legacy_trip_id, values)
+          @trips_by_legacy_id[values.fetch(:legacy_trip_id)] = values.merge(id: trip_id)
           increment(:trips)
         end
       end
@@ -166,30 +173,36 @@ module WentHiking
 
       def upsert(table, key, values)
         dataset = target_db[table]
-        existing = dataset.where(key => values.fetch(key)).first
-        if existing
-          dataset.where(id: existing[:id]).update(values.merge(updated_at: Time.now))
-          existing[:id]
+        cache = upsert_cache(table, key)
+        cache_key = values.fetch(key)
+        if (existing_id = cache[cache_key])
+          dataset.where(id: existing_id).update(values.merge(updated_at: Time.now))
+          existing_id
         else
-          dataset.insert(values)
+          dataset.insert(values).tap do |id|
+            cache[cache_key] = id
+          end
         end
       end
 
       def upsert_variant(values)
         dataset = target_db[:photo_variants]
-        existing = dataset.where(photo_id: values.fetch(:photo_id), style: values.fetch(:style)).first
-        if existing
-          dataset.where(id: existing[:id]).update(values.merge(updated_at: Time.now))
-          existing[:id]
+        cache = variant_cache
+        cache_key = [values.fetch(:photo_id), values.fetch(:style)]
+        if (existing_id = cache[cache_key])
+          dataset.where(id: existing_id).update(values.merge(updated_at: Time.now))
+          existing_id
         else
-          dataset.insert(values)
+          dataset.insert(values).tap do |id|
+            cache[cache_key] = id
+          end
         end
       end
 
       def account_for(legacy_user_id)
         return nil if legacy_user_id.nil?
 
-        target_db[:accounts].where(legacy_user_id: legacy_user_id).first
+        @accounts_by_legacy_id[legacy_user_id] ||= target_db[:accounts].where(legacy_user_id: legacy_user_id).first
       end
 
       def account_for_trip(trip)
@@ -199,11 +212,25 @@ module WentHiking
       end
 
       def trip_for(legacy_trip_id)
-        target_db[:trips].where(legacy_trip_id: legacy_trip_id).first
+        @trips_by_legacy_id[legacy_trip_id] ||= target_db[:trips].where(legacy_trip_id: legacy_trip_id).first
       end
 
       def symbolize(row)
         row.to_h.transform_keys(&:to_sym)
+      end
+
+      def upsert_cache(table, key)
+        @upsert_cache[[table, key]] ||= target_db[table]
+          .select(key, :id)
+          .all
+          .each_with_object({}) { |row, cache| cache[row[key]] = row[:id] }
+      end
+
+      def variant_cache
+        @variant_cache ||= target_db[:photo_variants]
+          .select(:photo_id, :style, :id)
+          .all
+          .each_with_object({}) { |row, cache| cache[[row[:photo_id], row[:style]]] = row[:id] }
       end
     end
   end
