@@ -90,8 +90,8 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [ ] Verify SES sender/domain and switch preview email delivery from log mode to SES.
 - [x] Add and sample-test a streaming legacy `public/system` to S3 sync helper.
 - [x] Start full legacy `system/images` photo sync to private S3.
-- [ ] Finish full legacy `system/images` photo sync to private S3.
-- [ ] Rerun photo sync and confirm skip-existing behavior after completion.
+- [x] Finish full legacy `system/images` photo sync to private S3.
+- [x] Rerun photo sync and confirm skip-existing behavior after completion.
 - [x] Run the import against a fresh legacy database export on Lightsail.
 
 ## Current Preview Deployment
@@ -104,4 +104,4 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - S3 media bucket: `wenthiking-media-2026`
 - CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
 - Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
-- Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 and the photo sync is in progress, some imported photo URLs will be blank until their files arrive in S3, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
+- Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 with the trip-photo archive synced, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.

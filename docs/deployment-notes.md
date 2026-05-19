@@ -55,10 +55,13 @@
 - Progress at 2026-05-18 08:21 PDT: `25,238` objects, `9,838,732,795` bytes.
 - Progress at 2026-05-18 08:49 PDT: `28,997` objects, `11,304,594,198` bytes.
 - Progress at 2026-05-18 09:52 PDT: `37,487` objects, `14,782,521,920` bytes.
-- Monitor:
+- Full sync completed on 2026-05-19: `205,095` files seen, `205,073` uploaded, and `22` skipped.
+- Final S3 inventory: `205,095` objects and `80,299,720,161` bytes under `system/images`.
+- Skip-existing confirmation completed on 2026-05-19 at 10:05 PDT: `205,095` files seen, `0` uploaded, and `205,095` skipped.
+- Historical logs:
 
 ```sh
-screen -ls
+tail -f .deploy/photo-sync-confirm.log
 tail -f .deploy/photo-sync.log
 aws s3 ls s3://wenthiking-media-2026/system/images/ --recursive --summarize
 ```
@@ -85,8 +88,7 @@ HTTPS in `infra/caddy/Caddyfile`.
 ## Current Caveats
 
 - The production database schema is migrated and the real legacy archive has been imported into Lightsail.
-- The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo migration is in progress, so imported pages may reference images that return `403` from CloudFront until the corresponding object has synced.
+- The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo archive has been synced and the skip-existing confirmation uploaded no additional objects.
 - Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
 - `EMAIL_DELIVERY=log` is set for the preview because SES sender/domain verification still needs to be completed.
 - A 1 GB swapfile was added to the Lightsail instance so Docker builds fit on the nano plan.
-- The current photo sync runs from the local Mac over SSH to the Linode. `caffeinate` is active inside the detached `screen` session, but the process still depends on this machine staying powered and online.
