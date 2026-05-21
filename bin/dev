@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+set -eu
+
+cd "$(dirname "$0")/.."
+mkdir -p tmp log
+
+reloader_pid=""
+puma_pid=""
+
+cleanup() {
+  trap - INT TERM EXIT
+
+  if [ -n "$reloader_pid" ]; then
+    kill "$reloader_pid" 2>/dev/null || true
+  fi
+
+  if [ -n "$puma_pid" ]; then
+    kill "$puma_pid" 2>/dev/null || true
+  fi
+
+  if [ -n "$reloader_pid" ]; then
+    wait "$reloader_pid" 2>/dev/null || true
+  fi
+
+  if [ -n "$puma_pid" ]; then
+    wait "$puma_pid" 2>/dev/null || true
+  fi
+}
+
+trap cleanup INT TERM EXIT
+
+if [ "${DEV_RELOAD:-1}" = "1" ]; then
+  ruby bin/dev-reload &
+  reloader_pid="$!"
+fi
+
+bundle exec puma -C config/puma.rb &
+puma_pid="$!"
+
+set +e
+wait "$puma_pid"
+status="$?"
+set -e
+
+exit "$status"

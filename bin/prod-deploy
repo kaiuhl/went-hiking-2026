@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: bin/prod-deploy [options]
+
+Deploy Went Hiking by fast-forwarding the production checkout and rebuilding the
+web/caddy stack.
+
+Options:
+  --skip-smoke    Skip public smoke checks after the deploy.
+  -h, --help      Show this help text.
+
+Environment overrides:
+  WENT_HIKING_HOST        Host or IP. Default: 35.160.199.53
+  WENT_HIKING_USER        SSH user. Default: ubuntu
+  WENT_HIKING_KEY         SSH key path. Default: .deploy/lightsail.pem
+  WENT_HIKING_PATH        App path on the server. Default: /srv/went-hiking-2026
+  WENT_HIKING_REPO        Git repo URL. Default: https://github.com/kaiuhl/went-hiking-2026.git
+  WENT_HIKING_BRANCH      Git branch. Default: main
+  WENT_HIKING_BASE_URL    Public base URL. Default: http://35.160.199.53
+USAGE
+}
+
+run_smoke=true
+
+while (($#)); do
+  case "$1" in
+    --skip-smoke)
+      run_smoke=false
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+
+  shift
+done
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+command -v git >/dev/null || { echo "git is required" >&2; exit 1; }
+command -v ssh >/dev/null || { echo "ssh is required" >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl is required" >&2; exit 1; }
+
+WENT_HIKING_HOST="${WENT_HIKING_HOST:-35.160.199.53}"
+WENT_HIKING_USER="${WENT_HIKING_USER:-ubuntu}"
+WENT_HIKING_KEY="${WENT_HIKING_KEY:-$ROOT/.deploy/lightsail.pem}"
+WENT_HIKING_PATH="${WENT_HIKING_PATH:-/srv/went-hiking-2026}"
+WENT_HIKING_REPO="${WENT_HIKING_REPO:-https://github.com/kaiuhl/went-hiking-2026.git}"
+WENT_HIKING_BRANCH="${WENT_HIKING_BRANCH:-main}"
+WENT_HIKING_BASE_URL="${WENT_HIKING_BASE_URL:-http://35.160.199.53}"
+WENT_HIKING_KNOWN_HOSTS="${WENT_HIKING_KNOWN_HOSTS:-$ROOT/.deploy/known_hosts}"
+
+current_branch="$(git branch --show-current)"
+if [[ "$current_branch" == "$WENT_HIKING_BRANCH" ]] && git rev-parse --verify --quiet "@{u}" >/dev/null; then
+  git fetch --prune >/dev/null
+  local_head="$(git rev-parse HEAD)"
+  upstream_head="$(git rev-parse "@{u}")"
+  if [[ "$local_head" != "$upstream_head" ]]; then
+    echo "Local HEAD differs from upstream; push/pull before deploying ${WENT_HIKING_BRANCH}." >&2
+    echo "Local:    $(git rev-parse --short HEAD)" >&2
+    echo "Upstream: $(git rev-parse --short "@{u}")" >&2
+    exit 1
+  fi
+fi
+deploy_sha="$(git rev-parse --short HEAD)"
+
+ssh_args=()
+if [[ -f "$WENT_HIKING_KEY" ]]; then
+  ssh_args+=("-i" "$WENT_HIKING_KEY")
+fi
+if [[ -f "$WENT_HIKING_KNOWN_HOSTS" ]]; then
+  ssh_args+=("-o" "UserKnownHostsFile=$WENT_HIKING_KNOWN_HOSTS" "-o" "StrictHostKeyChecking=no")
+fi
+
+target="${WENT_HIKING_USER}@${WENT_HIKING_HOST}"
+
+echo "Deploying ${target}:${WENT_HIKING_PATH} from ${WENT_HIKING_REPO}#${WENT_HIKING_BRANCH}"
+remote_command="bash -s -- $(printf "%q" "$WENT_HIKING_PATH") $(printf "%q" "$WENT_HIKING_REPO") $(printf "%q" "$WENT_HIKING_BRANCH")"
+ssh "${ssh_args[@]}" "$target" "$remote_command" <<'REMOTE'
+set -euo pipefail
+
+app_path="$1"
+repo_url="$2"
+branch="$3"
+
+compose=(docker compose -f compose.yaml -f compose.production.yaml)
+
+sudo install -d -o "$USER" -g "$USER" "$app_path"
+
+if [[ ! -d "$app_path/.git" ]]; then
+  echo "Bootstrapping production Git checkout..."
+  env_backup=""
+  if [[ -f "$app_path/.env" ]]; then
+    env_backup="$(mktemp)"
+    cp "$app_path/.env" "$env_backup"
+  fi
+
+  find "$app_path" -mindepth 1 -exec rm -rf {} +
+  git clone --branch "$branch" "$repo_url" "$app_path"
+
+  if [[ -n "$env_backup" ]]; then
+    install -m 600 "$env_backup" "$app_path/.env"
+    rm -f "$env_backup"
+  fi
+fi
+
+cd "$app_path"
+
+echo "Checking production checkout..."
+git status --short
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Production checkout has local changes; aborting deploy." >&2
+  exit 1
+fi
+
+before_sha="$(git rev-parse --short HEAD)"
+echo "Current production HEAD: ${before_sha}"
+
+git remote set-url origin "$repo_url"
+git fetch --prune origin
+git checkout "$branch"
+git pull --ff-only origin "$branch"
+
+after_sha="$(git rev-parse --short HEAD)"
+echo "Deploying production HEAD: ${after_sha}"
+
+"${compose[@]}" build web
+"${compose[@]}" up -d postgres
+"${compose[@]}" run --rm web bundle exec rake db:migrate
+"${compose[@]}" up -d web caddy
+"${compose[@]}" ps
+REMOTE
+
+if [[ "$run_smoke" == "true" ]]; then
+  echo "Running public smoke checks..."
+  curl -fsS "${WENT_HIKING_BASE_URL}/health"
+  echo
+  curl -fsSI "${WENT_HIKING_BASE_URL}/" >/dev/null
+  curl -fsSI "${WENT_HIKING_BASE_URL}/system/images/32585/large/image.jpg" >/dev/null
+fi
+
+echo "Went Hiking deploy finished: ${deploy_sha}"

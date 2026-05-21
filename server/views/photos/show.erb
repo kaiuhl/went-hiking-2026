@@ -2,10 +2,11 @@
   <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
   <figure>
     <img src="<%= h(image_url(@photo, "original")) %>" alt="<%= h(@photo.caption) %>">
-    <% if @photo.caption || @photo.camera_model || @photo.taken_at %>
+    <% metadata = photo_metadata_label(@photo) %>
+    <% if @photo.caption || !metadata.empty? %>
       <figcaption>
         <% if @photo.caption %><p><%= h(@photo.caption) %></p><% end %>
-        <p class="meta"><%= [date_label(@photo.taken_at), @photo.camera_model, (@photo.camera_f_stop ? "f/#{@photo.camera_f_stop}" : nil), @photo.camera_exposure, (@photo.camera_iso ? "ISO #{@photo.camera_iso}" : nil)].compact.reject(&:empty?).join(" · ") %></p>
+        <% unless metadata.empty? %><p class="meta"><%= h(metadata) %></p><% end %>
       </figcaption>
     <% end %>
   </figure>

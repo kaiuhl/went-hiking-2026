@@ -5,33 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= h(@title || "Went Hiking") %></title>
     <meta name="description" content="Plan hikes, share trip reports, map routes, and browse photos from the trail.">
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="stylesheet" href="/styles/site.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    <script src="/scripts/site.js" defer></script>
+    <script src="/scripts/site.js?v=20260518-2" defer></script>
   </head>
   <body>
     <header class="site-header">
-      <a class="wordmark" href="/">
-        <img src="/images/went-hiking-logo.svg" width="1400" height="330" alt="Went Hiking">
-      </a>
-      <nav class="site-nav" aria-label="Main navigation">
-        <a href="/hikes">Hikes</a>
-        <a href="/about">About</a>
-        <% if rodauth.logged_in? %>
-          <a href="/hikes/new">New hike</a>
-          <a href="/account">Account</a>
-          <a href="/logout">Log out</a>
-        <% else %>
-          <a href="/login">Log in</a>
-        <% end %>
-      </nav>
+      <div class="site-header-inner">
+        <a class="wordmark" href="/">
+          <%= wordmark_svg(id: "site-wordmark", class_name: "logo-svg wordmark-logo") %>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="/hikes">Hikes</a>
+          <a href="/about">About</a>
+          <% if (account = current_account) %>
+            <span class="site-nav-greeting">Hi, <%= h(first_name(account)) %>.</span>
+            <a class="site-nav-add" href="/hikes/new" aria-label="Add a new hike" title="Add a new hike">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </a>
+            <a href="/account">Settings</a>
+          <% else %>
+            <a href="/login">Log in</a>
+          <% end %>
+        </nav>
+      </div>
     </header>
     <main>
       <%= yield %>
     </main>
     <footer class="site-footer">
-      <p>Went Hiking is for getting the story back from the trail: maps, miles, photos, and the little details worth sharing.</p>
+      <div class="site-footer-inner">
+        <a class="footer-wordmark" href="/">
+          <%= wordmark_svg(id: "footer-wordmark", class_name: "logo-svg footer-wordmark-logo") %>
+        </a>
+        <div>
+          <p>Went Hiking &copy; 2010-2026. All rights reserved. All photos &copy; their respective owners. Photos may not be used or modified without express written consent of the author.</p>
+          <p class="site-footer-links">
+            <a href="/about">About</a>
+            <span aria-hidden="true">|</span>
+            <a href="/privacy">Privacy Policy</a>
+            <span aria-hidden="true">|</span>
+            <a href="mailto:kaiuhl+wenthiking@gmail.com">Contact</a>
+          </p>
+        </div>
+        <div>
+          <p>This website was lovingly crafted by <a href="https://kaiuhl.com">Kyle Meyer</a>, a software engineer and backpacker in Portland, Oregon.</p>
+        </div>
+      </div>
     </footer>
   </body>
 </html>

@@ -69,7 +69,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Rack specs for `/system/*` behavior.
 - [x] Rack specs for hike pages.
 - [x] Auth flow specs for entry points and public signup.
-- [ ] Browser/visual QA for desktop and mobile.
+- [x] Browser/visual QA for desktop and mobile.
 
 ## Deployment
 

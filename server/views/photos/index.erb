@@ -9,9 +9,9 @@
   <% if @photos.empty? %>
     <p class="empty">No photos yet. Time to bring back proof of the views.</p>
   <% else %>
-    <div class="photo-gallery">
-      <% @photos.each do |photo| %>
-        <a href="<%= h(photo.public_path) %>">
+    <div class="photo-gallery" data-photo-lightbox-gallery data-photo-lightbox-items="<%= h(json(photo_lightbox_items(@photos))) %>">
+      <% @photos.each_with_index do |photo, index| %>
+        <a href="<%= h(photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(index) %>">
           <img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>">
           <% if photo.caption %>
             <span><%= h(photo.caption) %></span>

@@ -1,36 +1,85 @@
-<section class="profile-header">
-  <% if (avatar = avatar_url(@account, "thumbnail")) %>
-    <img class="avatar" src="<%= h(avatar) %>" alt="">
-  <% end %>
-  <p class="kicker">Trail Log</p>
-  <h1><%= h(@account.name) %></h1>
-  <% if @account.location %>
-    <p class="lede"><%= h(@account.location) %></p>
-  <% end %>
-</section>
+<% profile_map_trips = @account.trips_dataset.exclude(lat: nil).exclude(lng: nil).reverse_order(:hiked_at).all %>
+<% profile_map_points = profile_map_trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} } %>
+<% trip_count = @trips.size %>
+<% trip_label = trip_count == 1 ? "trip" : "trips" %>
+<% total_miles = @trips.sum { |trip| trip.mileage.to_f } %>
+<% total_nights = @trips.sum { |trip| trip.nights.to_i } %>
+<% night_label = total_nights == 1 ? "night out" : "nights out" %>
+<% profile_years = @trip_years || ([@year] + @other_years).uniq.sort.reverse %>
 
-<section class="section">
-  <div class="section-heading">
-    <h2><%= h(@year) %> Trips</h2>
-    <% unless @other_years.empty? %>
-      <nav class="year-nav" aria-label="Other trip years">
-        <% @other_years.each do |year| %>
-          <a href="<%= h(@account.public_path) %>?year=<%= h(year) %>"><%= h(year) %></a>
-        <% end %>
-      </nav>
+<% unless profile_map_points.empty? %>
+  <section class="map-band profile-map-band" aria-label="<%= h(@account.name) %> trip map">
+    <div class="map-panel site-map profile-map" data-map-collection data-map-expandable data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(profile_map_points)) %>"></div>
+  </section>
+<% end %>
+
+<section class="profile-header <%= "profile-header-with-map" unless profile_map_points.empty? %>">
+  <div class="profile-avatar">
+    <% if (avatar = avatar_url(@account, "medium")) %>
+      <img class="avatar" src="<%= h(avatar) %>" alt="">
+    <% else %>
+      <span><%= h(@account.name.to_s[0].to_s.upcase) %></span>
     <% end %>
   </div>
+  <div class="profile-summary">
+    <h1><%= h(@account.name) %></h1>
+    <% if @account.location %>
+      <p class="lede"><%= h(@account.location) %></p>
+    <% end %>
+    <div class="kicker inline-kicker profile-stats">
+      <span><%= h(format_number(trip_count)) %> <%= h(trip_label) %></span>
+      <% if total_miles.positive? %>
+        <span><%= h(format_number(total_miles, precision: 1)) %> miles logged</span>
+      <% end %>
+      <% if total_nights.positive? %>
+        <span><%= h(format_number(total_nights)) %> <%= h(night_label) %></span>
+      <% end %>
+      <% if profile_years.size > 1 %>
+        <form class="profile-year-form" action="<%= h(@account.public_path) %>" method="get">
+          <label class="visually-hidden" for="profile-year">Trip year</label>
+          <span>in</span>
+          <select id="profile-year" class="profile-year-select" name="year" data-year-switcher>
+            <% profile_years.each do |year| %>
+              <option value="<%= h(year) %>" <%= "selected" if year == @year %>><%= h(year) %></option>
+            <% end %>
+          </select>
+        </form>
+      <% else %>
+        <span>in <%= h(@year) %></span>
+      <% end %>
+    </div>
+  </div>
+</section>
 
+<section class="section profile-trips-section">
   <% if @trips.empty? %>
     <p class="empty">No hikes logged for this year yet.</p>
   <% else %>
-    <div class="map-panel compact" data-map-collection data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(@trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} }.select { |point| point[:lat] && point[:lng] })) %>"></div>
-    <div class="trip-list">
+    <div class="trip-list profile-trip-list">
       <% @trips.each do |trip| %>
-        <article class="trip-row">
-          <p class="meta"><%= h(trip_date_label(trip)) %></p>
-          <h2><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h2>
-          <p><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), (trip.nights.to_i.positive? ? "#{trip.nights} nights" : nil)].compact.join(" · ") %></p>
+        <% photo = trip.photos_dataset.order(:taken_at, :id).first %>
+        <% trip_excerpt = trip.report_markdown.to_s.gsub(/\s+/, " ").strip %>
+        <article class="trip-row profile-trip-row">
+          <% if photo %>
+            <a class="profile-trip-photo" href="<%= h(trip.public_path) %>" aria-hidden="true" tabindex="-1">
+              <img src="<%= h(image_url(photo, "large")) %>" alt="">
+            </a>
+          <% elsif trip.lat && trip.lng %>
+            <div class="profile-trip-photo profile-trip-map" data-static-map data-lat="<%= h(trip.lat) %>" data-lng="<%= h(trip.lng) %>" data-title="<%= h(trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>" aria-hidden="true"></div>
+          <% else %>
+            <div class="profile-trip-photo profile-trip-photo-empty" aria-hidden="true"></div>
+          <% end %>
+          <div class="profile-trip-content">
+            <p class="meta"><%= h(trip_date_label(trip)) %></p>
+            <div class="trip-row-heading">
+              <h2><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h2>
+              <%= heart_button(trip, compact: true) %>
+            </div>
+            <p class="profile-trip-stats"><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), night_count_label(trip.nights)].compact.join(" / ") %></p>
+            <% unless trip_excerpt.empty? %>
+              <p class="profile-trip-excerpt"><%= h(trip_excerpt[0, 150]) %><%= "..." if trip_excerpt.length > 150 %></p>
+            <% end %>
+          </div>
         </article>
       <% end %>
     </div>

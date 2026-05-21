@@ -1,60 +1,32 @@
-<section class="home-hero">
-  <p class="kicker">Hike it. Map it. Tell the story.</p>
-  <h1 class="home-logo-heading">
-    <img class="home-logo" src="/images/went-hiking-logo.svg" width="1400" height="330" alt="Went Hiking">
-  </h1>
-  <p class="lede">Log the miles, share the photos, and discover where everyone is heading next.</p>
-</section>
-
-<% if @archive_stats[:trips].positive? %>
-  <section class="section archive-overview">
-    <div class="stat-grid" aria-label="Community totals">
-      <div>
-        <span><%= h(format_number(@archive_stats[:trips])) %></span>
-        <p>Trips</p>
-      </div>
-      <div>
-        <span><%= h(format_number(@archive_stats[:photos])) %></span>
-        <p>Photos</p>
-      </div>
-      <div>
-        <span><%= h(format_number(@archive_stats[:miles], precision: 1)) %></span>
-        <p>Miles logged</p>
-      </div>
-      <div>
-        <span><%= h(format_number(@archive_stats[:nights])) %></span>
-        <p>Nights out</p>
-      </div>
-    </div>
-
-    <% unless @map_points.empty? %>
-      <div class="map-panel home-map" data-map-collection data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(@map_points.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} })) %>"></div>
-    <% end %>
+<% home_map_points = @map_points.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} } %>
+<% trip_label = @archive_stats[:trips] == 1 ? "trip" : "trips" %>
+<% photo_label = @archive_stats[:photos] == 1 ? "photo" : "photos" %>
+<% night_label = @archive_stats[:nights] == 1 ? "night out" : "nights out" %>
+<% unless home_map_points.empty? %>
+  <section class="map-band home-map-band" aria-label="Trip map">
+    <div class="map-panel site-map home-map" data-map-collection data-map-expandable data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(home_map_points)) %>"></div>
   </section>
 <% end %>
+
+<section class="home-hero">
+  <p class="kicker inline-kicker home-kicker">
+    <% if @archive_stats[:trips].positive? %>
+      <span><%= h(format_number(@archive_stats[:trips])) %> <%= h(trip_label) %></span>
+      <span><%= h(format_number(@archive_stats[:photos])) %> <%= h(photo_label) %></span>
+      <span><%= h(format_number(@archive_stats[:miles], precision: 1)) %> miles logged</span>
+      <span><%= h(format_number(@archive_stats[:nights])) %> <%= h(night_label) %></span>
+    <% end %>
+    <span class="home-kicker-since">since 2010</span>
+  </p>
+  <p class="lede">A tool for recording your trips into the wilderness and discovering new ones. Join the hundreds of people recording their stories from the trail.</p>
+</section>
 
 <section class="section">
   <div class="section-heading">
     <h2>Recent Hikes</h2>
     <a href="/hikes">View all</a>
   </div>
-  <% if @recent_trips.empty? %>
-    <p class="empty">No hikes yet. Be the first to get one on the map.</p>
-  <% else %>
-    <div class="trip-grid">
-      <% @recent_trips.each do |trip| %>
-        <article class="trip-card">
-          <% photo = trip.photos_dataset.first %>
-          <% if photo %>
-            <a href="<%= h(trip.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt=""></a>
-          <% end %>
-          <p class="meta"><%= h(date_label(trip.hiked_at)) %></p>
-          <h3><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h3>
-          <p><%= h(trip.account.name) %></p>
-        </article>
-      <% end %>
-    </div>
-  <% end %>
+  <%= render("hikes/trip_list", locals: {trips: @recent_trips, empty_message: "No hikes yet. Be the first to get one on the map."}) %>
 </section>
 
 <% if @archive_stats[:trips].positive? %>

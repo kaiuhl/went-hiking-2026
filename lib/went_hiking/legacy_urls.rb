@@ -19,7 +19,10 @@ module WentHiking
     end
 
     def legacy_media_url(key)
-      "#{WentHiking.media_base_url}/#{key.to_s.sub(%r{\A/+}, "")}"
+      normalized_key = key.to_s
+      return normalized_key if normalized_key.match?(%r{\Ahttps?://}i)
+
+      "#{WentHiking.media_base_url}/#{normalized_key.sub(%r{\A/+}, "")}"
     end
   end
 end

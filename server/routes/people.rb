@@ -7,9 +7,11 @@ module PeopleRoutes
     r.on "people" do
       r.get String do |person_slug|
         @account = account_from_slug(person_slug)
-        @year = (request.params["year"] || latest_trip_year(@account)).to_i
-        @trips = @account.trips_dataset.where(Sequel.lit("EXTRACT(YEAR FROM hiked_at) = ?", @year)).reverse_order(:hiked_at).all
-        @other_years = trip_years(@account) - [@year]
+        @trip_years = trip_years(@account)
+        requested_year = request.params["year"]&.to_i
+        @year = @trip_years.include?(requested_year) ? requested_year : latest_trip_year(@account)
+        @trips = @account.trips_dataset.where(Sequel.extract(:year, :hiked_at) => @year).reverse_order(:hiked_at).all
+        @other_years = @trip_years - [@year]
         @title = @account.name
         view("people/show")
       end

@@ -105,8 +105,25 @@ module HikeRoutes
         retired_feature("comments", title: "New comments are taking a trail nap.", body: "The original conversations still show up on trip pages. Fresh commenting can come back once the new site has its boots under it.")
       end
 
-      r.on String, "hearts" do
-        retired_feature("hearts", title: "Hearts are taking a trail nap.", body: "Past cheers still show up on trip pages. New reactions can come back when they are worth the pack space.")
+      r.on String, "hearts" do |trip_slug|
+        trip = trip_from_slug(trip_slug)
+
+        r.post do
+          account = authenticated_account
+          heart = trip.hearts_dataset.where(account_id: account.id).first
+
+          if heart
+            heart.destroy
+          else
+            WentHiking::Models::Heart.create(account_id: account.id, trip_id: trip.id, legacy_read_only: false)
+          end
+
+          redirect heart_return_path(request.POST["return_to"], trip)
+        end
+
+        r.get do
+          redirect trip.public_path
+        end
       end
 
       r.get String, "edit" do |trip_slug|
@@ -195,6 +212,13 @@ module HikeRoutes
     account = WentHiking::Models::Account[rodauth.session_value]
     not_found unless account
     account
+  end
+
+  def heart_return_path(value, trip)
+    path = value.to_s
+    return path if path.start_with?("/") && !path.start_with?("//") && !path.match?(/[\r\n]/)
+
+    trip.public_path
   end
 
   def setup_trip_form(action:, heading:, submit_label:, values:, errors: [])

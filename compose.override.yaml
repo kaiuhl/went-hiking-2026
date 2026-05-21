@@ -1,0 +1,18 @@
+services:
+  web:
+    command: bin/dev
+    environment:
+      APP_ENV: development
+      RACK_ENV: development
+      DATABASE_URL: postgres://wenthiking:wenthiking@postgres:5432/wenthiking_development
+      PUBLIC_BASE_URL: http://localhost:9292
+    volumes:
+      - .:/app
+    restart: unless-stopped
+  worker:
+    environment:
+      APP_ENV: development
+      RACK_ENV: development
+      DATABASE_URL: postgres://wenthiking:wenthiking@postgres:5432/wenthiking_development
+    volumes:
+      - .:/app

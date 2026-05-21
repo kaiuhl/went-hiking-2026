@@ -19,6 +19,16 @@ module ViewHelpers
     JSON.generate(value)
   end
 
+  def current_account
+    return nil unless rodauth.logged_in?
+
+    @current_account ||= WentHiking::Models::Account[rodauth.session_value]
+  end
+
+  def first_name(account)
+    account.name.to_s.strip.split(/\s+/, 2).first || account.email.to_s.split("@").first
+  end
+
   def date_label(value)
     return "" unless value
 
@@ -44,6 +54,13 @@ module ViewHelpers
     "#{formatted} #{unit}"
   end
 
+  def night_count_label(value)
+    count = value.to_i
+    return nil unless count.positive?
+
+    "#{format_number(count)} #{count == 1 ? "night" : "nights"}"
+  end
+
   def format_number(value, precision: nil)
     number = precision ? value.to_f.round(precision) : value
     string = (number.to_f % 1).zero? ? number.to_i.to_s : number.to_s
@@ -53,14 +70,75 @@ module ViewHelpers
   end
 
   def image_url(photo, style = "large")
-    variant = photo.variant(style) || photo.variant("original")
+    variant = photo.variant(style) || photo.variant("large") || photo.variant("original")
     variant&.public_url || "/images/photo-placeholder.svg"
+  end
+
+  def photo_metadata_label(photo)
+    f_stop = photo.camera_f_stop.to_s
+    iso = photo.camera_iso.to_s
+
+    [
+      date_label(photo.taken_at),
+      photo.camera_model.to_s,
+      (f_stop.empty? ? nil : "f/#{f_stop}"),
+      photo.camera_exposure.to_s,
+      (iso.empty? ? nil : "ISO #{iso}")
+    ].compact.reject(&:empty?).join(" · ")
+  end
+
+  def photo_lightbox_items(photos)
+    photos.map do |photo|
+      caption = photo.caption.to_s
+
+      {
+        href: photo.public_path,
+        full: image_url(photo, "original"),
+        thumb: image_url(photo, "large"),
+        alt: caption,
+        caption: caption,
+        metadata: photo_metadata_label(photo)
+      }
+    end
+  end
+
+  def heart_button(trip, compact: false)
+    heart_count = trip.hearts_dataset.count
+    hearted = trip_hearted_by_current_account?(trip)
+    label = hearted ? "Remove heart from #{trip.name}" : "Heart #{trip.name}"
+    button_class = ["heart-button", ("heart-button-compact" if compact), ("is-hearted" if hearted)].compact.join(" ")
+    count_label = "#{format_number(heart_count)} #{heart_count == 1 ? "heart" : "hearts"}"
+    content = heart_icon_svg(filled: hearted) + %(<span class="heart-count">#{h(format_number(heart_count))}</span>)
+
+    if rodauth.logged_in?
+      <<~HTML
+        <form class="heart-form" action="#{h(trip.public_path)}/hearts" method="post">
+          <input type="hidden" name="return_to" value="#{h(return_to_path)}">
+          <button class="#{h(button_class)}" type="submit" aria-label="#{h(label)}" aria-pressed="#{hearted ? "true" : "false"}" title="#{h(count_label)}">
+            #{content}
+          </button>
+        </form>
+      HTML
+    else
+      <<~HTML
+        <a class="#{h(button_class)}" href="/login" aria-label="#{h("Log in to #{label.downcase}")}" title="#{h(count_label)}">
+          #{content}
+        </a>
+      HTML
+    end
+  end
+
+  def heart_summary(hearts)
+    count = hearts.size
+    "#{format_number(count)} #{count == 1 ? "person has" : "people have"} hearted this trip."
   end
 
   def avatar_url(account, style = "micro")
     return nil unless account.avatar_file_name
+    return account.avatar_file_name if account.avatar_file_name.match?(%r{\Ahttps?://}i)
 
-    key = WentHiking::S3Keys.avatar_variant_key(account_id: account.legacy_user_id || account.id, style: style, filename: derivative_filename(account.avatar_file_name, style))
+    filename = account.legacy_user_id ? derivative_filename(account.avatar_file_name, style) : account.avatar_file_name
+    key = WentHiking::S3Keys.avatar_variant_key(account_id: account.legacy_user_id || account.id, style: style, filename: filename)
     WentHiking::LegacyUrls.legacy_media_url(key)
   end
 
@@ -68,7 +146,46 @@ module ViewHelpers
     "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"
   end
 
+  def wordmark_svg(id:, class_name:)
+    escaped_id = h(id)
+    escaped_class = h(class_name)
+
+    <<~SVG
+      <svg class="#{escaped_class}" viewBox="0 0 560 190" role="img" aria-labelledby="#{escaped_id}-title">
+        <title id="#{escaped_id}-title">Went Hiking</title>
+        <defs>
+          <path id="#{escaped_id}-curve" d="M -84 170 A 1800 1800 0 0 1 500 132" />
+        </defs>
+        <text class="logo-text logo-text-shadow">
+          <textPath href="##{escaped_id}-curve" startOffset="50%" text-anchor="middle">Went Hiking</textPath>
+        </text>
+        <text class="logo-text logo-text-fill">
+          <textPath href="##{escaped_id}-curve" startOffset="50%" text-anchor="middle">Went Hiking</textPath>
+        </text>
+      </svg>
+    SVG
+  end
+
   private
+
+  def trip_hearted_by_current_account?(trip)
+    rodauth.logged_in? && trip.hearts_dataset.where(account_id: rodauth.session_value.to_i).any?
+  end
+
+  def return_to_path
+    query = request.query_string.to_s
+    query.empty? ? request.path_info : "#{request.path_info}?#{query}"
+  end
+
+  def heart_icon_svg(filled:)
+    fill = filled ? "currentColor" : "none"
+
+    <<~SVG
+      <svg class="heart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path fill="#{fill}" d="M12 20s-7-4.35-9.33-9.03C1.35 8.33 2.2 5.18 4.93 4.24 7.02 3.52 9.14 4.32 10.5 6.06L12 8l1.5-1.94c1.36-1.74 3.48-2.54 5.57-1.82 2.73.94 3.58 4.09 2.26 6.73C19 15.65 12 20 12 20Z"></path>
+      </svg>
+    SVG
+  end
 
   def derivative_filename(filename, style)
     return filename if style == "original"

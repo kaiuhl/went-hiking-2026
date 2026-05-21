@@ -12,6 +12,7 @@ require_relative "routes/people"
 require "roda"
 require "rodauth"
 require "sequel"
+require "went_hiking/avatar_upload"
 require "went_hiking/email"
 require "went_hiking/models"
 
@@ -44,6 +45,17 @@ class RodaApp < Roda
       <div class="form-row">
         <label for="name">Name</label>
         <input id="name" name="name" autocomplete="name" required>
+        <p class="inline-hints">This can be real or fake, but real is preferable. Let's be friends, not strangers.</p>
+      </div>
+      <div class="form-row">
+        <label for="location">Locale</label>
+        <input id="location" name="location" autocomplete="address-level2">
+        <p class="inline-hints">This helps us show relevant nearby trips.</p>
+      </div>
+      <div class="form-row">
+        <label for="avatar">A photo of you</label>
+        <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif">
+        <p class="inline-hints">Upload a photo to represent yourself. This will be cropped into a square later.</p>
       </div>
       <div class="honey-field" aria-hidden="true">
         <label for="website">Website</label>
@@ -52,7 +64,9 @@ class RodaApp < Roda
     HTML
     require_mail? false
     email_from ENV.fetch("SES_FROM_EMAIL", "Went Hiking <hello@wenthiking.com>")
+    use_database_authentication_functions? false
     create_account_autologin? false
+    verify_account_set_password? false
     verify_account_autologin? true
     reset_password_autologin? false
 
@@ -65,6 +79,7 @@ class RodaApp < Roda
         email: login.to_s.strip.downcase,
         name: name,
         slug: WentHiking::Slug.generate(name),
+        location: param_or_nil("location").to_s.strip.empty? ? nil : param_or_nil("location").to_s.strip,
         status_id: account_initial_status_value,
         created_at: now,
         updated_at: now
@@ -87,6 +102,11 @@ class RodaApp < Roda
     end
 
     after_create_account do
+      avatar_upload = request.POST["avatar"]
+      if WentHiking::AvatarUpload.present?(avatar_upload)
+        WentHiking::AvatarUpload.new(account: WentHiking::Models::Account[account[account_id_column]], upload: avatar_upload).call
+      end
+
       db[:signup_attempts].insert(
         email: account[login_column],
         ip_address: request.ip,

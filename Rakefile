@@ -15,4 +15,11 @@ namespace :db do
 
     Sequel::Migrator.run(WentHiking.db, File.join(WentHiking.root, "db/migrations"))
   end
+
+  desc "Load development seed data"
+  task seed: :migrate do
+    require_relative "db/seeds"
+
+    WentHiking::Seeds.run
+  end
 end

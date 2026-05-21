@@ -1,9 +1,24 @@
+<% trip_metrics = [number_label(@trip.mileage, "miles"), number_label(@trip.elevation, "feet gained"), night_count_label(@trip.nights)].compact %>
+
+<% if @trip.lat && @trip.lng %>
+  <section class="map-band trip-map-band" aria-label="<%= h(@trip.name) %> map">
+    <div class="map-panel site-map trip-map" data-map data-map-expandable data-lat="<%= h(@trip.lat) %>" data-lng="<%= h(@trip.lng) %>" data-title="<%= h(@trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>"></div>
+  </section>
+<% end %>
+
 <article class="trip-page">
   <header class="trip-header">
-    <p class="kicker"><a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a> went <%= @trip.backpacking? ? "backpacking" : "hiking" %></p>
-    <h1><%= h(@trip.name) %></h1>
-    <p class="lede"><%= h(trip_date_label(@trip)) %></p>
-    <p class="meta"><%= [number_label(@trip.mileage, "miles"), number_label(@trip.elevation, "feet gained"), (@trip.nights.to_i.positive? ? "#{@trip.nights} nights" : nil)].compact.join(" · ") %></p>
+    <p class="kicker inline-kicker">
+      <span><a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a> went <%= @trip.backpacking? ? "backpacking" : "hiking" %></span>
+      <span><%= h(trip_date_label(@trip)) %></span>
+      <% trip_metrics.each do |metric| %>
+        <span><%= h(metric) %></span>
+      <% end %>
+    </p>
+    <div class="trip-title-bar">
+      <h1><%= h(@trip.name) %></h1>
+      <%= heart_button(@trip) %>
+    </div>
     <% if rodauth.logged_in? && rodauth.session_value == @trip.account_id %>
       <p class="trip-actions">
         <a href="<%= h(@trip.public_path) %>/edit">Edit hike</a>
@@ -12,44 +27,44 @@
     <% end %>
   </header>
 
-  <% if @trip.lat && @trip.lng %>
-    <div class="map-panel" data-map data-lat="<%= h(@trip.lat) %>" data-lng="<%= h(@trip.lng) %>" data-title="<%= h(@trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>"></div>
-  <% end %>
-
-  <% unless @photos.empty? %>
-    <section class="trip-photos" aria-label="Trip photos">
-      <div class="section-heading">
-        <h2>Photos</h2>
-        <a href="<%= h(@trip.public_path) %>/photos">View all <%= h(@photos.size) %></a>
-      </div>
-      <div class="photo-strip">
-        <% @photos.first(8).each do |photo| %>
-          <a href="<%= h(photo.public_path) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
-        <% end %>
-      </div>
-    </section>
-  <% end %>
-
-  <section class="trip-body">
-    <% if @trip.report_markdown.to_s.empty? %>
-      <p class="empty">No story yet for this hike. The map and photos still have plenty to say.</p>
-    <% else %>
-      <%= markdown(@trip.report_markdown) %>
+  <div class="trip-post-layout <%= @photos.empty? ? "trip-post-layout-single" : "" %>">
+    <% unless @photos.empty? %>
+      <aside class="trip-photo-sidebar" aria-label="Trip photos">
+        <div class="trip-photo-heading">
+          <h2>Photos</h2>
+          <a href="<%= h(@trip.public_path) %>/photos">View all <%= h(@photos.size) %></a>
+        </div>
+        <div class="trip-photo-grid" data-photo-lightbox-gallery data-photo-lightbox-items="<%= h(json(photo_lightbox_items(@photos))) %>">
+          <% @photos.first(12).each_with_index do |photo, index| %>
+            <a href="<%= h(photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(index) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
+          <% end %>
+        </div>
+      </aside>
     <% end %>
-  </section>
 
-  <% unless @comments.empty? && @hearts.empty? %>
-    <section class="legacy-social">
-      <h2>Trail Talk</h2>
-      <% unless @hearts.empty? %>
-        <p class="meta"><%= @hearts.size %> people cheered this trip.</p>
+    <div class="trip-post-main">
+      <section class="trip-body">
+        <% if @trip.report_markdown.to_s.empty? %>
+          <p class="empty">No story yet for this hike. The map and photos still have plenty to say.</p>
+        <% else %>
+          <%= markdown(@trip.report_markdown) %>
+        <% end %>
+      </section>
+
+      <% unless @comments.empty? && @hearts.empty? %>
+        <section class="legacy-social">
+          <h2>Trail Talk</h2>
+          <% unless @hearts.empty? %>
+            <p class="meta"><%= h(heart_summary(@hearts)) %></p>
+          <% end %>
+          <% @comments.each do |comment| %>
+            <article class="comment">
+              <p class="meta"><%= h(comment.account.name) %> · <%= h(date_label(comment.created_at)) %></p>
+              <%= markdown(comment.body_markdown) %>
+            </article>
+          <% end %>
+        </section>
       <% end %>
-      <% @comments.each do |comment| %>
-        <article class="comment">
-          <p class="meta"><%= h(comment.account.name) %> · <%= h(date_label(comment.created_at)) %></p>
-          <%= markdown(comment.body_markdown) %>
-        </article>
-      <% end %>
-    </section>
-  <% end %>
+    </div>
+  </div>
 </article>

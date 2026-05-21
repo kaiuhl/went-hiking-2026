@@ -14,7 +14,18 @@ This installs Docker, Docker Compose v2, UFW, a 1 GB swapfile, and prepares
 
 ## Deploy App
 
-Create the release archive first from the repo root:
+For routine releases, prefer the repo-root helper:
+
+```sh
+bin/prod-deploy
+```
+
+It fast-forwards the production Git checkout, rebuilds the Compose stack, runs
+migrations, and performs smoke checks.
+See `docs/operations.md` for common production procedures.
+
+The Ansible playbook is still available as a manual fallback. Create the release
+archive first from the repo root:
 
 ```sh
 COPYFILE_DISABLE=1 tar --no-xattrs \

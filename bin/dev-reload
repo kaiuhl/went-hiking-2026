@@ -1,0 +1,117 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "find"
+require "pathname"
+
+ROOT = Pathname.new(File.expand_path("..", __dir__))
+RESTART_FILE = ROOT.join("tmp/restart.txt")
+POLL_INTERVAL = Float(ENV.fetch("DEV_RELOAD_INTERVAL", "0.75"))
+
+WATCH_FILES = %w[
+  .env
+  .env.local
+  Gemfile
+  Gemfile.lock
+  Rakefile
+  config.ru
+].freeze
+
+WATCH_DIRS = %w[
+  config
+  db/migrations
+  jobs
+  lib
+  server
+].freeze
+
+WATCH_EXTENSIONS = %w[
+  .erb
+  .json
+  .rb
+  .ru
+  .yaml
+  .yml
+].freeze
+
+IGNORED_DIR_NAMES = %w[
+  .bundle
+  .git
+  coverage
+  log
+  tmp
+  vendor
+].freeze
+
+$stdout.sync = true
+
+def watchable_file?(path)
+  WATCH_EXTENSIONS.include?(File.extname(path))
+end
+
+def collect_watch_files(path)
+  return [path] if path.file?
+  return [] unless path.directory?
+
+  files = []
+
+  Find.find(path.to_s) do |entry|
+    entry_path = Pathname.new(entry)
+
+    if entry_path.directory?
+      Find.prune if IGNORED_DIR_NAMES.include?(entry_path.basename.to_s)
+      next
+    end
+
+    files << entry_path if watchable_file?(entry_path.to_s)
+  end
+
+  files
+rescue Errno::ENOENT
+  []
+end
+
+def watched_files
+  explicit_files = WATCH_FILES.map { |relative| ROOT.join(relative) }.select(&:file?)
+  directory_files = WATCH_DIRS.flat_map { |relative| collect_watch_files(ROOT.join(relative)) }
+
+  (explicit_files + directory_files).uniq
+end
+
+def snapshot
+  watched_files.each_with_object({}) do |path, state|
+    stat = path.stat
+    state[path.to_s] = [stat.mtime.to_f, stat.size]
+  rescue Errno::ENOENT
+    next
+  end
+end
+
+def changed_paths(previous, current)
+  (previous.keys | current.keys).select { |path| previous[path] != current[path] }
+end
+
+def relative_list(paths)
+  paths.first(6).map { |path| Pathname.new(path).relative_path_from(ROOT).to_s }.join(", ")
+end
+
+FileUtils.mkdir_p(RESTART_FILE.dirname)
+previous = snapshot
+
+puts "Watching #{previous.length} files for Puma reloads"
+
+loop do
+  sleep POLL_INTERVAL
+
+  current = snapshot
+  changed = changed_paths(previous, current)
+
+  unless changed.empty?
+    FileUtils.touch(RESTART_FILE)
+    suffix = changed.length > 6 ? " and #{changed.length - 6} more" : ""
+    puts "Reloading Puma after changes to #{relative_list(changed)}#{suffix}"
+  end
+
+  previous = current
+end

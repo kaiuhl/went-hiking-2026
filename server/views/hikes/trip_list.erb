@@ -1,0 +1,53 @@
+<% if trips.empty? %>
+  <p class="empty"><%= h(empty_message) %></p>
+<% else %>
+  <div class="trip-list home-trip-list">
+    <% trips.each do |trip| %>
+      <% photos = trip.photos_dataset.order(:taken_at, :id).all %>
+      <% lead_photo = photos.first %>
+      <% rail_photos = photos.drop(1).first(3) %>
+      <% more_photo_index = 1 + rail_photos.size %>
+      <% trip_excerpt = trip.report_markdown.to_s.gsub(/\s+/, " ").strip %>
+      <article class="trip-row home-trip-row">
+        <% if lead_photo %>
+          <div class="home-trip-media home-trip-gallery" data-photo-lightbox-gallery data-photo-lightbox-items="<%= h(json(photo_lightbox_items(photos))) %>">
+            <a class="home-trip-lead-photo" href="<%= h(lead_photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="0" aria-label="Open photos from <%= h(trip.name) %>">
+              <img src="<%= h(image_url(lead_photo, "large")) %>" alt="<%= h(lead_photo.caption.to_s.empty? ? trip.name : lead_photo.caption) %>">
+              <% if photos.size > 1 %>
+                <span class="home-photo-badge"><%= h(format_number(photos.size)) %> photos</span>
+              <% end %>
+            </a>
+            <% if photos.size > 1 %>
+              <div class="home-photo-rail" aria-label="Photos from <%= h(trip.name) %>">
+                <% rail_photos.each_with_index do |photo, index| %>
+                  <% photo_index = index + 1 %>
+                  <a href="<%= h(photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(photo_index) %>" aria-label="Open photo <%= h(photo_index + 1) %> from <%= h(trip.name) %>">
+                    <img src="<%= h(image_url(photo, "large")) %>" alt="">
+                  </a>
+                <% end %>
+                <% if photos.size > more_photo_index %>
+                  <a class="home-photo-more" href="<%= h(photos[more_photo_index].public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(more_photo_index) %>" aria-label="Open the remaining photos from <%= h(trip.name) %>">+<%= h(format_number(photos.size - more_photo_index)) %></a>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% elsif trip.lat && trip.lng %>
+          <div class="home-trip-media home-trip-map" data-static-map data-lat="<%= h(trip.lat) %>" data-lng="<%= h(trip.lng) %>" data-title="<%= h(trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>" aria-hidden="true"></div>
+        <% else %>
+          <div class="home-trip-media home-trip-media-empty" aria-hidden="true"></div>
+        <% end %>
+        <div class="home-trip-content">
+          <p class="meta"><%= h(date_label(trip.hiked_at)) %> / <a href="<%= h(trip.account.public_path) %>"><%= h(trip.account.name) %></a></p>
+          <div class="trip-row-heading">
+            <h3><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h3>
+            <%= heart_button(trip, compact: true) %>
+          </div>
+          <p class="home-trip-stats"><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), night_count_label(trip.nights)].compact.join(" / ") %></p>
+          <% unless trip_excerpt.empty? %>
+            <p class="home-trip-excerpt"><%= h(trip_excerpt[0, 170]) %><%= "..." if trip_excerpt.length > 170 %></p>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  </div>
+<% end %>

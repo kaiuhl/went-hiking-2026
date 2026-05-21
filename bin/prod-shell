@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+WENT_HIKING_HOST="${WENT_HIKING_HOST:-35.160.199.53}"
+WENT_HIKING_USER="${WENT_HIKING_USER:-ubuntu}"
+WENT_HIKING_KEY="${WENT_HIKING_KEY:-$ROOT/.deploy/lightsail.pem}"
+WENT_HIKING_PATH="${WENT_HIKING_PATH:-/srv/went-hiking-2026}"
+WENT_HIKING_KNOWN_HOSTS="${WENT_HIKING_KNOWN_HOSTS:-$ROOT/.deploy/known_hosts}"
+
+ssh_args=()
+if [[ -f "$WENT_HIKING_KEY" ]]; then
+  ssh_args+=("-i" "$WENT_HIKING_KEY")
+fi
+if [[ -f "$WENT_HIKING_KNOWN_HOSTS" ]]; then
+  ssh_args+=("-o" "UserKnownHostsFile=$WENT_HIKING_KNOWN_HOSTS" "-o" "StrictHostKeyChecking=no")
+fi
+
+exec ssh -t "${ssh_args[@]}" "${WENT_HIKING_USER}@${WENT_HIKING_HOST}" "cd $(printf "%q" "$WENT_HIKING_PATH") && exec bash"

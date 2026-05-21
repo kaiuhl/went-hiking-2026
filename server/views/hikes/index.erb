@@ -1,6 +1,10 @@
-<section class="section">
-  <p class="kicker"><%= h(@kicker || "Explore") %></p>
-  <h1><%= h(@heading || "Recent Hikes") %></h1>
+<section class="section hike-index-section">
+  <div class="section-heading">
+    <h1><%= h(@heading || "Recent Hikes") %></h1>
+    <% unless @trips.empty? %>
+      <span class="meta">Showing <%= h(format_number(@trips.size)) %></span>
+    <% end %>
+  </div>
   <form class="search-form" action="/search" method="get">
     <label for="hike-search">Search hikes</label>
     <div class="search-row">
@@ -8,17 +12,5 @@
       <button type="submit">Search</button>
     </div>
   </form>
-  <% if @trips.empty? %>
-    <p class="empty">No hikes match that search yet. Try another peak, lake, or trail name.</p>
-  <% else %>
-    <div class="trip-list">
-      <% @trips.each do |trip| %>
-        <article class="trip-row">
-          <p class="meta"><%= h(date_label(trip.hiked_at)) %> · <%= h(trip.account.name) %></p>
-          <h2><a href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></h2>
-          <p><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), (trip.nights.to_i.positive? ? "#{trip.nights} nights" : nil)].compact.join(" · ") %></p>
-        </article>
-      <% end %>
-    </div>
-  <% end %>
+  <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes match that search yet. Try another peak, lake, or trail name."}) %>
 </section>
