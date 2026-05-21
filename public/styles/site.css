@@ -209,6 +209,10 @@ main {
   align-items: center;
 }
 
+.trip-kicker-action {
+  gap: 0.35em;
+}
+
 .inline-kicker > *:not(:last-child)::after {
   content: "/";
   margin-left: 12px;

@@ -9,7 +9,10 @@
 <article class="trip-page">
   <header class="trip-header">
     <p class="kicker inline-kicker">
-      <span><a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a> went <%= @trip.backpacking? ? "backpacking" : "hiking" %></span>
+      <span class="trip-kicker-action">
+        <a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a>
+        <span>went <%= @trip.backpacking? ? "backpacking" : "hiking" %></span>
+      </span>
       <span><%= h(trip_date_label(@trip)) %></span>
       <% trip_metrics.each do |metric| %>
         <span><%= h(metric) %></span>

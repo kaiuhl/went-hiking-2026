@@ -106,6 +106,8 @@ RSpec.describe RodaApp do
 
     expect(last_response).to be_ok
     expect(last_response.body).to include("Burnt Lake")
+    expect(last_response.body).to include('class="trip-kicker-action"')
+    expect(last_response.body).to include("<span>went backpacking</span>")
     expect(last_response.body).to include("<strong>day</strong>")
   end
 
