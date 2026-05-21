@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><%= h(@title || "Went Hiking") %></title>
     <meta name="description" content="Plan hikes, share trip reports, map routes, and browse photos from the trail.">
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="stylesheet" href="/styles/site.css">
+    <link rel="icon" href="<%= h(static_asset_path("/favicon.ico")) %>" sizes="any">
+    <link rel="stylesheet" href="<%= h(static_asset_path("/styles/site.css")) %>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    <script src="/scripts/site.js?v=20260518-2" defer></script>
+    <script src="<%= h(static_asset_path("/scripts/site.js")) %>" defer></script>
   </head>
   <body>
     <header class="site-header">

@@ -19,6 +19,14 @@ module ViewHelpers
     JSON.generate(value)
   end
 
+  def static_asset_path(path)
+    public_path = File.join(WentHiking.root, "public", path.to_s.sub(%r{\A/+}, ""))
+    return path unless File.file?(public_path)
+
+    separator = path.include?("?") ? "&" : "?"
+    "#{path}#{separator}v=#{File.mtime(public_path).to_i}"
+  end
+
   def current_account
     return nil unless rodauth.logged_in?
 

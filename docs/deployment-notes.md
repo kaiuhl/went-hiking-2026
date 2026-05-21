@@ -58,6 +58,8 @@
 - Full sync completed on 2026-05-19: `205,095` files seen, `205,073` uploaded, and `22` skipped.
 - Final S3 inventory: `205,095` objects and `80,299,720,161` bytes under `system/images`.
 - Skip-existing confirmation completed on 2026-05-19 at 10:05 PDT: `205,095` files seen, `0` uploaded, and `205,095` skipped.
+- Avatar media must also be present under `system/avatars` because the modern UI
+  renders account avatars from the imported legacy user records.
 - Historical logs:
 
 ```sh

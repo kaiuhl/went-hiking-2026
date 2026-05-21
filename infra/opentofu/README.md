@@ -4,8 +4,8 @@ OpenTofu owns the AWS resources for the Went Hiking V2 preview:
 
 - Lightsail instance, static IP, public ports, and static IP attachment
 - Private S3 media bucket, versioning, and public access block
-- CloudFront Origin Access Control and distribution for private photo reads
-- S3 bucket policy scoped to CloudFront reads under `system/images/*`
+- CloudFront Origin Access Control and distribution for private media reads
+- S3 bucket policy scoped to CloudFront reads under `system/images/*` and `system/avatars/*`
 
 ## Adopt Existing Preview Resources
 

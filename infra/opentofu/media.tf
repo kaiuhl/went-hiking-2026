@@ -75,11 +75,12 @@ resource "aws_cloudfront_distribution" "media" {
 
 data "aws_iam_policy_document" "media_bucket" {
   statement {
-    sid     = "AllowCloudFrontReadSystemImages"
+    sid     = "AllowCloudFrontReadSystemMedia"
     effect  = "Allow"
     actions = ["s3:GetObject"]
 
     resources = [
+      "${aws_s3_bucket.media.arn}/system/avatars/*",
       "${aws_s3_bucket.media.arn}/system/images/*"
     ]
 

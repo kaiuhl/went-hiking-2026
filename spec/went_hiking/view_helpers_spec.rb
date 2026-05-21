@@ -33,4 +33,14 @@ RSpec.describe ViewHelpers do
       expect(helpers.avatar_url(account, "thumbnail")).to eq("http://wenthiking.com/system/avatars/51/medium/P9140528.jpg")
     end
   end
+
+  describe "#static_asset_path" do
+    it "adds a file timestamp version for public assets" do
+      expect(helpers.static_asset_path("/styles/site.css")).to match(%r{\A/styles/site\.css\?v=\d+\z})
+    end
+
+    it "leaves missing assets unchanged" do
+      expect(helpers.static_asset_path("/missing.css")).to eq("/missing.css")
+    end
+  end
 end
