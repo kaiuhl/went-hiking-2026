@@ -143,10 +143,22 @@ REMOTE
 
 if [[ "$run_smoke" == "true" ]]; then
   echo "Running public smoke checks..."
-  curl -fsS "${WENT_HIKING_BASE_URL}/health"
+  curl_with_retries() {
+    local attempt
+    for attempt in {1..30}; do
+      if curl -fsS "$@"; then
+        return 0
+      fi
+      sleep 1
+    done
+
+    curl -fsS "$@"
+  }
+
+  curl_with_retries "${WENT_HIKING_BASE_URL}/health"
   echo
-  curl -fsSI "${WENT_HIKING_BASE_URL}/" >/dev/null
-  curl -fsSI "${WENT_HIKING_BASE_URL}/system/images/32585/large/image.jpg" >/dev/null
+  curl_with_retries -I "${WENT_HIKING_BASE_URL}/" >/dev/null
+  curl_with_retries -I "${WENT_HIKING_BASE_URL}/system/images/32585/large/image.jpg" >/dev/null
 fi
 
 echo "Went Hiking deploy finished: ${deploy_sha}"
