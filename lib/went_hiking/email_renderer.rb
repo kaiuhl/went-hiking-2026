@@ -127,7 +127,6 @@ module WentHiking
               .container { width: 100%; max-width: 600px; margin: 0 auto; }
               .card { background: #fffdf7; border: 1px solid #dedbd1; }
               .header { padding: 34px 36px 16px; text-align: center; }
-              .brand-text { margin-top: 8px; color: #111; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
               .content { padding: 20px 36px 34px; }
               .headline { margin: 0 0 16px; color: #111; font-size: 30px; line-height: 1.15; font-weight: 700; }
               .body-copy { margin: 0 0 22px; color: #34342f; font-size: 16px; line-height: 1.55; }
@@ -150,7 +149,6 @@ module WentHiking
                           <tr>
                             <td class="header" align="center">
                               <img src="#{h(logo_url)}" width="180" height="61" alt="Went Hiking">
-                              <div class="brand-text">Went Hiking</div>
                             </td>
                           </tr>
                           <tr>
