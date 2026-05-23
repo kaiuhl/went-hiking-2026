@@ -134,7 +134,7 @@ git pull --ff-only origin "$branch"
 after_sha="$(git rev-parse --short HEAD)"
 echo "Deploying production HEAD: ${after_sha}"
 
-"${compose[@]}" build web
+"${compose[@]}" build web worker
 "${compose[@]}" up -d postgres
 "${compose[@]}" run --rm -T web bundle exec rake db:migrate </dev/null
 "${compose[@]}" up -d web worker caddy

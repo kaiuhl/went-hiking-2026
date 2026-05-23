@@ -10,7 +10,7 @@ bin/prod-deploy
 
 The helper SSHes to Lightsail, bootstraps `/srv/went-hiking-2026` into a Git
 checkout if needed, aborts if the production checkout has local changes, runs
-`git pull --ff-only`, builds the `web` image, starts Postgres, runs
+`git pull --ff-only`, builds the `web` and `worker` images, starts Postgres, runs
 `db:migrate`, starts `web`, `worker`, and `caddy`, and runs public smoke checks.
 
 Push committed changes before deploying. The helper checks that local `HEAD`

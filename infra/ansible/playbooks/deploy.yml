@@ -52,7 +52,7 @@
 
     - name: Build app image
       ansible.builtin.command:
-        cmd: docker compose -f compose.yaml -f compose.production.yaml build web
+        cmd: docker compose -f compose.yaml -f compose.production.yaml build web worker
         chdir: "{{ app_dir }}"
 
     - name: Start database
