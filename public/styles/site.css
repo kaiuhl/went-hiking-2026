@@ -1348,7 +1348,8 @@ input[type="submit"] {
 
 form.rodauth,
 .rodauth-login-form-footer-links-heading,
-.rodauth-links {
+.rodauth-links,
+.auth-migration-notice {
   width: min(520px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
@@ -1356,6 +1357,31 @@ form.rodauth,
 
 form.rodauth {
   padding-top: 80px;
+}
+
+.auth-migration-notice {
+  margin-top: 72px;
+  margin-bottom: 24px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+}
+
+.auth-migration-notice h1 {
+  margin-bottom: 8px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.auth-migration-notice p {
+  max-width: none;
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.auth-migration-notice + form.rodauth,
+.auth-migration-notice + .rodauth + form.rodauth {
+  padding-top: 0;
 }
 
 .rodauth .form-group {
@@ -1474,6 +1500,10 @@ form.rodauth {
 
 .site-footer p {
   margin-bottom: 10px;
+}
+
+.site-footer-migration {
+  color: var(--ink);
 }
 
 .site-footer a {

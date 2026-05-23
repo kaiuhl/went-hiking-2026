@@ -66,6 +66,9 @@ RSpec.describe RodaApp do
     get "/login"
     expect(last_response).to be_ok
     expect(last_response.body).to include("Email")
+    expect(last_response.body).to include("Welcome back!")
+    expect(last_response.body).to include("reset your password")
+    expect(last_response.body).to include("Went Hiking recently moved to new infrastructure")
 
     get "/create-account"
     expect(last_response).to be_ok
