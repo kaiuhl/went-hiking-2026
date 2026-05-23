@@ -18,9 +18,14 @@
           <%= wordmark_svg(id: "site-wordmark", class_name: "logo-svg wordmark-logo") %>
         </a>
         <nav class="site-nav" aria-label="Main navigation">
-          <a href="/hikes">Hikes</a>
+          <% account = current_account %>
+          <% if account %>
+            <a href="<%= h(account.public_path) %>">Your profile</a>
+          <% else %>
+            <a href="/hikes">Hikes</a>
+          <% end %>
           <a href="/about">About</a>
-          <% if (account = current_account) %>
+          <% if account %>
             <span class="site-nav-greeting">Hi, <%= h(first_name(account)) %>.</span>
             <a class="site-nav-add" href="/hikes/new" aria-label="Add a new hike" title="Add a new hike">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

@@ -652,6 +652,11 @@ h3 {
   width: 100%;
 }
 
+.profile-map-band {
+  position: relative;
+  z-index: 0;
+}
+
 .site-map {
   height: 190px;
   margin: 0;
@@ -826,17 +831,19 @@ h3 {
 
 .profile-header {
   position: relative;
+  z-index: 1;
   display: block;
   padding: 40px 0 28px;
   border-bottom: 1px solid var(--line);
 }
 
 .profile-header-with-map {
-  padding-top: 54px;
+  padding-top: 72px;
 }
 
 .profile-avatar {
   position: absolute;
+  z-index: 2;
   top: 30px;
   right: 0;
   display: grid;
@@ -851,8 +858,14 @@ h3 {
 }
 
 .profile-header-with-map .profile-avatar {
-  top: -66px;
+  top: -72px;
+  right: auto;
+  left: 0;
   background: var(--bg);
+}
+
+.profile-header-with-map .profile-summary {
+  padding-right: 0;
 }
 
 .profile-avatar .avatar {
@@ -1600,6 +1613,18 @@ form.rodauth {
   .profile-summary h1,
   .profile-summary .lede {
     padding-right: 112px;
+  }
+
+  .profile-header-with-map .profile-summary h1,
+  .profile-header-with-map .profile-summary .lede {
+    padding-right: 0;
+  }
+
+  .profile-map .leaflet-control-attribution {
+    max-width: calc(100% - 118px);
+    line-height: 1.25;
+    text-align: right;
+    white-space: normal;
   }
 
   .profile-stats {
