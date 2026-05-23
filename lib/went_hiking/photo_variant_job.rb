@@ -4,6 +4,7 @@ require "mini_magick"
 require "que"
 require "tempfile"
 require "went_hiking/models"
+require "went_hiking/photo_metadata"
 require "went_hiking/s3_keys"
 require "went_hiking/storage"
 
@@ -31,6 +32,7 @@ module WentHiking
       return unless original&.s3_key
 
       with_original_file(original.s3_key) do |path|
+        update_photo_metadata(photo, path)
         STYLES.each do |style, options|
           create_variant(photo, path, style, options)
         end
@@ -70,6 +72,13 @@ module WentHiking
 
         upsert_variant(photo, style, key, File.size(file.path))
       end
+    end
+
+    def update_photo_metadata(photo, original_path)
+      metadata = PhotoMetadata.extract(original_path)
+      photo.update(metadata) unless metadata.empty?
+    rescue
+      nil
     end
 
     def upsert_variant(photo, style, key, file_size)

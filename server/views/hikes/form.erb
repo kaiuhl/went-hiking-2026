@@ -48,14 +48,35 @@
         <input id="trip-source-url" name="source_url" type="url" value="<%= h(@form_values[:source_url]) %>" placeholder="https://">
       </div>
 
-      <div class="form-row">
-        <label for="trip-lat">Latitude</label>
-        <input id="trip-lat" name="lat" type="number" min="-90" max="90" step="any" value="<%= h(@form_values[:lat]) %>">
-      </div>
+      <div class="form-row form-row-full">
+        <label for="trip-location-map">Location</label>
+        <div class="trip-location-picker" data-trip-location-picker data-tile-url="<%= h(leaflet_tile_url) %>" data-default-lat="45.52" data-default-lng="-122.67" data-default-zoom="6">
+          <div id="trip-location-map" class="trip-location-map" data-location-map role="application" aria-label="Trip location picker"></div>
+          <div class="trip-location-status">
+            <p data-location-summary>
+              <% if @form_values[:lat].to_s.empty? || @form_values[:lng].to_s.empty? %>
+                Click the map to drop a pin.
+              <% else %>
+                Pin set at <%= h(@form_values[:lat]) %>, <%= h(@form_values[:lng]) %>.
+              <% end %>
+            </p>
+            <button class="secondary-button" type="button" data-location-clear>Clear pin</button>
+          </div>
+          <details class="coordinate-fallback">
+            <summary>Manual coordinates</summary>
+            <div class="coordinate-grid">
+              <div class="form-row">
+                <label for="trip-lat">Latitude</label>
+                <input id="trip-lat" name="lat" type="number" min="-90" max="90" step="any" value="<%= h(@form_values[:lat]) %>" data-location-lat>
+              </div>
 
-      <div class="form-row">
-        <label for="trip-lng">Longitude</label>
-        <input id="trip-lng" name="lng" type="number" min="-180" max="180" step="any" value="<%= h(@form_values[:lng]) %>">
+              <div class="form-row">
+                <label for="trip-lng">Longitude</label>
+                <input id="trip-lng" name="lng" type="number" min="-180" max="180" step="any" value="<%= h(@form_values[:lng]) %>" data-location-lng>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
 

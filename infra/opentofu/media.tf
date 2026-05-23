@@ -19,6 +19,23 @@ resource "aws_s3_bucket_public_access_block" "media" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_cors_configuration" "media" {
+  bucket = aws_s3_bucket.media.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["POST"]
+    allowed_origins = [
+      "https://wenthiking.com",
+      "https://www.wenthiking.com",
+      "http://35.160.199.53",
+      "http://localhost:9292"
+    ]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 resource "aws_cloudfront_origin_access_control" "media" {
   name                              = "${var.project_name}-media-oac"
   description                       = "Private S3 access for Went Hiking V2 media"

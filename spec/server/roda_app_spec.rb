@@ -16,6 +16,15 @@ RSpec.describe RodaApp do
     expect(last_response.status).to eq(302)
   end
 
+  def make_real_jpeg(path)
+    FileUtils.mkdir_p(File.dirname(path))
+    if system("convert", "-size", "800x600", "gradient:red-blue", path, out: File::NULL, err: File::NULL)
+      return path
+    end
+
+    skip "ImageMagick convert is not available"
+  end
+
   it "responds to health checks" do
     get "/health"
 
@@ -267,6 +276,8 @@ RSpec.describe RodaApp do
     expect(last_response).to be_ok
     expect(last_response.body).to include("New Hike")
     expect(last_response.body).to include("data-markdown-editor")
+    expect(last_response.body).to include("data-trip-location-picker")
+    expect(last_response.body).to include("Click the map to drop a pin.")
   end
 
   it "creates trips for the authenticated account" do
@@ -301,6 +312,22 @@ RSpec.describe RodaApp do
     expect(last_response.status).to eq(422)
     expect(last_response.body).to include("Name is required.")
     expect(last_response.body).to include("Hike date must be a valid date.")
+  end
+
+  it "rejects partial trip coordinates" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/hikes", {
+      "name" => "Half Pin Ridge",
+      "hiked_at" => "2026-05-17",
+      "lat" => "45.4",
+      "lng" => ""
+    }
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.body).to include("Drop a map pin with both latitude and longitude")
+    expect(WentHiking::Models::Trip.first(name: "Half Pin Ridge")).to be_nil
   end
 
   it "updates trips owned by the authenticated account" do
@@ -350,6 +377,92 @@ RSpec.describe RodaApp do
     expect(original.s3_key).to eq("system/images/#{photo.id}/original/upload-photo.jpg")
     expect(File.exist?(uploaded_path)).to be(true)
     expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
+  end
+
+  it "supports direct-to-S3 photo uploads for authenticated trip owners" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    storage = instance_double(
+      WentHiking::Storage::S3,
+      direct_upload?: true,
+      direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
+      object_exists?: true,
+      read: "jpeg-bytes"
+    )
+    allow(WentHiking::Storage).to receive(:current).and_return(storage)
+    allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200, camera_model: "Trail Camera")
+    allow(WentHiking::PhotoVariantJob).to receive(:enqueue_photo)
+    login_as(account_id)
+
+    post "#{trip.public_path}/photos/direct-upload", {
+      "filename" => "lake view.jpg",
+      "content_type" => "image/jpeg",
+      "file_size" => "4096",
+      "caption" => "Lake light"
+    }
+
+    payload = JSON.parse(last_response.body)
+    photo = WentHiking::Models::Photo.first(caption: "Lake light")
+    original = photo.variant("original")
+
+    expect(last_response.status).to eq(201)
+    expect(payload["upload"]["url"]).to eq("https://s3.example.test/upload")
+    expect(payload["finalize_url"]).to eq("#{trip.public_path}/photos/#{photo.id}/finalize")
+    expect(original.s3_key).to eq("system/images/#{photo.id}/original/lake-view.jpg")
+
+    post payload.fetch("finalize_url")
+
+    expect(last_response).to be_ok
+    expect(photo.refresh.width).to eq(1600)
+    expect(photo.camera_model).to eq("Trail Camera")
+    expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
+  end
+
+  it "runs the fallback upload path against a real image" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Real Image Ridge", slug: "real-image-ridge", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    fixture_path = make_real_jpeg(File.join(WentHiking.root, "tmp/real-upload-photo.jpg"))
+    allow(WentHiking::PhotoVariantJob).to receive(:enqueue_photo)
+    login_as(account_id)
+
+    post "#{trip.public_path}/photos", {
+      "image" => Rack::Test::UploadedFile.new(fixture_path, "image/jpeg", true),
+      "caption" => "Real light"
+    }
+
+    photo = WentHiking::Models::Photo.first(caption: "Real light")
+
+    expect(last_response.status).to eq(302)
+    expect(photo.width).to eq(800)
+    expect(photo.height).to eq(600)
+    expect(photo.variant("original").s3_key).to eq("system/images/#{photo.id}/original/real-upload-photo.jpg")
+  end
+
+  it "generates photo variants from a real uploaded image" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Variant Ridge", slug: "variant-ridge", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    fixture_path = make_real_jpeg(File.join(WentHiking.root, "tmp/variant-upload-photo.jpg"))
+    account = WentHiking::Models::Account[account_id]
+    trip = WentHiking::Models::Trip[trip_id]
+
+    result = File.open(fixture_path, "rb") do |io|
+      WentHiking::PhotoUpload.new(
+        account: account,
+        trip: trip,
+        upload: {"filename" => "variant upload.jpg", "type" => "image/jpeg", "tempfile" => io},
+        caption: "Variant light"
+      ).call
+    end
+
+    expect(result).to be_success
+
+    WentHiking::PhotoVariantJob.allocate.run(result.photo.id)
+    variants = result.photo.refresh.photo_variants_dataset.order(:style).select_map(:style)
+
+    expect(variants).to eq(%w[bpl large medium micro original thumbnail])
+    expect(File.exist?(File.join(ENV.fetch("LOCAL_UPLOAD_ROOT"), "system/images/#{result.photo.id}/large/variant-upload.jpg"))).to be(true)
   end
 
   it "renders the trip photo gallery" do

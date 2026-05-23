@@ -215,6 +215,252 @@
     });
   };
 
+  const formatCoordinate = (value) => Number(value).toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+
+  const buildTripLocationPicker = (element) => {
+    const mapElement = element.querySelector("[data-location-map]");
+    const latInput = element.querySelector("[data-location-lat]");
+    const lngInput = element.querySelector("[data-location-lng]");
+    const summary = element.querySelector("[data-location-summary]");
+    const clearButton = element.querySelector("[data-location-clear]");
+    if (!mapElement || !latInput || !lngInput || typeof L === "undefined") return;
+
+    const defaultLat = Number(element.dataset.defaultLat || 45.52);
+    const defaultLng = Number(element.dataset.defaultLng || -122.67);
+    const defaultZoom = Number(element.dataset.defaultZoom || 6);
+    const parseInputCoordinate = (input) => {
+      if (!input.value.trim()) return null;
+      const parsed = Number(input.value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const initialLat = parseInputCoordinate(latInput);
+    const initialLng = parseInputCoordinate(lngInput);
+    const hasInitialPin = initialLat !== null && initialLng !== null;
+    const map = L.map(mapElement, {scrollWheelZoom: false}).setView(
+      hasInitialPin ? [initialLat, initialLng] : [defaultLat, defaultLng],
+      hasInitialPin ? 11 : defaultZoom
+    );
+    let marker = null;
+
+    L.tileLayer(element.dataset.tileUrl, tileOptions).addTo(map);
+
+    const updateSummary = (lat, lng) => {
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        summary.textContent = `Pin set at ${formatCoordinate(lat)}, ${formatCoordinate(lng)}.`;
+        clearButton.hidden = false;
+      } else if (latInput.value || lngInput.value) {
+        summary.textContent = "Set both latitude and longitude, or clear the location.";
+        clearButton.hidden = false;
+      } else {
+        summary.textContent = "Click the map to drop a pin.";
+        clearButton.hidden = true;
+      }
+    };
+
+    const setPin = (lat, lng, options = {}) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        updateSummary(lat, lng);
+        return;
+      }
+
+      const point = [lat, lng];
+      if (!marker) {
+        marker = L.marker(point, {icon: tripIcon(), draggable: true}).addTo(map);
+        marker.on("dragend", () => {
+          const position = marker.getLatLng();
+          setPin(position.lat, position.lng);
+        });
+      } else {
+        marker.setLatLng(point);
+      }
+
+      latInput.value = formatCoordinate(lat);
+      lngInput.value = formatCoordinate(lng);
+      updateSummary(lat, lng);
+      if (options.pan) map.panTo(point);
+    };
+
+    const clearPin = () => {
+      if (marker) {
+        marker.remove();
+        marker = null;
+      }
+      latInput.value = "";
+      lngInput.value = "";
+      updateSummary();
+    };
+
+    map.on("click", (event) => setPin(event.latlng.lat, event.latlng.lng));
+    clearButton.addEventListener("click", clearPin);
+
+    const syncManualCoordinates = () => {
+      if (!latInput.value && !lngInput.value) {
+        clearPin();
+        return;
+      }
+
+      const lat = parseInputCoordinate(latInput);
+      const lng = parseInputCoordinate(lngInput);
+      if (lat !== null && lng !== null) {
+        setPin(lat, lng, {pan: true});
+      } else {
+        updateSummary(lat, lng);
+      }
+    };
+
+    latInput.addEventListener("input", syncManualCoordinates);
+    lngInput.addEventListener("input", syncManualCoordinates);
+
+    if (hasInitialPin) setPin(initialLat, initialLng);
+    refreshMapSize(map);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!Number.isFinite(bytes)) return "";
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const jsonPayload = (response) => response.text().then((text) => {
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch (_error) {
+      return {};
+    }
+  });
+
+  const uploadWithProgress = (upload, file, progressCallback) => new Promise((resolve, reject) => {
+    const body = new FormData();
+    Object.entries(upload.fields || {}).forEach(([key, value]) => body.append(key, value));
+    body.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", upload.url);
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) progressCallback(event.loaded / event.total);
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error("S3 upload failed"));
+      }
+    });
+    xhr.addEventListener("error", () => reject(new Error("S3 upload failed")));
+    xhr.send(body);
+  });
+
+  const buildPhotoUploadForm = (form) => {
+    const input = form.querySelector('input[type="file"][name="image"]');
+    const caption = form.querySelector("[name='caption']");
+    const preview = form.querySelector("[data-photo-upload-preview]");
+    const previewImage = form.querySelector("[data-photo-upload-preview-image]");
+    const previewName = form.querySelector("[data-photo-upload-preview-name]");
+    const previewSize = form.querySelector("[data-photo-upload-preview-size]");
+    const progress = form.querySelector("[data-photo-upload-progress]");
+    const progressBar = form.querySelector("[data-photo-upload-progress-bar]");
+    const status = form.querySelector("[data-photo-upload-status]");
+    const submit = form.querySelector("[data-photo-upload-submit]");
+    const errors = document.querySelector("[data-photo-upload-errors]");
+    let previewUrl = null;
+
+    if (!input) return;
+
+    const showErrors = (messages) => {
+      if (!errors) return;
+      const list = (messages.length ? messages : ["Photo upload failed. Please try again."])
+        .map((message) => `<li>${escapeHtml(message)}</li>`)
+        .join("");
+      errors.innerHTML = `<p>A couple things need fixing before these can hit the gallery:</p><ul>${list}</ul>`;
+      errors.hidden = false;
+    };
+
+    const setProgress = (message, amount = null) => {
+      if (!progress || !progressBar || !status) return;
+      progress.hidden = false;
+      status.textContent = message;
+      if (amount === null) {
+        progressBar.removeAttribute("style");
+      } else {
+        progressBar.style.width = `${Math.max(2, Math.round(amount * 100))}%`;
+      }
+    };
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+
+      if (!file || !preview || !previewImage || !previewName || !previewSize) {
+        if (preview) preview.hidden = true;
+        return;
+      }
+
+      previewName.textContent = file.name;
+      previewSize.textContent = formatFileSize(file.size);
+      if (file.type && file.type.startsWith("image/")) {
+        previewUrl = URL.createObjectURL(file);
+        previewImage.src = previewUrl;
+      } else {
+        previewImage.removeAttribute("src");
+      }
+      preview.hidden = false;
+    });
+
+    if (!form.dataset.directUploadUrl) return;
+
+    form.addEventListener("submit", (event) => {
+      if (!form.checkValidity()) return;
+
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      event.preventDefault();
+      if (errors) errors.hidden = true;
+      if (submit) submit.disabled = true;
+      setProgress("Preparing direct upload", 0.02);
+
+      const payload = new URLSearchParams({
+        filename: file.name,
+        content_type: file.type || "application/octet-stream",
+        file_size: String(file.size),
+        caption: caption ? caption.value : ""
+      });
+
+      fetch(form.dataset.directUploadUrl, {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: payload
+      })
+        .then((response) => jsonPayload(response).then((body) => {
+          if (!response.ok) throw body;
+          return body;
+        }))
+        .then((body) => {
+          setProgress("Uploading to media storage", 0.05);
+          return uploadWithProgress(body.upload, file, (amount) => setProgress("Uploading to media storage", amount))
+            .then(() => body);
+        })
+        .then((body) => {
+          setProgress("Finishing photo", 1);
+          return fetch(body.finalize_url, {method: "POST"})
+            .then((response) => jsonPayload(response).then((finalizeBody) => {
+              if (!response.ok) throw finalizeBody;
+              return {...body, ...finalizeBody};
+            }));
+        })
+        .then((body) => {
+          window.location.href = body.redirect_url || form.action;
+        })
+        .catch((error) => {
+          const messages = Array.isArray(error && error.errors) ? error.errors : [error && error.message].filter(Boolean);
+          showErrors(messages);
+          setProgress("Upload stopped", 0);
+          if (submit) submit.disabled = false;
+        });
+    });
+  };
+
   const buildPhotoLightbox = () => {
     const galleries = document.querySelectorAll("[data-photo-lightbox-gallery]");
     if (galleries.length === 0) return;
@@ -449,6 +695,8 @@
     document.querySelectorAll("[data-static-map]").forEach(buildStaticMap);
     document.querySelectorAll("[data-year-switcher]").forEach(buildYearSwitcher);
     document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
+    document.querySelectorAll("[data-trip-location-picker]").forEach(buildTripLocationPicker);
+    document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
     buildPhotoLightbox();
   });
 })();

@@ -47,9 +47,12 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Restore homepage archive stats, map, and leaderboard UI.
 - [x] Add trip create/edit forms.
 - [x] Add Markdown preview editor UI.
-- [x] Add photo upload flow.
+- [x] Add baseline photo upload flow.
 - [x] Add async variant generation through Que.
 - [x] Add EXIF extraction into upload flow.
+- [x] Replace manual hike latitude/longitude entry with a Leaflet pin picker.
+- [x] Add direct-to-S3 photo upload with local/no-JS server fallback.
+- [x] Polish the single-photo upload UX with preview, progress, and clearer validation.
 
 ## Dropped From V2
 
@@ -70,6 +73,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Rack specs for hike pages.
 - [x] Auth flow specs for entry points and public signup.
 - [x] Browser/visual QA for desktop and mobile.
+- [x] Add real-image upload and variant-generation regression coverage.
 
 ## Deployment
 
@@ -93,6 +97,9 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Finish full legacy `system/images` photo sync to private S3.
 - [x] Rerun photo sync and confirm skip-existing behavior after completion.
 - [x] Run the import against a fresh legacy database export on Lightsail.
+- [x] Run the Que worker in preview/production deploys so uploaded photo variants are generated.
+- [x] Add S3 browser-upload CORS for preview, production, and local development origins.
+- [ ] Production-smoke a real photo upload through S3, variant generation, and CloudFront rendering.
 
 ## Current Preview Deployment
 
@@ -103,5 +110,34 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - Static IP: `35.160.199.53`
 - S3 media bucket: `wenthiking-media-2026`
 - CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
-- Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
+- Runtime: Docker Compose on Ubuntu 24.04 with `web`, `worker`, `caddy`, and `postgres`.
 - Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 with the trip-photo archive synced, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails send through SES.
+
+## Remaining Work Inventory
+
+Last updated: 2026-05-23.
+
+- Add-a-hike location entry now uses a Leaflet pin picker backed by the existing `lat` and `lng` columns. Manual coordinates remain available in a compact disclosure for precision edits and no-JS fallback.
+- Photo uploading now supports browser direct-to-S3 upload when S3 storage is configured: the app creates a photo record, returns a presigned S3 POST, finalizes after S3 confirms the original object exists, extracts metadata, and queues derivatives. Local storage and no-JS browsers still use the multipart server upload path.
+- Photo upload has local real-image coverage: Rack upload, direct-upload initialization/finalization, image decode validation, metadata extraction, and `PhotoVariantJob` generation of `original`, `micro`, `thumbnail`, `bpl`, `large`, and `medium` variants.
+- Routine deploys now start the Que `worker`, so uploaded photo derivatives can be generated in preview/production.
+- Launch work still includes DNS cutover to `35.160.199.53` and re-enabling HTTPS in Caddy after DNS points at Lightsail.
+- Legacy avatar media still needs an explicit final presence check under `system/avatars` because imported account avatars render from those paths.
+
+## Add A Hike / Photo Upload Implementation Notes
+
+### Add A Hike Map Pin
+
+1. `server/views/hikes/form.erb` now uses a Leaflet location picker with the existing USGS Topo tile helper and marker assets.
+2. The existing `lat` and `lng` inputs remain inside a collapsed manual-coordinate disclosure, so no schema or route contract changed and no-JS/precision editing still works.
+3. The picker supports click/tap-to-place, drag-to-adjust, a coordinate summary, and a clear-pin control. Edit forms initialize from saved coordinates; new hikes start centered on the Pacific Northwest.
+4. Server validation now rejects partial coordinates and non-finite coordinate values.
+5. Coverage includes picker rendering, trip creation with coordinates, partial-coordinate rejection, and browser QA for the desktop picker flow.
+
+### Photo Upload
+
+1. Direct uploads use a presigned S3 POST when S3 storage is active. The server creates the pending photo/variant row, the browser posts the file to S3, and finalization confirms the object exists, extracts metadata, and queues variants.
+2. The existing multipart server upload remains as a local-storage and no-JS fallback.
+3. Uploaded images are decoded before server-side fallback records are committed, and direct-upload finalization rejects unreadable image data before queueing variants.
+4. The form includes a selected-file preview, progress state for direct uploads, and dynamic validation errors.
+5. Deploys now start the Que worker and S3 CORS allows browser POSTs from preview, production, and local development origins.

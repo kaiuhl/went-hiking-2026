@@ -67,5 +67,5 @@
 
     - name: Start app stack
       ansible.builtin.command:
-        cmd: docker compose -f compose.yaml -f compose.production.yaml up -d web caddy
+        cmd: docker compose -f compose.yaml -f compose.production.yaml up -d web worker caddy
         chdir: "{{ app_dir }}"

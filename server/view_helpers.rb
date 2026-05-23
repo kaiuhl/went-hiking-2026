@@ -4,6 +4,7 @@ require "cgi"
 require "json"
 require "went_hiking/legacy_urls"
 require "went_hiking/markdown"
+require "went_hiking/storage"
 
 module ViewHelpers
   def h(value)
@@ -152,6 +153,12 @@ module ViewHelpers
 
   def leaflet_tile_url
     "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"
+  end
+
+  def direct_photo_upload_available?
+    WentHiking::Storage.current.direct_upload?
+  rescue
+    false
   end
 
   def wordmark_svg(id:, class_name:)

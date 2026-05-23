@@ -11,7 +11,7 @@ bin/prod-deploy
 The helper SSHes to Lightsail, bootstraps `/srv/went-hiking-2026` into a Git
 checkout if needed, aborts if the production checkout has local changes, runs
 `git pull --ff-only`, builds the `web` image, starts Postgres, runs
-`db:migrate`, starts `web` and `caddy`, and runs public smoke checks.
+`db:migrate`, starts `web`, `worker`, and `caddy`, and runs public smoke checks.
 
 Push committed changes before deploying. The helper checks that local `HEAD`
 matches the upstream branch so it does not accidentally deploy an older
@@ -60,6 +60,7 @@ Useful server commands:
 ```sh
 docker compose -f compose.yaml -f compose.production.yaml ps
 docker compose -f compose.yaml -f compose.production.yaml logs --tail=100 web
+docker compose -f compose.yaml -f compose.production.yaml logs --tail=100 worker
 docker compose -f compose.yaml -f compose.production.yaml logs --tail=100 caddy
 docker compose -f compose.yaml -f compose.production.yaml restart web
 ```

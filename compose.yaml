@@ -11,7 +11,6 @@ services:
     build: .
     command: bundle exec ruby jobs/worker.rb
     env_file: .env
-    profiles: ["jobs"]
     depends_on:
       - postgres
   postgres:

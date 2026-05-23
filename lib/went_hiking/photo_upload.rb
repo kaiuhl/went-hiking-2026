@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "went_hiking/models"
+require "went_hiking/photo_file"
 require "went_hiking/photo_metadata"
 require "went_hiking/photo_variant_job"
 require "went_hiking/s3_keys"
@@ -8,10 +9,6 @@ require "went_hiking/storage"
 
 module WentHiking
   class PhotoUpload
-    ALLOWED_CONTENT_TYPES = %w[image/jpeg image/jpg image/pjpeg image/png image/x-png image/gif].freeze
-    MAX_BYTES = 10 * 1024 * 1024
-    MIN_BYTES = 1024
-
     Result = Struct.new(:photo, :errors, keyword_init: true) do
       def success?
         errors.empty?
@@ -69,16 +66,17 @@ module WentHiking
 
     def metadata
       @metadata ||= PhotoMetadata.extract(tempfile.path)
-    rescue
-      {}
     end
 
     def validation_errors
       errors = []
-      errors << "Choose a photo to upload." unless tempfile
-      errors << "Image files must be JPEG, PNG, or GIF." if tempfile && !ALLOWED_CONTENT_TYPES.include?(content_type)
-      errors << "Image file is too small." if tempfile && file_size < MIN_BYTES
-      errors << "Image file must be 10 MB or smaller." if tempfile && file_size > MAX_BYTES
+      unless tempfile
+        errors << "Choose a photo to upload."
+        return errors
+      end
+
+      errors.concat(PhotoFile.validation_errors(filename: filename, content_type: content_type, file_size: file_size))
+      validate_image_decode(errors) if errors.empty?
       errors
     end
 
@@ -88,7 +86,7 @@ module WentHiking
     end
 
     def clean_filename
-      @clean_filename ||= filename.gsub(%r{[^A-Za-z0-9._-]+}, "-")
+      @clean_filename ||= PhotoFile.clean_filename(filename)
     end
 
     def content_type
@@ -113,6 +111,13 @@ module WentHiking
 
     def optional_string(value)
       value.to_s.empty? ? nil : value
+    end
+
+    def validate_image_decode(errors)
+      image_metadata = metadata
+      errors << "Image file could not be read." unless image_metadata[:width] && image_metadata[:height]
+    rescue
+      errors << "Image file could not be read."
     end
   end
 end

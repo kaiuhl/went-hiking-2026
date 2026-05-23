@@ -1317,6 +1317,20 @@ select {
   padding: 10px 12px;
 }
 
+input[type="file"] {
+  padding: 8px;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
 textarea {
   min-height: 320px;
   resize: vertical;
@@ -1339,10 +1353,121 @@ input[type="submit"] {
   cursor: pointer;
 }
 
+.secondary-button {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
 .form-actions {
   display: flex;
   align-items: center;
   gap: 18px;
+}
+
+.trip-location-picker {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.trip-location-map {
+  height: 360px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+}
+
+.trip-location-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.trip-location-status p {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.trip-location-status button[hidden] {
+  display: none;
+}
+
+.coordinate-fallback {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.coordinate-fallback summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.coordinate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  padding-top: 14px;
+}
+
+.photo-upload-preview {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  max-width: 520px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 10px;
+}
+
+.photo-upload-preview[hidden] {
+  display: none;
+}
+
+.photo-upload-preview img {
+  width: 96px;
+  height: 72px;
+  background: var(--soft);
+  object-fit: cover;
+}
+
+.photo-upload-preview p {
+  margin-bottom: 2px;
+  overflow-wrap: anywhere;
+}
+
+.photo-upload-progress {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.photo-upload-progress[hidden] {
+  display: none;
+}
+
+.photo-upload-progress::before {
+  display: block;
+  height: 8px;
+  background: var(--soft);
+  content: "";
+}
+
+.photo-upload-progress-bar {
+  width: 0;
+  height: 8px;
+  margin-top: -16px;
+  background: var(--ink);
+  transition: width 120ms ease;
+}
+
+.photo-upload-progress span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .search-form {
@@ -1710,10 +1835,20 @@ form.rodauth {
   .trip-grid,
   .photo-strip,
   .form-grid,
+  .coordinate-grid,
   .markdown-editor,
   .leaderboard-grid,
   .member-list {
     grid-template-columns: 1fr;
+  }
+
+  .trip-location-map {
+    height: 300px;
+  }
+
+  .trip-location-status {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .form-page {

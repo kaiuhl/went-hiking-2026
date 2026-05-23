@@ -6,32 +6,44 @@
     <p class="lede">Bring back the good light from <%= h(@trip.name) %>.</p>
   </header>
 
-  <% unless @photo_errors.empty? %>
-    <div class="form-errors" role="alert">
+  <div class="form-errors" role="alert" data-photo-upload-errors <%= "hidden" if @photo_errors.empty? %>>
+    <% unless @photo_errors.empty? %>
       <p>A couple things need fixing before these can hit the gallery:</p>
       <ul>
         <% @photo_errors.each do |error| %>
           <li><%= h(error) %></li>
         <% end %>
       </ul>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 
-  <form class="photo-form" action="<%= h(@trip.public_path) %>/photos" method="post" enctype="multipart/form-data">
+  <form class="photo-form" action="<%= h(@trip.public_path) %>/photos" method="post" enctype="multipart/form-data" data-photo-upload-form <%= %(data-direct-upload-url="#{h(@trip.public_path)}/photos/direct-upload") if direct_photo_upload_available? %>>
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="photo-image">Image</label>
         <input id="photo-image" name="image" type="file" accept="image/jpeg,image/png,image/gif" required>
+        <div class="photo-upload-preview" data-photo-upload-preview hidden>
+          <img alt="" data-photo-upload-preview-image>
+          <div>
+            <p data-photo-upload-preview-name></p>
+            <p class="meta" data-photo-upload-preview-size></p>
+          </div>
+        </div>
       </div>
 
       <div class="form-row form-row-full">
         <label for="photo-caption">Caption</label>
-        <textarea id="photo-caption" name="caption" rows="4"></textarea>
+        <textarea id="photo-caption" name="caption" rows="4"><%= h(@photo_caption) %></textarea>
       </div>
     </div>
 
+    <div class="photo-upload-progress" data-photo-upload-progress hidden>
+      <div class="photo-upload-progress-bar" data-photo-upload-progress-bar></div>
+      <span data-photo-upload-status>Waiting for upload</span>
+    </div>
+
     <div class="form-actions">
-      <button type="submit">Upload photo</button>
+      <button type="submit" data-photo-upload-submit>Upload photo</button>
       <a href="<%= h(@trip.public_path) %>">Cancel</a>
     </div>
   </form>

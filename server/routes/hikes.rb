@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "date"
+require "went_hiking/direct_photo_upload"
 require "went_hiking/photo_upload"
 require "went_hiking/slug"
 
@@ -69,7 +70,51 @@ module HikeRoutes
 
         @title = "Add Trail Photos"
         @photo_errors = []
+        @photo_caption = ""
         view("photos/new")
+      end
+
+      r.post String, "photos", "direct-upload" do |trip_slug|
+        account = authenticated_account
+        @trip = trip_from_slug(trip_slug)
+        not_found unless @trip.account_id == account.id
+
+        result = WentHiking::DirectPhotoUpload.new(
+          account: account,
+          trip: @trip,
+          filename: request.POST["filename"],
+          content_type: request.POST["content_type"],
+          file_size: request.POST["file_size"],
+          caption: request.POST["caption"]
+        ).call
+
+        if result.success?
+          json_payload(
+            {
+              photo_id: result.photo.id,
+              upload: result.upload,
+              finalize_url: "#{@trip.public_path}/photos/#{result.photo.id}/finalize",
+              redirect_url: @trip.public_path
+            },
+            status: 201
+          )
+        else
+          json_payload({errors: result.errors}, status: 422)
+        end
+      end
+
+      r.post String, "photos", Integer, "finalize" do |trip_slug, photo_id|
+        account = authenticated_account
+        @trip = trip_from_slug(trip_slug)
+        not_found unless @trip.account_id == account.id
+
+        result = WentHiking::DirectPhotoUpload.finalize(account: account, trip: @trip, photo_id: photo_id)
+
+        if result.success?
+          json_payload({redirect_url: @trip.public_path})
+        else
+          json_payload({errors: result.errors}, status: 422)
+        end
       end
 
       r.post String, "photos" do |trip_slug|
@@ -89,6 +134,7 @@ module HikeRoutes
         else
           @title = "Add Trail Photos"
           @photo_errors = result.errors
+          @photo_caption = request.POST["caption"].to_s
           response.status = 422
           view("photos/new")
         end
@@ -275,6 +321,7 @@ module HikeRoutes
 
     errors << "Name is required." if values[:name].empty?
     hiked_at = parse_hiked_at(values[:hiked_at], errors)
+    validate_coordinate_pair(values, errors)
 
     attributes = {
       name: values[:name],
@@ -313,11 +360,23 @@ module HikeRoutes
     return nil if value.to_s.strip.empty?
 
     parsed = Float(value)
+    unless parsed.finite?
+      errors << "#{label} must be a number."
+      return nil
+    end
     validate_range(parsed, label, errors, min: min, max: max)
     parsed
   rescue ArgumentError
     errors << "#{label} must be a number."
     nil
+  end
+
+  def validate_coordinate_pair(values, errors)
+    has_lat = !values[:lat].to_s.empty?
+    has_lng = !values[:lng].to_s.empty?
+    return if has_lat == has_lng
+
+    errors << "Drop a map pin with both latitude and longitude, or clear the location."
   end
 
   def validate_range(value, label, errors, min:, max:)

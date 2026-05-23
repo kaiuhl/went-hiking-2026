@@ -6,7 +6,7 @@ usage() {
 Usage: bin/prod-deploy [options]
 
 Deploy Went Hiking by fast-forwarding the production checkout and rebuilding the
-web/caddy stack.
+web/worker/caddy stack.
 
 Options:
   --skip-smoke    Skip public smoke checks after the deploy.
@@ -137,7 +137,7 @@ echo "Deploying production HEAD: ${after_sha}"
 "${compose[@]}" build web
 "${compose[@]}" up -d postgres
 "${compose[@]}" run --rm -T web bundle exec rake db:migrate </dev/null
-"${compose[@]}" up -d web caddy
+"${compose[@]}" up -d web worker caddy
 "${compose[@]}" ps
 REMOTE
 
