@@ -16,6 +16,12 @@ variable "media_bucket_name" {
   default     = "wenthiking-media-2026"
 }
 
+variable "app_iam_user_name" {
+  type        = string
+  description = "Existing IAM user whose access key is used by the app for SES and media writes."
+  default     = "went-hiking-ses-sender"
+}
+
 variable "lightsail_instance_name" {
   type        = string
   description = "Lightsail preview instance name."

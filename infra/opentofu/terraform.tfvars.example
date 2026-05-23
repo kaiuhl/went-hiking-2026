@@ -1,6 +1,7 @@
 aws_region                  = "us-west-2"
 project_name                = "went-hiking-2026"
 media_bucket_name           = "wenthiking-media-2026"
+app_iam_user_name           = "went-hiking-ses-sender"
 lightsail_instance_name     = "went-hiking-2026"
 lightsail_static_ip_name    = "went-hiking-2026-ip"
 lightsail_availability_zone = "us-west-2a"

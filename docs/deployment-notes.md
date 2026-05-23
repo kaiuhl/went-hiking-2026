@@ -43,6 +43,12 @@
   `2,320` comments, and `3,510` hearts.
 - Desktop Safari visual smoke test confirmed the application layout and CSS are
   loaded on the home page, a trip page, and a trip photo gallery.
+- 2026-05-23 direct-upload smoke test created a temporary trip/photo, verified
+  S3 browser-upload CORS for `http://35.160.199.53`, uploaded a real JPEG via
+  presigned S3 POST, finalized metadata extraction, confirmed the Que worker
+  generated `original`, `micro`, `thumbnail`, `bpl`, `large`, and `medium`
+  variants, checked CloudFront `HEAD 200` for original/large/thumbnail, then
+  removed the temporary database rows and S3 objects.
 
 ## Photo Migration
 
@@ -88,4 +94,7 @@ the Lightsail static IP `35.160.199.53`, then restore HTTPS in
 - The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo archive has been synced and the skip-existing confirmation uploaded no additional objects.
 - Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
 - Production auth email delivery is enabled through SES.
+- Production app credentials have a narrow inline IAM policy allowing object
+  read/write/delete for `system/images/*` and `system/avatars/*` in the media
+  bucket so direct uploads and variant generation can use private S3.
 - A 1 GB swapfile was added to the Lightsail instance so Docker builds fit on the nano plan.

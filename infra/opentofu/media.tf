@@ -124,3 +124,26 @@ resource "aws_s3_bucket_policy" "media" {
     aws_s3_bucket_public_access_block.media
   ]
 }
+
+data "aws_iam_policy_document" "app_media_storage" {
+  statement {
+    sid    = "AllowAppMediaObjectAccess"
+    effect = "Allow"
+    actions = [
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:PutObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.media.arn}/system/avatars/*",
+      "${aws_s3_bucket.media.arn}/system/images/*"
+    ]
+  }
+}
+
+resource "aws_iam_user_policy" "app_media_storage" {
+  name   = "${var.project_name}-media-storage"
+  user   = var.app_iam_user_name
+  policy = data.aws_iam_policy_document.app_media_storage.json
+}

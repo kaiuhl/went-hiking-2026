@@ -99,7 +99,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Run the import against a fresh legacy database export on Lightsail.
 - [x] Run the Que worker in preview/production deploys so uploaded photo variants are generated.
 - [x] Add S3 browser-upload CORS for preview, production, and local development origins.
-- [ ] Production-smoke a real photo upload through S3, variant generation, and CloudFront rendering.
+- [x] Production-smoke a real photo upload through S3, variant generation, and CloudFront rendering.
 
 ## Current Preview Deployment
 
