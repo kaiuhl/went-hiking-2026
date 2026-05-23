@@ -9,7 +9,7 @@ services:
       - postgres
   worker:
     build: .
-    command: bundle exec ruby jobs/worker.rb
+    command: bundle exec que -w 2 jobs/worker.rb
     env_file: .env
     depends_on:
       - postgres
