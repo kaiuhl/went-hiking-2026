@@ -124,6 +124,8 @@ module WentHiking
     end
 
     def parse_file_size(value)
+      return value if value.is_a?(Integer)
+
       Integer(value, 10)
     rescue ArgumentError, TypeError
       nil
