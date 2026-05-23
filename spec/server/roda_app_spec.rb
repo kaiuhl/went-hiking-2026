@@ -99,6 +99,36 @@ RSpec.describe RodaApp do
     expect(WentHiking.db[:account_password_hashes].where(id: account[:id]).count).to eq(1)
     expect(File.exist?(File.join(ENV.fetch("LOCAL_UPLOAD_ROOT"), "system/avatars/#{account[:id]}/medium/signup-avatar.jpg"))).to be(true)
     expect(WentHiking::Email.deliveries.size).to eq(1)
+    expect(WentHiking::Email.deliveries.first.subject).to eq("Verify your Went Hiking account")
+    expect(WentHiking::Email.deliveries.first.html_body).to include("Verify account")
+  end
+
+  it "queues branded password reset emails" do
+    WentHiking::Email.clear_deliveries
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:account_password_hashes].insert(id: account_id, password_hash: BCrypt::Password.create("long-enough-password").to_s)
+
+    post "/reset-password-request", {"email" => "kai@example.com"}
+
+    expect(last_response.status).to eq(302)
+    expect(WentHiking::Email.deliveries.size).to eq(1)
+    expect(WentHiking::Email.deliveries.first.subject).to eq("Reset your Went Hiking password")
+    expect(WentHiking::Email.deliveries.first.text_body).to include("/reset-password")
+    expect(WentHiking::Email.deliveries.first.html_body).to include("Reset password")
+  end
+
+  it "queues branded unlock account emails" do
+    WentHiking::Email.clear_deliveries
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:account_lockouts].insert(id: account_id, key: "unlock-key", deadline: Time.now + 3600, email_last_sent: Time.now - 600)
+
+    post "/unlock-account-request", {"email" => "kai@example.com"}
+
+    expect(last_response.status).to eq(302)
+    expect(WentHiking::Email.deliveries.size).to eq(1)
+    expect(WentHiking::Email.deliveries.first.subject).to eq("Unlock your Went Hiking account")
+    expect(WentHiking::Email.deliveries.first.text_body).to include("/unlock-account")
+    expect(WentHiking::Email.deliveries.first.html_body).to include("Unlock account")
   end
 
   it "renders imported trip pages" do

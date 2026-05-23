@@ -69,6 +69,7 @@ class RodaApp < Roda
     verify_account_set_password? false
     verify_account_autologin? true
     reset_password_autologin? false
+    set_deadline_values? true
 
     new_account do |login|
       name = param_or_nil("name").to_s.strip
@@ -119,7 +120,7 @@ class RodaApp < Roda
     end
 
     create_email do |subject, body|
-      WentHiking::Email::Message.new(to: email_to, subject: "#{email_subject_prefix}#{subject}", body: body)
+      WentHiking::Email.render(to: email_to, subject: "#{email_subject_prefix}#{subject}", body: body)
     end
 
     send_email do |email|

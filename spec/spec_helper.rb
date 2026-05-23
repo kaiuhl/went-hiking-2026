@@ -3,6 +3,7 @@ ENV["RACK_ENV"] = "test"
 ENV["TEST_DATABASE_URL"] ||= "sqlite::memory:"
 ENV["SESSION_SECRET"] ||= "test-session-secret-test-session-secret-test-session-secret-test-session-secret"
 ENV["MEDIA_BASE_URL"] ||= "https://media.example.test"
+ENV["SES_FROM_EMAIL"] ||= "Went Hiking <hello@example.test>"
 ENV["UPLOAD_STORAGE"] ||= "local"
 ENV["LOCAL_UPLOAD_ROOT"] ||= File.expand_path("../tmp/test-uploads", __dir__)
 

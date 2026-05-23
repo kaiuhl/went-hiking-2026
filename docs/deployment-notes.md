@@ -70,27 +70,22 @@ aws s3 ls s3://wenthiking-media-2026/system/images/ --recursive --summarize
 
 ## SES Verification
 
-The `wenthiking.com` SES domain identity exists in `us-west-2`, but verification
-is pending because the DNS records are not present in Linode DNS. Add these
-CNAME records:
-
-| Name | Value |
-| --- | --- |
-| `ic3zzhzke4ojcfrolopdmueokmobnv7e._domainkey.wenthiking.com` | `ic3zzhzke4ojcfrolopdmueokmobnv7e.dkim.amazonses.com` |
-| `yj7ptxlpmpyjs7ktelotcwvjjpsrjjnj._domainkey.wenthiking.com` | `yj7ptxlpmpyjs7ktelotcwvjjpsrjjnj.dkim.amazonses.com` |
-| `il4cqmx2dgayngkadj3giodp3di5arno._domainkey.wenthiking.com` | `il4cqmx2dgayngkadj3giodp3di5arno.dkim.amazonses.com` |
+The `wenthiking.com` SES domain identity is verified in `us-west-2`, DKIM is
+successful, production access is granted, and production has
+`EMAIL_DELIVERY=ses`.
 
 ## DNS Cutover
 
 `wenthiking.com` and `www.wenthiking.com` still resolve to the old Linode IP
-`173.255.199.39`; nameservers are `ns1.linode.com` through `ns5.linode.com`.
-Point both hostnames at the Lightsail static IP `35.160.199.53`, then restore
-HTTPS in `infra/caddy/Caddyfile`.
+`173.255.199.39`; nameservers are now Cloudflare
+`karsyn.ns.cloudflare.com` and `ken.ns.cloudflare.com`. Point both hostnames at
+the Lightsail static IP `35.160.199.53`, then restore HTTPS in
+`infra/caddy/Caddyfile`.
 
 ## Current Caveats
 
 - The production database schema is migrated and the real legacy archive has been imported into Lightsail.
 - The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo archive has been synced and the skip-existing confirmation uploaded no additional objects.
 - Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
-- `EMAIL_DELIVERY=log` is set for the preview because SES sender/domain verification still needs to be completed.
+- Production auth email delivery is enabled through SES.
 - A 1 GB swapfile was added to the Lightsail instance so Docker builds fit on the nano plan.

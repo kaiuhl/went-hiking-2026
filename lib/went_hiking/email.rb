@@ -1,12 +1,22 @@
 # frozen_string_literal: true
 
 require "aws-sdk-sesv2"
+require "went_hiking/email_renderer"
 
 module WentHiking
   module Email
-    Message = Struct.new(:to, :subject, :body, keyword_init: true)
+    Message = Struct.new(:to, :subject, :text_body, :html_body, :cta_label, :cta_url, keyword_init: true) do
+      def body
+        text_body
+      end
+    end
 
     module_function
+
+    def render(to:, subject:, body:)
+      rendered = EmailRenderer.new.render(to: to, subject: subject, body: body)
+      Message.new(**rendered)
+    end
 
     def deliver(message)
       if WentHiking.test? || ENV["EMAIL_DELIVERY"] == "log"
@@ -20,7 +30,10 @@ module WentHiking
         content: {
           simple: {
             subject: {data: message.subject, charset: "UTF-8"},
-            body: {text: {data: message.body, charset: "UTF-8"}}
+            body: {
+              text: {data: message.text_body, charset: "UTF-8"},
+              html: {data: message.html_body, charset: "UTF-8"}
+            }
           }
         }
       )

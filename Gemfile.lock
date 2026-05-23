@@ -1,6 +1,8 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    addressable (2.9.0)
+      public_suffix (>= 2.0.2, < 8.0)
     ast (2.4.3)
     aws-eventstream (1.4.0)
     aws-partitions (1.1249.0)
@@ -28,9 +30,12 @@ GEM
     bcrypt (3.1.22)
     bigdecimal (4.1.2)
     crass (1.0.6)
+    css_parser (2.2.0)
+      addressable
     diff-lcs (1.6.2)
     dotenv (3.2.0)
     exifr (1.5.1)
+    htmlentities (4.4.2)
     jmespath (1.6.2)
     json (2.19.5)
     language_server-protocol (3.17.0.5)
@@ -66,7 +71,12 @@ GEM
     pg (1.6.3-x86_64-darwin)
     pg (1.6.3-x86_64-linux)
     pg (1.6.3-x86_64-linux-musl)
+    premailer (1.29.0)
+      addressable
+      css_parser (>= 1.19.0)
+      htmlentities (>= 4.0.0)
     prism (1.9.0)
+    public_suffix (7.0.5)
     puma (6.6.1)
       nio4r (~> 2.0)
     que (2.4.1)
@@ -165,6 +175,7 @@ DEPENDENCIES
   exifr (~> 1.4)
   mini_magick (~> 5.0)
   pg (~> 1.5)
+  premailer (~> 1.29)
   puma (~> 6.6)
   que (~> 2.4)
   rack-test (~> 2.1)
@@ -180,6 +191,7 @@ DEPENDENCIES
   tilt (~> 2.6)
 
 CHECKSUMS
+  addressable (2.9.0) sha256=7fdf6ac3660f7f4e867a0838be3f6cf722ace541dd97767fa42bc6cfa980c7af
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   aws-eventstream (1.4.0) sha256=116bf85c436200d1060811e6f5d2d40c88f65448f2125bc77ffce5121e6e183b
   aws-partitions (1.1249.0) sha256=f0bed070aba353e6ffe439953d6c354b3f51d16770386d2b198e71d34612f2e9
@@ -192,9 +204,11 @@ CHECKSUMS
   bcrypt (3.1.22) sha256=1f0072e88c2d705d94aff7f2c5cb02eb3f1ec4b8368671e19112527489f29032
   bigdecimal (4.1.2) sha256=53d217666027eab4280346fba98e7d5b66baaae1b9c3c1c0ffe89d48188a3fbd
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
+  css_parser (2.2.0) sha256=23d1b247d7bc78cb2f2fe54629fb755e68d3004f1d1bd5c66d5096d42bff6325
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962
   dotenv (3.2.0) sha256=e375b83121ea7ca4ce20f214740076129ab8514cd81378161f11c03853fe619d
   exifr (1.5.1) sha256=ad87a5dbc92946fbf1d8ccd178d557d95d9168e8b3c5c5f381ea2bffcc312521
+  htmlentities (4.4.2) sha256=bbafbdf69f2eca9262be4efef7e43e6a1de54c95eb600f26984f71d2fe96c5c3
   jmespath (1.6.2) sha256=238d774a58723d6c090494c8879b5e9918c19485f7e840f2c1c7532cf84ebcb1
   json (2.19.5) sha256=218a18553e4801d579ca7e0f5bc72bafd776d7397238a1fb4e74db5b0a812c59
   language_server-protocol (3.17.0.5) sha256=fd1e39a51a28bf3eec959379985a72e296e9f9acfce46f6a79d31ca8760803cc
@@ -219,7 +233,9 @@ CHECKSUMS
   pg (1.6.3-x86_64-darwin) sha256=ee2e04a17c0627225054ffeb43e31a95be9d7e93abda2737ea3ce4a62f2729d6
   pg (1.6.3-x86_64-linux) sha256=5d9e188c8f7a0295d162b7b88a768d8452a899977d44f3274d1946d67920ae8d
   pg (1.6.3-x86_64-linux-musl) sha256=9c9c90d98c72f78eb04c0f55e9618fe55d1512128e411035fe229ff427864009
+  premailer (1.29.0) sha256=015f30c520701f3d47fd898886a3eaf4e5171efcc5fd239b872efd1ba61d3da0
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
+  public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
   puma (6.6.1) sha256=b9b56e4a4ea75d1bfa6d9e1972ee2c9f43d0883f011826d914e8e37b3694ea1e
   que (2.4.1) sha256=a7ba7679d13ef499da5de30a147f910e9e6d9d60cad15f8691a0b0b5bc758a7b
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f

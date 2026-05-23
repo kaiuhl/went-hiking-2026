@@ -87,7 +87,7 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - [x] Record public IP and deployment notes.
 - [ ] Point DNS at the new Lightsail static IP.
 - [ ] Re-enable HTTPS in Caddy after DNS cutover.
-- [ ] Verify SES sender/domain and switch preview email delivery from log mode to SES.
+- [x] Verify SES sender/domain and switch preview email delivery from log mode to SES.
 - [x] Add and sample-test a streaming legacy `public/system` to S3 sync helper.
 - [x] Start full legacy `system/images` photo sync to private S3.
 - [x] Finish full legacy `system/images` photo sync to private S3.
@@ -104,4 +104,4 @@ This is the living implementation checklist for the Ruby 4 rewrite.
 - S3 media bucket: `wenthiking-media-2026`
 - CloudFront media domain: `https://dec9ewwuufbq2.cloudfront.net`
 - Runtime: Docker Compose on Ubuntu 24.04 with `web`, `caddy`, and `postgres`.
-- Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 with the trip-photo archive synced, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails are logging instead of sending through SES.
+- Preview caveats: legacy data is imported, `/system/*` redirects to CloudFront-backed private S3 with the trip-photo archive synced, HTTPS is intentionally disabled until DNS points at the new instance, and auth emails send through SES.
