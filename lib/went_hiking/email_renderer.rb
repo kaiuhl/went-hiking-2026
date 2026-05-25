@@ -70,6 +70,38 @@ module WentHiking
       }
     end
 
+    def render_template(to:, subject:, headline:, intro:, cta_label: nil, cta_url: nil, outro: nil, unsubscribe_url: nil)
+      text_body = template_text(
+        {
+          headline: headline,
+          intro: intro,
+          cta_label: cta_label,
+          outro: outro
+        },
+        cta_url,
+        unsubscribe_url: unsubscribe_url
+      )
+
+      html_body = template_html(
+        subject: subject,
+        headline: headline,
+        intro: intro,
+        outro: outro,
+        cta_label: cta_label,
+        cta_url: cta_url,
+        unsubscribe_url: unsubscribe_url
+      )
+
+      {
+        to: to,
+        subject: subject,
+        text_body: text_body,
+        html_body: html_body,
+        cta_label: cta_label,
+        cta_url: cta_url
+      }
+    end
+
     private
 
     attr_reader :public_base_url
@@ -78,7 +110,7 @@ module WentHiking
       body.to_s[URL_PATTERN]&.sub(/[.)\]]+\z/, "")
     end
 
-    def template_text(template, cta_url)
+    def template_text(template, cta_url, unsubscribe_url: nil)
       lines = [
         template.fetch(:headline),
         "",
@@ -96,12 +128,10 @@ module WentHiking
         ])
       end
 
-      lines.concat([
-        template.fetch(:outro),
-        "",
-        "Happy trails,",
-        "Went Hiking"
-      ])
+      outro = template[:outro]
+      lines.concat([outro, ""]) if outro && !outro.to_s.empty?
+      lines.concat(["Unsubscribe: #{unsubscribe_url}", ""]) if unsubscribe_url
+      lines.concat(["Happy trails,", "Went Hiking"])
 
       lines.join("\n")
     end
@@ -110,7 +140,7 @@ module WentHiking
       body.to_s.gsub(/\r\n?/, "\n").lines.map(&:strip).reject(&:empty?).join("\n\n")
     end
 
-    def template_html(subject:, headline:, intro:, outro:, cta_label:, cta_url:)
+    def template_html(subject:, headline:, intro:, outro:, cta_label:, cta_url:, unsubscribe_url: nil)
       html = <<~HTML
         <!doctype html>
         <html>
@@ -158,6 +188,7 @@ module WentHiking
                               #{cta_button(cta_label, cta_url)}
                               #{url_fallback(cta_url)}
                               #{paragraphs(outro)}
+                              #{unsubscribe_block(unsubscribe_url)}
                             </td>
                           </tr>
                           <tr>
@@ -208,6 +239,14 @@ module WentHiking
         <p class="url-help">If the button does not work, copy and paste this link:<br>
           <a href="#{h(url)}">#{h(url)}</a>
         </p>
+      HTML
+    end
+
+    def unsubscribe_block(url)
+      return "" unless url
+
+      <<~HTML
+        <p class="url-help">You can <a href="#{h(url)}">unsubscribe from these hike emails</a> any time.</p>
       HTML
     end
 

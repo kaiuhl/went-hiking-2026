@@ -19,6 +19,7 @@ gem "rodauth", "~> 2.43"
 gem "sanitize", "~> 7.0"
 gem "sequel", "~> 5.103"
 gem "tilt", "~> 2.6"
+gem "tzinfo", "~> 2.0"
 
 group :development, :test do
   gem "rack-test", "~> 2.1"

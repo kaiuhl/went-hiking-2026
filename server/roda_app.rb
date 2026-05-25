@@ -4,6 +4,7 @@ require_relative "../config/boot"
 require_relative "view_helpers"
 require_relative "routes/accounts"
 require_relative "routes/api"
+require_relative "routes/follows"
 require_relative "routes/hikes"
 require_relative "routes/media"
 require_relative "routes/pages"
@@ -20,6 +21,7 @@ class RodaApp < Roda
   include ViewHelpers
   include AccountRoutes
   include ApiRoutes
+  include FollowRoutes
   include HikeRoutes
   include MediaRoutes
   include PageRoutes
@@ -139,6 +141,7 @@ class RodaApp < Roda
     route_media(r)
     route_api(r)
     route_account(r)
+    route_follows(r)
     route_hikes(r)
     route_people(r)
     route_pages(r)

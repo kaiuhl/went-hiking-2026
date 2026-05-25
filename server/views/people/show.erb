@@ -48,6 +48,28 @@
         <span>in <%= h(@year) %></span>
       <% end %>
     </div>
+    <form class="profile-follow-form" action="<%= h(@account.public_path) %>/follow" method="post">
+      <% if @follow_notice %>
+        <p class="profile-follow-notice"><%= h(@follow_notice) %></p>
+      <% end %>
+      <% if @follow_errors && !@follow_errors.empty? %>
+        <div class="profile-follow-errors" role="alert">
+          <% @follow_errors.each do |error| %>
+            <p><%= h(error) %></p>
+          <% end %>
+        </div>
+      <% end %>
+      <label for="follow-email">Follow <%= h(first_name(@account)) %>'s hikes</label>
+      <div class="profile-follow-controls">
+        <input id="follow-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="<%= h(@follow_email) %>" required>
+        <button type="submit">Follow</button>
+      </div>
+      <p class="inline-hints">Confirmation required. Emails arrive the morning after a new hike is posted.</p>
+      <div class="honey-field" aria-hidden="true">
+        <label for="follow-company">Company</label>
+        <input id="follow-company" name="company" tabindex="-1" autocomplete="off">
+      </div>
+    </form>
   </div>
 </section>
 

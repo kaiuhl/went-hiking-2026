@@ -18,6 +18,20 @@ module WentHiking
       Message.new(**rendered)
     end
 
+    def render_template(to:, subject:, headline:, intro:, cta_label: nil, cta_url: nil, outro: nil, unsubscribe_url: nil)
+      rendered = EmailRenderer.new.render_template(
+        to: to,
+        subject: subject,
+        headline: headline,
+        intro: intro,
+        cta_label: cta_label,
+        cta_url: cta_url,
+        outro: outro,
+        unsubscribe_url: unsubscribe_url
+      )
+      Message.new(**rendered)
+    end
+
     def deliver(message)
       if WentHiking.test? || ENV["EMAIL_DELIVERY"] == "log"
         deliveries << message

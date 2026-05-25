@@ -907,6 +907,52 @@ h3 {
   margin-bottom: 0;
 }
 
+.profile-follow-form {
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+  margin-top: 20px;
+}
+
+.profile-follow-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.profile-follow-controls input {
+  min-width: 0;
+}
+
+.profile-follow-notice,
+.profile-follow-errors p {
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+.profile-follow-notice {
+  color: #2f6b44;
+}
+
+.profile-follow-errors p {
+  color: #8a2b24;
+  font-weight: 700;
+}
+
+.inline-hints {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.honey-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .profile-stats:has(> .profile-year-form:last-child) > *:nth-last-child(2)::after {
   content: none;
 }
@@ -1755,6 +1801,14 @@ form.rodauth {
   .profile-stats {
     gap: 4px 10px;
     font-size: 12px;
+  }
+
+  .profile-follow-form {
+    max-width: none;
+  }
+
+  .profile-follow-controls {
+    flex-direction: column;
   }
 
   .profile-year-form {

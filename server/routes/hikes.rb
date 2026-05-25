@@ -2,6 +2,7 @@
 
 require "date"
 require "went_hiking/direct_photo_upload"
+require "went_hiking/hike_notification_scheduler"
 require "went_hiking/photo_upload"
 require "went_hiking/slug"
 
@@ -29,6 +30,7 @@ module HikeRoutes
 
           if errors.empty?
             trip = WentHiking::Models::Trip.create(attributes.merge(account_id: account.id))
+            WentHiking::HikeNotificationScheduler.schedule_trip(trip)
             redirect trip.public_path
           else
             response.status = 422
