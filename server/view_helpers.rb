@@ -2,13 +2,12 @@
 
 require "cgi"
 require "json"
-require "set"
 require "went_hiking/legacy_urls"
 require "went_hiking/markdown"
 require "went_hiking/storage"
 
 module ViewHelpers
-  PHOTO_HANDLE_PATTERN = /\{\{\s*photo:\s*(\d+)\s*\}\}/.freeze
+  PHOTO_HANDLE_PATTERN = /\{\{\s*photo:\s*(\d+)\s*\}\}/
   TripReportRender = Struct.new(:html, :inline_photo_ids, keyword_init: true)
 
   def h(value)
@@ -71,7 +70,7 @@ module ViewHelpers
     count = value.to_i
     return nil unless count.positive?
 
-    "#{format_number(count)} #{count == 1 ? "night" : "nights"}"
+    "#{format_number(count)} #{(count == 1) ? "night" : "nights"}"
   end
 
   def format_number(value, precision: nil)
@@ -135,7 +134,7 @@ module ViewHelpers
     report = body.nil? ? trip.report_markdown.to_s : body.to_s
     photos_by_id = photos.each_with_object({}) { |photo, memo| memo[photo.id] = photo }
     photo_indexes = photos.each_with_index.each_with_object({}) { |(photo, index), memo| memo[photo.id] = index }
-    inline_photo_ids = Set.new
+    inline_photo_ids = []
     html = +""
     cursor = 0
 
@@ -214,7 +213,7 @@ module ViewHelpers
     hearted = trip_hearted_by_current_account?(trip)
     label = hearted ? "Remove heart from #{trip.name}" : "Heart #{trip.name}"
     button_class = ["heart-button", ("heart-button-compact" if compact), ("is-hearted" if hearted)].compact.join(" ")
-    count_label = "#{format_number(heart_count)} #{heart_count == 1 ? "heart" : "hearts"}"
+    count_label = "#{format_number(heart_count)} #{(heart_count == 1) ? "heart" : "hearts"}"
     content = heart_icon_svg(filled: hearted) + %(<span class="heart-count">#{h(format_number(heart_count))}</span>)
 
     if rodauth.logged_in?
@@ -237,7 +236,7 @@ module ViewHelpers
 
   def heart_summary(hearts)
     count = hearts.size
-    "#{format_number(count)} #{count == 1 ? "person has" : "people have"} hearted this trip."
+    "#{format_number(count)} #{(count == 1) ? "person has" : "people have"} hearted this trip."
   end
 
   def avatar_url(account, style = "micro")
