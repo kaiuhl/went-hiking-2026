@@ -9,6 +9,8 @@ module WentHiking
     module_function
 
     def schedule_trip(trip, now: Time.now)
+      return nil if trip.respond_to?(:draft?) && trip.draft?
+
       subscriptions = Models::HikeFollowSubscription.active.where(followed_account_id: trip.account_id).all
       return nil if subscriptions.empty?
 

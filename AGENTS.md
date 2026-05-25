@@ -12,3 +12,8 @@
 - `bin/dev-reload` watches Ruby/config/view files under `config`, `db/migrations`, `jobs`, `lib`, and `server`, plus top-level files such as `config.ru`, `Gemfile`, and `.env`.
 - Use `docker compose logs -f web` to watch reload activity. A healthy reload log includes `Reloading Puma after changes to ...` followed by `* Restarting...`.
 - Production/deploy commands should continue using explicit Compose files such as `docker compose -f compose.yaml -f compose.production.yaml ...`; that path does not include the local development override.
+
+## Product/UX Direction
+
+- Favor polished, simple UX. Secondary actions should be unobtrusive but obvious, usually as small links or compact controls near the relevant context.
+- Avoid large persistent forms in primary page headers. For secondary flows such as subscribing to updates, prefer a compact trigger that opens a focused modal or similarly contained interaction.

@@ -2,11 +2,15 @@
 
 require "cgi"
 require "json"
+require "set"
 require "went_hiking/legacy_urls"
 require "went_hiking/markdown"
 require "went_hiking/storage"
 
 module ViewHelpers
+  PHOTO_HANDLE_PATTERN = /\{\{\s*photo:\s*(\d+)\s*\}\}/.freeze
+  TripReportRender = Struct.new(:html, :inline_photo_ids, keyword_init: true)
+
   def h(value)
     CGI.escape_html(value.to_s)
   end
@@ -109,6 +113,100 @@ module ViewHelpers
         metadata: photo_metadata_label(photo)
       }
     end
+  end
+
+  def photo_handle(photo)
+    "{{ photo:#{photo.id} }}"
+  end
+
+  def photo_editor_item(photo)
+    {
+      id: photo.id,
+      handle: photo_handle(photo),
+      caption: photo.caption.to_s,
+      thumb_url: image_url(photo, "large"),
+      full_url: image_url(photo, "original"),
+      caption_url: "#{photo.trip.public_path}/photos/#{photo.id}/caption",
+      metadata: photo_metadata_label(photo)
+    }
+  end
+
+  def trip_report_render(trip, photos, body: nil)
+    report = body.nil? ? trip.report_markdown.to_s : body.to_s
+    photos_by_id = photos.each_with_object({}) { |photo, memo| memo[photo.id] = photo }
+    photo_indexes = photos.each_with_index.each_with_object({}) { |(photo, index), memo| memo[photo.id] = index }
+    inline_photo_ids = Set.new
+    html = +""
+    cursor = 0
+
+    report.to_enum(:scan, PHOTO_HANDLE_PATTERN).each do
+      match = Regexp.last_match
+      html << markdown(report[cursor...match.begin(0)])
+
+      photo_id = match[1].to_i
+      photo = photos_by_id[photo_id]
+      if photo && !inline_photo_ids.include?(photo_id)
+        inline_photo_ids << photo_id
+        html << trip_inline_photo_figure(photo, index: photo_indexes[photo_id])
+      else
+        html << h(match[0])
+      end
+
+      cursor = match.end(0)
+    end
+
+    html << markdown(report[cursor..])
+    TripReportRender.new(html: html, inline_photo_ids: inline_photo_ids)
+  end
+
+  def trip_inline_photo_figure(photo, index: nil)
+    caption = photo.caption.to_s
+    metadata = photo_metadata_label(photo)
+    figcaption = if caption.empty? && metadata.empty?
+      ""
+    else
+      <<~HTML
+        <figcaption>
+          #{%(<p>#{h(caption)}</p>) unless caption.empty?}
+          #{%(<p class="meta">#{h(metadata)}</p>) unless metadata.empty?}
+        </figcaption>
+      HTML
+    end
+    lightbox_attrs = index.nil? ? "" : %( data-photo-lightbox-trigger data-photo-index="#{h(index)}")
+
+    <<~HTML
+      <figure class="trip-inline-photo">
+        <a href="#{h(image_url(photo, "original"))}"#{lightbox_attrs}>
+          <img src="#{h(image_url(photo, "large"))}" alt="#{h(caption)}" loading="lazy">
+        </a>
+        #{figcaption}
+      </figure>
+    HTML
+  end
+
+  def trip_photo_gallery_html(photos, all_photos:)
+    return "" if photos.empty?
+
+    photo_indexes = all_photos.each_with_index.each_with_object({}) { |(photo, index), memo| memo[photo.id] = index }
+    items = photos.map do |photo|
+      index = photo_indexes[photo.id] || 0
+      <<~HTML
+        <a href="#{h(photo.public_path)}" data-photo-lightbox-trigger data-photo-index="#{h(index)}">
+          <img src="#{h(image_url(photo, "large"))}" alt="#{h(photo.caption)}" loading="lazy">
+        </a>
+      HTML
+    end.join
+
+    <<~HTML
+      <section class="trip-photo-gallery" aria-label="Trip photos">
+        <div class="trip-photo-heading">
+          <h2>Photos</h2>
+        </div>
+        <div class="trip-photo-grid">
+          #{items}
+        </div>
+      </section>
+    HTML
   end
 
   def heart_button(trip, compact: false)

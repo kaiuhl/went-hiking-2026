@@ -587,7 +587,7 @@ h3 {
 }
 
 .trip-post-layout-single {
-  grid-template-columns: minmax(0, 760px);
+  grid-template-columns: minmax(0, 900px);
   grid-template-areas: "main";
 }
 
@@ -638,6 +638,39 @@ h3 {
   aspect-ratio: 1;
   object-fit: cover;
   background: var(--soft);
+}
+
+.trip-photo-gallery {
+  max-width: 900px;
+  margin-bottom: 42px;
+}
+
+.trip-photo-gallery .trip-photo-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.trip-inline-photo {
+  width: min(900px, 100%);
+  margin: 30px 0;
+}
+
+.trip-inline-photo img {
+  width: 100%;
+  max-height: 760px;
+  object-fit: contain;
+  background: #050505;
+}
+
+.trip-inline-photo figcaption {
+  max-width: 720px;
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.trip-inline-photo figcaption p {
+  margin-bottom: 2px;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .map-panel {
@@ -822,6 +855,10 @@ h3 {
   margin-bottom: 42px;
 }
 
+.trip-body > :not(.trip-inline-photo) {
+  max-width: 720px;
+}
+
 .trip-body p,
 .trip-body li,
 .comment p {
@@ -907,16 +944,87 @@ h3 {
   margin-bottom: 0;
 }
 
+.profile-stats > *:has(+ .profile-year-form)::after,
+.profile-stats > *:has(+ .profile-year-label)::after,
+.profile-stats:has(> .profile-year-form:last-child) > *:nth-last-child(2)::after {
+  content: none;
+}
+
+.profile-subscribe-link {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.profile-follow-notice {
+  max-width: 520px;
+  margin: 12px 0 0;
+  color: #2f6b44;
+  font-size: 14px;
+}
+
+.profile-follow-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 24px;
+}
+
+.profile-follow-modal.is-open,
+.profile-follow-modal:target {
+  display: grid;
+}
+
+body.profile-follow-modal-open {
+  overflow: hidden;
+}
+
+.profile-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.42);
+}
+
+.profile-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 28px;
+  box-shadow: 0 24px 70px rgba(17, 17, 17, 0.26);
+}
+
+.profile-modal-panel h2 {
+  margin-bottom: 18px;
+  font-size: 28px;
+}
+
+.profile-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  font-size: 26px;
+  line-height: 1;
+  text-decoration: none;
+}
+
 .profile-follow-form {
   display: grid;
-  gap: 8px;
-  max-width: 520px;
-  margin-top: 20px;
+  gap: 10px;
 }
 
 .profile-follow-controls {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -924,14 +1032,9 @@ h3 {
   min-width: 0;
 }
 
-.profile-follow-notice,
 .profile-follow-errors p {
   margin-bottom: 0;
   font-size: 14px;
-}
-
-.profile-follow-notice {
-  color: #2f6b44;
 }
 
 .profile-follow-errors p {
@@ -951,10 +1054,6 @@ h3 {
   width: 1px;
   height: 1px;
   overflow: hidden;
-}
-
-.profile-stats:has(> .profile-year-form:last-child) > *:nth-last-child(2)::after {
-  content: none;
 }
 
 .profile-year-form {
@@ -1600,10 +1699,16 @@ form.rodauth {
   font-size: 14px;
 }
 
+.trip-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 32px;
+  align-items: start;
+}
+
 .markdown-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
-  gap: 32px;
+  gap: 24px;
 }
 
 .markdown-preview {
@@ -1631,6 +1736,120 @@ form.rodauth {
   background: var(--paper);
   padding: 18px;
   overflow-wrap: anywhere;
+}
+
+.trip-photo-workbench {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.trip-photo-workbench-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.trip-photo-workbench-heading h2,
+.trip-photo-workbench-heading p {
+  margin-bottom: 0;
+}
+
+.trip-photo-workbench-heading a {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.trip-photo-dropzone {
+  display: grid;
+  place-items: center;
+  min-height: 116px;
+  border: 1px dashed var(--muted);
+  background: var(--paper);
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.trip-photo-dropzone.is-dragging {
+  border-color: var(--ink);
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.trip-photo-dropzone input {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.trip-photo-workbench-list {
+  display: grid;
+  gap: 12px;
+}
+
+.trip-photo-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.trip-photo-card img {
+  width: 96px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--soft);
+}
+
+.trip-photo-card-body {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.trip-photo-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trip-photo-card code {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  padding: 4px 6px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-photo-card button {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  font-size: 13px;
+}
+
+.trip-photo-card textarea {
+  min-height: 62px;
+  font-size: 14px;
+}
+
+.trip-photo-card-uploading {
+  opacity: 0.72;
+}
+
+.trip-photo-card-error {
+  border-top-color: #b8403a;
 }
 
 .honey-field {
@@ -1803,12 +2022,8 @@ form.rodauth {
     font-size: 12px;
   }
 
-  .profile-follow-form {
-    max-width: none;
-  }
-
   .profile-follow-controls {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .profile-year-form {
@@ -1890,10 +2105,15 @@ form.rodauth {
   .photo-strip,
   .form-grid,
   .coordinate-grid,
+  .trip-editor-layout,
   .markdown-editor,
   .leaderboard-grid,
   .member-list {
     grid-template-columns: 1fr;
+  }
+
+  .trip-photo-workbench {
+    position: static;
   }
 
   .trip-location-map {

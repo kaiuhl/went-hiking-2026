@@ -1,4 +1,4 @@
-<% profile_map_trips = @account.trips_dataset.exclude(lat: nil).exclude(lng: nil).reverse_order(:hiked_at).all %>
+<% profile_map_trips = @account.trips_dataset.published.exclude(lat: nil).exclude(lng: nil).reverse_order(:hiked_at).all %>
 <% profile_map_points = profile_map_trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} } %>
 <% trip_count = @trips.size %>
 <% trip_label = trip_count == 1 ? "trip" : "trips" %>
@@ -6,6 +6,7 @@
 <% total_nights = @trips.sum { |trip| trip.nights.to_i } %>
 <% night_label = total_nights == 1 ? "night out" : "nights out" %>
 <% profile_years = @trip_years || ([@year] + @other_years).uniq.sort.reverse %>
+<% follow_modal_open = @follow_errors && !@follow_errors.empty? %>
 
 <% unless profile_map_points.empty? %>
   <section class="map-band profile-map-band" aria-label="<%= h(@account.name) %> trip map">
@@ -45,13 +46,23 @@
           </select>
         </form>
       <% else %>
-        <span>in <%= h(@year) %></span>
+        <span class="profile-year-label">in <%= h(@year) %></span>
       <% end %>
+      <span><a class="profile-subscribe-link" href="#profile-follow-modal" data-profile-modal-open="profile-follow-modal">Subscribe to updates</a></span>
     </div>
+    <% if @follow_notice %>
+      <p class="profile-follow-notice"><%= h(@follow_notice) %></p>
+    <% end %>
+  </div>
+</section>
+
+<div id="profile-follow-modal" class="profile-follow-modal<%= " is-open" if follow_modal_open %>" role="dialog" aria-modal="true" aria-labelledby="profile-follow-title" data-profile-follow-modal>
+  <a class="profile-modal-backdrop" href="#" aria-label="Close subscribe form" data-profile-modal-close></a>
+  <section class="profile-modal-panel" tabindex="-1">
+    <a class="profile-modal-close" href="#" aria-label="Close subscribe form" data-profile-modal-close>&times;</a>
+    <p class="kicker">Email updates</p>
+    <h2 id="profile-follow-title">Subscribe to <%= h(first_name(@account)) %>'s hikes</h2>
     <form class="profile-follow-form" action="<%= h(@account.public_path) %>/follow" method="post">
-      <% if @follow_notice %>
-        <p class="profile-follow-notice"><%= h(@follow_notice) %></p>
-      <% end %>
       <% if @follow_errors && !@follow_errors.empty? %>
         <div class="profile-follow-errors" role="alert">
           <% @follow_errors.each do |error| %>
@@ -59,19 +70,19 @@
           <% end %>
         </div>
       <% end %>
-      <label for="follow-email">Follow <%= h(first_name(@account)) %>'s hikes</label>
+      <label for="follow-email">Email address</label>
       <div class="profile-follow-controls">
         <input id="follow-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="<%= h(@follow_email) %>" required>
-        <button type="submit">Follow</button>
+        <button type="submit">Subscribe</button>
       </div>
-      <p class="inline-hints">Confirmation required. Emails arrive the morning after a new hike is posted.</p>
+      <p class="inline-hints">Morning-after emails. Confirmation required.</p>
       <div class="honey-field" aria-hidden="true">
         <label for="follow-company">Company</label>
         <input id="follow-company" name="company" tabindex="-1" autocomplete="off">
       </div>
     </form>
-  </div>
-</section>
+  </section>
+</div>
 
 <section class="section profile-trips-section">
   <% if @trips.empty? %>

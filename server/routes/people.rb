@@ -40,7 +40,7 @@ module PeopleRoutes
     @trip_years = trip_years(@account)
     requested_year = request.params["year"]&.to_i
     @year = @trip_years.include?(requested_year) ? requested_year : latest_trip_year(@account)
-    @trips = @account.trips_dataset.where(Sequel.extract(:year, :hiked_at) => @year).reverse_order(:hiked_at).all
+    @trips = @account.trips_dataset.published.where(Sequel.extract(:year, :hiked_at) => @year).reverse_order(:hiked_at).all
     @other_years = @trip_years - [@year]
     @title = @account.name
   end
@@ -53,9 +53,9 @@ module PeopleRoutes
   end
 
   def trip_years(account)
-    account.trips_dataset.select_map { Sequel.extract(:year, :hiked_at) }.compact.map(&:to_i).uniq.sort.reverse
+    account.trips_dataset.published.select_map { Sequel.extract(:year, :hiked_at) }.compact.map(&:to_i).uniq.sort.reverse
   rescue Sequel::DatabaseError
-    account.trips.map { |trip| trip.hiked_at&.year }.compact.uniq.sort.reverse
+    account.trips.select(&:published?).map { |trip| trip.hiked_at&.year }.compact.uniq.sort.reverse
   end
 
   def latest_trip_year(account)

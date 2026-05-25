@@ -1,4 +1,6 @@
 <% trip_metrics = [number_label(@trip.mileage, "miles"), number_label(@trip.elevation, "feet gained"), night_count_label(@trip.nights)].compact %>
+<% report_render = trip_report_render(@trip, @photos) %>
+<% remaining_photos = @photos.reject { |photo| report_render.inline_photo_ids.include?(photo.id) } %>
 
 <% if @trip.lat && @trip.lng %>
   <section class="map-band trip-map-band" aria-label="<%= h(@trip.name) %> map">
@@ -30,29 +32,17 @@
     <% end %>
   </header>
 
-  <div class="trip-post-layout <%= @photos.empty? ? "trip-post-layout-single" : "" %>">
-    <% unless @photos.empty? %>
-      <aside class="trip-photo-sidebar" aria-label="Trip photos">
-        <div class="trip-photo-heading">
-          <h2>Photos</h2>
-          <a href="<%= h(@trip.public_path) %>/photos">View all <%= h(@photos.size) %></a>
-        </div>
-        <div class="trip-photo-grid" data-photo-lightbox-gallery data-photo-lightbox-items="<%= h(json(photo_lightbox_items(@photos))) %>">
-          <% @photos.first(12).each_with_index do |photo, index| %>
-            <a href="<%= h(photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(index) %>"><img src="<%= h(image_url(photo, "large")) %>" alt="<%= h(photo.caption) %>"></a>
-          <% end %>
-        </div>
-      </aside>
-    <% end %>
-
-    <div class="trip-post-main">
+  <div class="trip-post-layout trip-post-layout-single">
+    <div class="trip-post-main" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(@photos)))}") unless @photos.empty? %>>
       <section class="trip-body">
         <% if @trip.report_markdown.to_s.empty? %>
           <p class="empty">No story yet for this hike. The map and photos still have plenty to say.</p>
         <% else %>
-          <%= markdown(@trip.report_markdown) %>
+          <%= report_render.html %>
         <% end %>
       </section>
+
+      <%= trip_photo_gallery_html(remaining_photos, all_photos: @photos) %>
 
       <% unless @comments.empty? && @hearts.empty? %>
         <section class="legacy-social">

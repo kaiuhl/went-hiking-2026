@@ -25,13 +25,16 @@ RSpec.describe "follow routes" do
     expect(last_response.status).to eq(302)
   end
 
-  it "renders a profile follow form" do
+  it "renders a compact profile subscribe trigger and modal form" do
     account = create_account
 
     get account.public_path
 
     expect(last_response).to be_ok
-    expect(last_response.body).to include("Follow Kai")
+    expect(last_response.body).to include("Subscribe to updates")
+    expect(last_response.body).to include('data-profile-modal-open="profile-follow-modal"')
+    expect(last_response.body).to include('role="dialog"')
+    expect(last_response.body).to include("Subscribe to Kai's hikes")
     expect(last_response.body).to include(%(action="#{account.public_path}/follow"))
     expect(last_response.body).to include("Confirmation required")
   end
@@ -58,6 +61,7 @@ RSpec.describe "follow routes" do
 
     expect(last_response.status).to eq(422)
     expect(last_response.body).to include("Enter a valid email address.")
+    expect(last_response.body).to include('class="profile-follow-modal is-open"')
   end
 
   it "confirms pending follows" do

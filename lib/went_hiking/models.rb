@@ -33,7 +33,18 @@ module WentHiking
       one_to_many :hearts
       one_to_many :hike_follow_notifications
 
+      dataset_module do
+        def published
+          where(status: "published")
+        end
+
+        def drafts
+          where(status: "draft")
+        end
+      end
+
       def before_validation
+        self.status ||= "published"
         self.slug ||= Slug.generate(name)
         super
       end
@@ -44,6 +55,14 @@ module WentHiking
 
       def backpacking?
         nights.to_i.positive?
+      end
+
+      def draft?
+        status == "draft"
+      end
+
+      def published?
+        status == "published"
       end
     end
 

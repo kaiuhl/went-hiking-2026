@@ -172,6 +172,81 @@
     });
   };
 
+  const buildProfileFollowModal = (modal) => {
+    const openers = document.querySelectorAll(`[data-profile-modal-open="${modal.id}"]`);
+    const closers = modal.querySelectorAll("[data-profile-modal-close]");
+    const panel = modal.querySelector(".profile-modal-panel");
+    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])";
+    let previousFocus = null;
+
+    const open = (trigger = null) => {
+      previousFocus = trigger || document.activeElement;
+      modal.classList.add("is-open");
+      document.body.classList.add("profile-follow-modal-open");
+      const emailInput = modal.querySelector("input[type='email']");
+      afterLayout(() => (emailInput || panel).focus());
+    };
+
+    const close = () => {
+      modal.classList.remove("is-open");
+      document.body.classList.remove("profile-follow-modal-open");
+
+      if (window.location.hash === `#${modal.id}` && window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      }
+
+      if (previousFocus && typeof previousFocus.focus === "function") {
+        previousFocus.focus();
+      }
+    };
+
+    const trapFocus = (event) => {
+      const focusable = Array.from(modal.querySelectorAll(focusableSelector))
+        .filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    openers.forEach((opener) => {
+      opener.addEventListener("click", (event) => {
+        event.preventDefault();
+        open(opener);
+      });
+    });
+
+    closers.forEach((closer) => {
+      closer.addEventListener("click", (event) => {
+        event.preventDefault();
+        close();
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (!modal.classList.contains("is-open")) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+      } else if (event.key === "Tab") {
+        trapFocus(event);
+      }
+    });
+
+    if (modal.classList.contains("is-open") || window.location.hash === `#${modal.id}`) {
+      open();
+    }
+  };
+
   const buildMarkdownEditor = (element) => {
     const input = element.querySelector("[data-markdown-input]");
     const preview = element.querySelector("[data-markdown-preview]");
@@ -181,8 +256,10 @@
 
     const render = () => {
       const body = input.value;
+      const payload = new URLSearchParams({body});
+      if (element.dataset.tripId) payload.set("trip_id", element.dataset.tripId);
 
-      if (!body.trim()) {
+      if (!body.trim() && !element.dataset.tripId) {
         preview.innerHTML = '<p class="empty">Start writing to preview the trip report.</p>';
         status.textContent = "Markdown";
         return;
@@ -195,7 +272,7 @@
       fetch("/api/markdown-preview", {
         method: "POST",
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: new URLSearchParams({body}),
+        body: payload,
         signal: controller.signal
       })
         .then((response) => response.ok ? response.json() : Promise.reject(new Error("preview failed")))
@@ -461,6 +538,248 @@
     });
   };
 
+  const insertAtCursor = (input, text) => {
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || start;
+    const prefix = input.value.slice(0, start);
+    const suffix = input.value.slice(end);
+    const before = prefix && !prefix.endsWith("\n") ? "\n\n" : "";
+    const after = suffix && !suffix.startsWith("\n") ? "\n\n" : "";
+    const inserted = `${before}${text}${after}`;
+
+    input.value = `${prefix}${inserted}${suffix}`;
+    input.focus();
+    input.setSelectionRange(start + inserted.length, start + inserted.length);
+    input.dispatchEvent(new Event("input", {bubbles: true}));
+  };
+
+  const buildTripPhotoWorkbench = (workbench) => {
+    const form = workbench.closest("[data-trip-editor]");
+    const list = workbench.querySelector("[data-trip-photo-list]");
+    const fileInput = workbench.querySelector("[data-trip-photo-input]");
+    const dropzone = workbench.querySelector("[data-trip-photo-dropzone]");
+    const markdownEditor = form && form.querySelector("[data-markdown-editor]");
+    const markdownInput = form && form.querySelector("[data-markdown-input]");
+    const count = workbench.querySelector(".trip-photo-workbench-heading .meta");
+    const directUploadAvailable = workbench.dataset.directUploadAvailable === "true";
+    const captionTimers = new WeakMap();
+    const queue = [];
+    let activeUploads = 0;
+    let draftPromise = null;
+    let uploadUrl = workbench.dataset.uploadUrl || "";
+
+    if (!form || !list || !markdownInput) return;
+
+    const refreshPreview = () => {
+      markdownInput.dispatchEvent(new Event("input", {bubbles: true}));
+    };
+
+    const updateCount = () => {
+      if (!count) return;
+      const total = list.querySelectorAll("[data-trip-photo-card]").length;
+      count.textContent = `${total.toLocaleString()} uploaded`;
+    };
+
+    const setPhotoStatus = (card, message) => {
+      const status = card.querySelector("[data-photo-status]");
+      if (status) status.textContent = message;
+    };
+
+    const applyTripDraft = (payload) => {
+      form.dataset.tripId = String(payload.trip_id || "");
+      if (markdownEditor) markdownEditor.dataset.tripId = String(payload.trip_id || "");
+      if (payload.save_url) form.setAttribute("action", payload.save_url);
+      uploadUrl = payload.upload_url || uploadUrl;
+      workbench.dataset.uploadUrl = uploadUrl;
+    };
+
+    const ensureUploadUrl = () => {
+      if (uploadUrl) return Promise.resolve();
+      if (!workbench.dataset.draftUrl) return Promise.reject(new Error("Save this hike before uploading photos."));
+      if (draftPromise) return draftPromise;
+
+      draftPromise = fetch(workbench.dataset.draftUrl, {method: "POST"})
+        .then((response) => jsonPayload(response).then((body) => {
+          if (!response.ok) throw body;
+          applyTripDraft(body);
+          return body;
+        }))
+        .finally(() => {
+          draftPromise = null;
+        });
+
+      return draftPromise;
+    };
+
+    const cardTemplate = (file) => {
+      const card = document.createElement("article");
+      card.className = "trip-photo-card trip-photo-card-uploading";
+      card.setAttribute("data-trip-photo-card", "");
+
+      const image = document.createElement("img");
+      image.setAttribute("data-trip-photo-thumb", "");
+      image.alt = "";
+      if (file && file.type && file.type.startsWith("image/")) {
+        image.src = URL.createObjectURL(file);
+      }
+
+      const body = document.createElement("div");
+      body.className = "trip-photo-card-body";
+      body.innerHTML = [
+        '<div class="trip-photo-card-tools">',
+        '<code data-photo-handle>Preparing...</code>',
+        '<button class="secondary-button" type="button" data-insert-photo disabled>Insert</button>',
+        "</div>",
+        "<label>Caption</label>",
+        '<textarea rows="2" data-photo-caption disabled></textarea>',
+        `<p class="meta" data-photo-status>${escapeHtml(file ? `${file.name} / ${formatFileSize(file.size)}` : "Queued")}</p>`
+      ].join("");
+
+      card.append(image, body);
+      list.prepend(card);
+      updateCount();
+      return card;
+    };
+
+    const applyPhotoPayload = (card, payload) => {
+      const id = payload.id || payload.photo_id;
+      const handle = payload.handle || `{{ photo:${id} }}`;
+      const image = card.querySelector("[data-trip-photo-thumb]");
+      const code = card.querySelector("[data-photo-handle]");
+      const insertButton = card.querySelector("[data-insert-photo]");
+      const caption = card.querySelector("[data-photo-caption]");
+
+      card.classList.remove("trip-photo-card-uploading");
+      card.dataset.photoId = id;
+      card.dataset.handle = handle;
+      if (payload.caption_url) card.dataset.captionUrl = payload.caption_url;
+      if (image && payload.thumb_url) image.src = payload.thumb_url;
+      if (code) code.textContent = handle;
+      if (insertButton) insertButton.disabled = false;
+      if (caption) {
+        caption.disabled = false;
+        caption.name = `photo_captions[${id}]`;
+        caption.value = payload.caption || caption.value || "";
+      }
+      setPhotoStatus(card, "Saved");
+      refreshPreview();
+    };
+
+    const uploadOne = (file) => {
+      const card = cardTemplate(file);
+      setPhotoStatus(card, "Preparing upload");
+
+      return ensureUploadUrl()
+        .then(() => {
+          const payload = new URLSearchParams({
+            filename: file.name,
+            content_type: file.type || "application/octet-stream",
+            file_size: String(file.size),
+            caption: ""
+          });
+
+          return fetch(uploadUrl, {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: payload
+          });
+        })
+        .then((response) => jsonPayload(response).then((body) => {
+          if (!response.ok) throw body;
+          setPhotoStatus(card, "Uploading");
+          return uploadWithProgress(body.upload, file, (amount) => {
+            setPhotoStatus(card, `Uploading ${Math.round(amount * 100)}%`);
+          }).then(() => body);
+        }))
+        .then((body) => {
+          setPhotoStatus(card, "Finishing");
+          return fetch(body.finalize_url, {method: "POST"})
+            .then((response) => jsonPayload(response).then((finalizeBody) => {
+              if (!response.ok) throw finalizeBody;
+              return {...body, ...finalizeBody};
+            }));
+        })
+        .then((body) => applyPhotoPayload(card, body))
+        .catch((error) => {
+          const messages = Array.isArray(error && error.errors) ? error.errors : [error && error.message].filter(Boolean);
+          setPhotoStatus(card, messages[0] || "Upload failed");
+          card.classList.add("trip-photo-card-error");
+        });
+    };
+
+    const pumpQueue = () => {
+      while (activeUploads < 3 && queue.length > 0) {
+        const file = queue.shift();
+        activeUploads += 1;
+        uploadOne(file).finally(() => {
+          activeUploads -= 1;
+          pumpQueue();
+        });
+      }
+    };
+
+    const enqueueFiles = (files) => {
+      if (!directUploadAvailable) return;
+      queue.push(...Array.from(files || []));
+      pumpQueue();
+    };
+
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-insert-photo]");
+      if (!button || button.disabled) return;
+      const card = button.closest("[data-trip-photo-card]");
+      if (!card || !card.dataset.handle) return;
+      insertAtCursor(markdownInput, card.dataset.handle);
+    });
+
+    list.addEventListener("input", (event) => {
+      const caption = event.target.closest("[data-photo-caption]");
+      if (!caption || caption.disabled) return;
+      const card = caption.closest("[data-trip-photo-card]");
+      if (!card || !card.dataset.captionUrl) return;
+
+      window.clearTimeout(captionTimers.get(caption));
+      setPhotoStatus(card, "Saving caption");
+      captionTimers.set(caption, window.setTimeout(() => {
+        fetch(card.dataset.captionUrl, {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: new URLSearchParams({caption: caption.value})
+        })
+          .then((response) => jsonPayload(response).then((body) => {
+            if (!response.ok) throw body;
+            applyPhotoPayload(card, body);
+          }))
+          .catch(() => setPhotoStatus(card, "Caption not saved"));
+      }, 450));
+    });
+
+    if (fileInput) {
+      fileInput.addEventListener("change", () => {
+        enqueueFiles(fileInput.files);
+        fileInput.value = "";
+      });
+    }
+
+    if (dropzone) {
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          dropzone.classList.add("is-dragging");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.remove("is-dragging"));
+      });
+
+      dropzone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        enqueueFiles(event.dataTransfer && event.dataTransfer.files);
+      });
+    }
+  };
+
   const buildPhotoLightbox = () => {
     const galleries = document.querySelectorAll("[data-photo-lightbox-gallery]");
     if (galleries.length === 0) return;
@@ -694,9 +1013,11 @@
     document.querySelectorAll("[data-map-collection]").forEach(buildCollectionMap);
     document.querySelectorAll("[data-static-map]").forEach(buildStaticMap);
     document.querySelectorAll("[data-year-switcher]").forEach(buildYearSwitcher);
+    document.querySelectorAll("[data-profile-follow-modal]").forEach(buildProfileFollowModal);
     document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
     document.querySelectorAll("[data-trip-location-picker]").forEach(buildTripLocationPicker);
     document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
+    document.querySelectorAll("[data-trip-photo-workbench]").forEach(buildTripPhotoWorkbench);
     buildPhotoLightbox();
   });
 })();

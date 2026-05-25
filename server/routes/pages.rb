@@ -14,8 +14,9 @@ module PageRoutes
 
   def route_pages(r)
     r.root do
-      @recent_trips = WentHiking::Models::Trip.reverse_order(:hiked_at).limit(12).all
+      @recent_trips = WentHiking::Models::Trip.published.reverse_order(:hiked_at).limit(12).all
       @map_points = WentHiking::Models::Trip
+        .published
         .exclude(lat: nil)
         .exclude(lng: nil)
         .reverse_order(:hiked_at)
@@ -83,7 +84,7 @@ module PageRoutes
   private
 
   def search_trips(query)
-    dataset = WentHiking::Models::Trip.reverse_order(:hiked_at)
+    dataset = WentHiking::Models::Trip.published.reverse_order(:hiked_at)
     return dataset.limit(50).all if query.empty?
 
     pattern = "%#{query.downcase}%"
@@ -94,10 +95,10 @@ module PageRoutes
   end
 
   def archive_stats
-    trips = WentHiking::Models::Trip.all
+    trips = WentHiking::Models::Trip.published.all
     {
       trips: trips.size,
-      photos: WentHiking::Models::Photo.count,
+      photos: WentHiking::Models::Photo.join(:trips, id: :trip_id).where(Sequel[:trips][:status] => "published").count,
       miles: trips.sum { |trip| trip.mileage.to_f },
       nights: trips.sum { |trip| trip.nights.to_i }
     }
@@ -107,6 +108,7 @@ module PageRoutes
     start_at = Time.local(year, 1, 1)
     end_at = Time.local(year + 1, 1, 1)
     trips = WentHiking::Models::Trip
+      .published
       .where { hiked_at >= start_at }
       .where { hiked_at < end_at }
       .all

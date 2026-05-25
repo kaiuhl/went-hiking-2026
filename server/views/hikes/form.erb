@@ -1,3 +1,8 @@
+<% form_trip = @form_trip %>
+<% form_photos = @form_photos || [] %>
+<% form_upload_url = form_trip ? "#{form_trip.public_path}/photos/direct-upload" : "" %>
+<% form_direct_upload = direct_photo_upload_available? %>
+
 <section class="form-page">
   <p class="breadcrumbs"><a href="/hikes">Hikes</a></p>
   <header class="form-header">
@@ -16,7 +21,7 @@
     </div>
   <% end %>
 
-  <form class="trip-form" action="<%= h(@form_action) %>" method="post">
+  <form class="trip-form" action="<%= h(@form_action) %>" method="post" data-trip-editor data-trip-id="<%= h(form_trip&.id) %>">
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="trip-name">Name</label>
@@ -80,24 +85,74 @@
       </div>
     </div>
 
-    <div class="markdown-editor" data-markdown-editor>
-      <div class="form-row">
-        <label for="trip-report">Trip report</label>
-        <textarea id="trip-report" name="report_markdown" rows="16" data-markdown-input><%= h(@form_values[:report_markdown]) %></textarea>
-      </div>
-      <section class="markdown-preview" aria-live="polite">
-        <div class="preview-heading">
-          <h2>Preview</h2>
-          <span class="meta" data-markdown-status>Markdown</span>
+    <div class="trip-editor-layout">
+      <div class="markdown-editor" data-markdown-editor data-trip-id="<%= h(form_trip&.id) %>">
+        <div class="form-row">
+          <label for="trip-report">Trip report</label>
+          <textarea id="trip-report" name="report_markdown" rows="16" data-markdown-input><%= h(@form_values[:report_markdown]) %></textarea>
         </div>
-        <div class="preview-body trip-body" data-markdown-preview>
-          <% if @form_values[:report_markdown].to_s.empty? %>
-            <p class="empty">Start writing to see the story take shape.</p>
-          <% else %>
-            <%= markdown(@form_values[:report_markdown]) %>
+        <section class="markdown-preview" aria-live="polite">
+          <div class="preview-heading">
+            <h2>Preview</h2>
+            <span class="meta" data-markdown-status>Markdown</span>
+          </div>
+          <div class="preview-body trip-body" data-markdown-preview>
+            <% if @form_values[:report_markdown].to_s.empty? %>
+              <p class="empty">Start writing to see the story take shape.</p>
+            <% elsif form_trip %>
+              <% preview_render = trip_report_render(form_trip, form_photos, body: @form_values[:report_markdown]) %>
+              <%= preview_render.html %>
+              <%= trip_photo_gallery_html(form_photos.reject { |photo| preview_render.inline_photo_ids.include?(photo.id) }, all_photos: form_photos) %>
+            <% else %>
+              <%= markdown(@form_values[:report_markdown]) %>
+            <% end %>
+          </div>
+        </section>
+      </div>
+
+      <aside
+        class="trip-photo-workbench"
+        data-trip-photo-workbench
+        data-draft-url="/hikes/drafts"
+        data-upload-url="<%= h(form_upload_url) %>"
+        data-direct-upload-available="<%= form_direct_upload ? "true" : "false" %>"
+      >
+        <div class="trip-photo-workbench-heading">
+          <div>
+            <h2>Photos</h2>
+            <p class="meta"><%= h(format_number(form_photos.size)) %> uploaded</p>
+          </div>
+          <% if form_trip %>
+            <a href="<%= h(form_trip.public_path) %>/photos/new">Single upload</a>
           <% end %>
         </div>
-      </section>
+
+        <% if form_direct_upload %>
+          <label class="trip-photo-dropzone" data-trip-photo-dropzone>
+            <span>Upload trail photos</span>
+            <input name="editor_photos" type="file" accept="image/jpeg,image/png,image/gif" multiple data-trip-photo-input>
+          </label>
+        <% else %>
+          <p class="inline-hints">Save the hike first, then use the photo upload page to add trail photos.</p>
+        <% end %>
+
+        <div class="trip-photo-workbench-list" data-trip-photo-list>
+          <% form_photos.each do |photo| %>
+            <article class="trip-photo-card" data-trip-photo-card data-photo-id="<%= h(photo.id) %>" data-handle="<%= h(photo_handle(photo)) %>" data-caption-url="<%= h(photo_editor_item(photo)[:caption_url]) %>">
+              <img src="<%= h(image_url(photo, "large")) %>" alt="" data-trip-photo-thumb>
+              <div class="trip-photo-card-body">
+                <div class="trip-photo-card-tools">
+                  <code data-photo-handle><%= h(photo_handle(photo)) %></code>
+                  <button class="secondary-button" type="button" data-insert-photo>Insert</button>
+                </div>
+                <label for="photo-caption-<%= h(photo.id) %>">Caption</label>
+                <textarea id="photo-caption-<%= h(photo.id) %>" name="photo_captions[<%= h(photo.id) %>]" rows="2" data-photo-caption><%= h(photo.caption) %></textarea>
+                <p class="meta" data-photo-status>Saved</p>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      </aside>
     </div>
 
     <div class="form-actions">

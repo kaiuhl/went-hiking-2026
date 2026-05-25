@@ -276,8 +276,38 @@ RSpec.describe RodaApp do
     expect(last_response).to be_ok
     expect(last_response.body).to include("New Hike")
     expect(last_response.body).to include("data-markdown-editor")
+    expect(last_response.body).to include("data-trip-photo-workbench")
+    expect(last_response.body).to include('data-draft-url="/hikes/drafts"')
     expect(last_response.body).to include("data-trip-location-picker")
     expect(last_response.body).to include("Click the map to drop a pin.")
+  end
+
+  it "creates private draft hikes for editor uploads" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/hikes/drafts"
+
+    payload = JSON.parse(last_response.body)
+    draft = WentHiking::Models::Trip[payload.fetch("trip_id")]
+
+    expect(last_response.status).to eq(201)
+    expect(payload["edit_url"]).to eq("#{draft.public_path}/edit")
+    expect(payload["upload_url"]).to eq("#{draft.public_path}/photos/direct-upload")
+    expect(draft.status).to eq("draft")
+    expect(draft.published_at).to be_nil
+
+    get "/hikes"
+    expect(last_response.body).not_to include("Untitled Hike")
+
+    get draft.public_path
+    expect(last_response.status).to eq(404)
+
+    get "/search", {"q" => "Untitled"}
+    expect(last_response.body).not_to include("Untitled Hike")
+
+    get "/people/#{account_id}-kai"
+    expect(last_response.body).not_to include("Untitled Hike")
   end
 
   it "creates trips for the authenticated account" do
@@ -417,6 +447,77 @@ RSpec.describe RodaApp do
     expect(photo.refresh.width).to eq(1600)
     expect(photo.camera_model).to eq("Trail Camera")
     expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
+  end
+
+  it "supports multiple direct uploads and caption updates on draft hikes" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    storage = instance_double(
+      WentHiking::Storage::S3,
+      direct_upload?: true,
+      direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
+      object_exists?: true,
+      read: "jpeg-bytes"
+    )
+    allow(WentHiking::Storage).to receive(:current).and_return(storage)
+    allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200)
+    allow(WentHiking::PhotoVariantJob).to receive(:enqueue_photo)
+    login_as(account_id)
+
+    post "/hikes/drafts"
+    draft = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    %w[lake.jpg ridge.jpg].each do |filename|
+      post "#{draft.public_path}/photos/direct-upload", {
+        "filename" => filename,
+        "content_type" => "image/jpeg",
+        "file_size" => "4096",
+        "caption" => ""
+      }
+      payload = JSON.parse(last_response.body)
+      expect(last_response.status).to eq(201)
+      expect(payload["handle"]).to eq("{{ photo:#{payload["id"]} }}")
+
+      post payload.fetch("finalize_url")
+      expect(last_response).to be_ok
+    end
+
+    photos = draft.refresh.photos_dataset.order(:id).all
+    expect(photos.size).to eq(2)
+    expect(draft.status).to eq("draft")
+
+    post "#{draft.public_path}/photos/#{photos.first.id}/caption", {"caption" => "Lake light"}
+
+    caption_payload = JSON.parse(last_response.body)
+    expect(last_response).to be_ok
+    expect(caption_payload["caption"]).to eq("Lake light")
+    expect(photos.first.refresh.caption).to eq("Lake light")
+  end
+
+  it "renders only current-trip photo handles inline and leaves other photos below the report" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Handle Ridge", slug: "handle-ridge", nights: 0, hiked_at: Time.utc(2026, 5, 1), created_at: Time.now, updated_at: Time.now)
+    other_trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Other Ridge", slug: "other-ridge", nights: 0, hiked_at: Time.utc(2026, 5, 2), created_at: Time.now, updated_at: Time.now)
+    inline_photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_image_file_name: "inline.jpg", caption: "Inline light", taken_at: Time.utc(2026, 5, 1, 12), created_at: Time.now, updated_at: Time.now)
+    remaining_photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_image_file_name: "remaining.jpg", caption: "Remaining light", taken_at: Time.utc(2026, 5, 1, 13), created_at: Time.now, updated_at: Time.now)
+    cross_trip_photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: other_trip_id, legacy_image_file_name: "cross.jpg", caption: "Cross light", taken_at: Time.utc(2026, 5, 2, 12), created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: inline_photo_id, style: "large", filename: "inline.jpg", s3_key: "system/images/#{inline_photo_id}/large/inline.jpg", created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: remaining_photo_id, style: "large", filename: "remaining.jpg", s3_key: "system/images/#{remaining_photo_id}/large/remaining.jpg", created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: cross_trip_photo_id, style: "large", filename: "cross.jpg", s3_key: "system/images/#{cross_trip_photo_id}/large/cross.jpg", created_at: Time.now, updated_at: Time.now)
+    WentHiking::Models::Trip[trip_id].update(
+      report_markdown: "Before\n\n{{ photo: #{inline_photo_id} }}\n\nAgain {{ photo:#{inline_photo_id} }}\n\nMissing {{ photo:999999 }}\n\nCross {{ photo:#{cross_trip_photo_id} }}"
+    )
+
+    get "/hikes/#{trip_id}-handle-ridge"
+
+    expect(last_response).to be_ok
+    expect(last_response.body.scan("trip-inline-photo").size).to eq(1)
+    expect(last_response.body).to include("Inline light")
+    expect(last_response.body).to include("{{ photo:#{inline_photo_id} }}")
+    expect(last_response.body).to include("{{ photo:999999 }}")
+    expect(last_response.body).to include("{{ photo:#{cross_trip_photo_id} }}")
+    expect(last_response.body).to include("trip-photo-gallery")
+    expect(last_response.body).to include("remaining.jpg")
+    expect(last_response.body).not_to include("cross.jpg")
   end
 
   it "runs the fallback upload path against a real image" do

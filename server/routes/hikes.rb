@@ -11,7 +11,7 @@ module HikeRoutes
     r.on "hikes" do
       r.is do
         r.get do
-          @trips = WentHiking::Models::Trip.reverse_order(:hiked_at).limit(50).all
+          @trips = WentHiking::Models::Trip.published.reverse_order(:hiked_at).limit(50).all
           @title = "Recent Hikes"
           view("hikes/index")
         end
@@ -29,7 +29,7 @@ module HikeRoutes
           )
 
           if errors.empty?
-            trip = WentHiking::Models::Trip.create(attributes.merge(account_id: account.id))
+            trip = WentHiking::Models::Trip.create(attributes.merge(account_id: account.id, status: "published", published_at: Time.now))
             WentHiking::HikeNotificationScheduler.schedule_trip(trip)
             redirect trip.public_path
           else
@@ -51,8 +51,35 @@ module HikeRoutes
         view("hikes/form")
       end
 
+      r.post "drafts" do
+        account = authenticated_account
+        now = Time.now
+        trip = WentHiking::Models::Trip.create(
+          account_id: account.id,
+          name: "Untitled Hike",
+          slug: "untitled-hike",
+          hiked_at: Date.today.to_time,
+          nights: 0,
+          report_markdown: "",
+          status: "draft",
+          published_at: nil,
+          created_at: now,
+          updated_at: now
+        )
+
+        json_payload(
+          {
+            trip_id: trip.id,
+            edit_url: "#{trip.public_path}/edit",
+            save_url: trip.public_path,
+            upload_url: "#{trip.public_path}/photos/direct-upload"
+          },
+          status: 201
+        )
+      end
+
       r.get Integer do |legacy_id|
-        trip = WentHiking::Models::Trip.where(legacy_trip_id: legacy_id).first || WentHiking::Models::Trip[legacy_id]
+        trip = WentHiking::Models::Trip.published.where(legacy_trip_id: legacy_id).first || WentHiking::Models::Trip.published.where(id: legacy_id).first
         not_found unless trip
         redirect trip.public_path
       end
@@ -67,8 +94,7 @@ module HikeRoutes
 
       r.get String, "photos", "new" do |trip_slug|
         account = authenticated_account
-        @trip = trip_from_slug(trip_slug)
-        not_found unless @trip.account_id == account.id
+        @trip = owned_trip_from_slug(trip_slug, account)
 
         @title = "Add Trail Photos"
         @photo_errors = []
@@ -78,8 +104,7 @@ module HikeRoutes
 
       r.post String, "photos", "direct-upload" do |trip_slug|
         account = authenticated_account
-        @trip = trip_from_slug(trip_slug)
-        not_found unless @trip.account_id == account.id
+        @trip = owned_trip_from_slug(trip_slug, account)
 
         result = WentHiking::DirectPhotoUpload.new(
           account: account,
@@ -92,12 +117,12 @@ module HikeRoutes
 
         if result.success?
           json_payload(
-            {
+            photo_editor_item(result.photo).merge(
               photo_id: result.photo.id,
               upload: result.upload,
               finalize_url: "#{@trip.public_path}/photos/#{result.photo.id}/finalize",
               redirect_url: @trip.public_path
-            },
+            ),
             status: 201
           )
         else
@@ -105,15 +130,24 @@ module HikeRoutes
         end
       end
 
+      r.post String, "photos", Integer, "caption" do |trip_slug, photo_id|
+        account = authenticated_account
+        @trip = owned_trip_from_slug(trip_slug, account)
+        photo = @trip.photos_dataset.where(id: photo_id, account_id: account.id).first
+        not_found unless photo
+
+        photo.update(caption: optional_string(request.POST["caption"].to_s.strip), updated_at: Time.now)
+        json_payload(photo_editor_item(photo))
+      end
+
       r.post String, "photos", Integer, "finalize" do |trip_slug, photo_id|
         account = authenticated_account
-        @trip = trip_from_slug(trip_slug)
-        not_found unless @trip.account_id == account.id
+        @trip = owned_trip_from_slug(trip_slug, account)
 
         result = WentHiking::DirectPhotoUpload.finalize(account: account, trip: @trip, photo_id: photo_id)
 
         if result.success?
-          json_payload({redirect_url: @trip.public_path})
+          json_payload(photo_editor_item(result.photo).merge(redirect_url: @trip.public_path))
         else
           json_payload({errors: result.errors}, status: 422)
         end
@@ -121,8 +155,7 @@ module HikeRoutes
 
       r.post String, "photos" do |trip_slug|
         account = authenticated_account
-        @trip = trip_from_slug(trip_slug)
-        not_found unless @trip.account_id == account.id
+        @trip = owned_trip_from_slug(trip_slug, account)
 
         result = WentHiking::PhotoUpload.new(
           account: account,
@@ -176,23 +209,22 @@ module HikeRoutes
 
       r.get String, "edit" do |trip_slug|
         account = authenticated_account
-        trip = trip_from_slug(trip_slug)
-        not_found unless trip.account_id == account.id
+        trip = owned_trip_from_slug(trip_slug, account)
 
         @title = "Edit #{trip.name}"
         setup_trip_form(
           action: trip.public_path,
           heading: "Edit Hike",
           submit_label: "Save changes",
-          values: trip_form_values(trip)
+          values: trip_form_values(trip),
+          trip: trip
         )
         view("hikes/form")
       end
 
       r.post String do |trip_slug|
         account = authenticated_account
-        trip = trip_from_slug(trip_slug)
-        not_found unless trip.account_id == account.id
+        trip = owned_trip_from_slug(trip_slug, account)
 
         values, errors, attributes = trip_form_submission(request.POST)
         values[:account_name] = account.name
@@ -201,11 +233,23 @@ module HikeRoutes
           heading: "Edit Hike",
           submit_label: "Save changes",
           values: values,
-          errors: errors
+          errors: errors,
+          trip: trip
         )
 
         if errors.empty?
-          trip.update(attributes)
+          was_draft = trip.draft?
+          update_attributes = attributes
+          if was_draft
+            update_attributes = update_attributes.merge(
+              slug: WentHiking::Slug.generate(attributes[:name]),
+              status: "published",
+              published_at: Time.now
+            )
+          end
+          trip.update(update_attributes)
+          update_photo_captions(trip, request.POST["photo_captions"])
+          WentHiking::HikeNotificationScheduler.schedule_trip(trip) if was_draft
           redirect trip.public_path
         else
           response.status = 422
@@ -229,7 +273,7 @@ module HikeRoutes
       not_found unless account
 
       r.get Integer do |legacy_trip_id|
-        trip = account.trips_dataset.where(legacy_trip_id: legacy_trip_id).first || WentHiking::Models::Trip.where(legacy_trip_id: legacy_trip_id).first
+        trip = account.trips_dataset.published.where(legacy_trip_id: legacy_trip_id).first || WentHiking::Models::Trip.published.where(legacy_trip_id: legacy_trip_id).first
         not_found unless trip
         redirect trip.public_path
       end
@@ -248,10 +292,17 @@ module HikeRoutes
 
   private
 
-  def trip_from_slug(value)
+  def trip_from_slug(value, include_drafts: false)
     id = WentHiking::Slug.extract_id(value)
     trip = WentHiking::Models::Trip[id] || WentHiking::Models::Trip.where(legacy_trip_id: id).first
     not_found unless trip
+    not_found if trip.draft? && !include_drafts
+    trip
+  end
+
+  def owned_trip_from_slug(value, account)
+    trip = trip_from_slug(value, include_drafts: true)
+    not_found unless trip.account_id == account.id
     trip
   end
 
@@ -269,12 +320,14 @@ module HikeRoutes
     trip.public_path
   end
 
-  def setup_trip_form(action:, heading:, submit_label:, values:, errors: [])
+  def setup_trip_form(action:, heading:, submit_label:, values:, errors: [], trip: nil)
     @form_action = action
     @form_heading = heading
     @form_submit_label = submit_label
     @form_values = values
     @form_errors = errors
+    @form_trip = trip
+    @form_photos = trip ? trip.photos_dataset.order(:taken_at, :id).all : []
   end
 
   def default_trip_form_values(account)
@@ -388,5 +441,16 @@ module HikeRoutes
 
   def optional_string(value)
     value.to_s.empty? ? nil : value
+  end
+
+  def update_photo_captions(trip, captions)
+    return unless captions.respond_to?(:each)
+
+    captions.each do |photo_id, caption|
+      photo = trip.photos_dataset.where(id: photo_id.to_i).first
+      next unless photo
+
+      photo.update(caption: optional_string(caption.to_s.strip), updated_at: Time.now)
+    end
   end
 end
