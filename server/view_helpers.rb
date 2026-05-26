@@ -198,9 +198,6 @@ module ViewHelpers
 
     <<~HTML
       <section class="trip-photo-gallery" aria-label="Trip photos">
-        <div class="trip-photo-heading">
-          <h2>Photos</h2>
-        </div>
         <div class="trip-photo-grid">
           #{items}
         </div>

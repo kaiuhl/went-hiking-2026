@@ -229,7 +229,7 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Leaders")
     expect(last_response.body).to include("data-map-collection")
     expect(last_response.body).to include("data-photo-lightbox-gallery")
-    expect(last_response.body).to include("2 photos")
+    expect(last_response.body).to include("trip-photo-gallery")
     expect(last_response.body).to include("data-static-map")
   end
 
@@ -251,12 +251,13 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("home-trip-row")
     expect(last_response.body).to include("data-photo-lightbox-gallery")
     expect(last_response.body).to include("data-static-map")
-    expect(last_response.body).to include("5 photos")
+    expect(last_response.body).to include("trip-photo-gallery")
+    expect(last_response.body).to include("Lovely day.")
+    expect(last_response.body).not_to include("<h2>Photos</h2>")
     expect(last_response.body).to include('data-photo-index="1"')
     expect(last_response.body).to include('data-photo-index="2"')
     expect(last_response.body).to include('data-photo-index="3"')
     expect(last_response.body).to include('data-photo-index="4"')
-    expect(last_response.body).to include(">+1</a>")
     expect(last_response.body).to include("Showing 2")
   end
 
