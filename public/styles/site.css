@@ -2092,7 +2092,7 @@ form.rodauth {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .photo-lightbox-nav {
+  .photo-lightbox .photo-lightbox-nav {
     display: none;
   }
 
