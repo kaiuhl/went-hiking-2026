@@ -569,7 +569,7 @@ h3 {
   min-width: 0;
 }
 
-.trip-photo-grid img,
+.trip-photo-grid > a:not(.trip-map-tile) > img,
 .trip-map-tile-map {
   width: 100%;
   aspect-ratio: 1;
