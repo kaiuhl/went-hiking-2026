@@ -5,6 +5,7 @@
     <% trips.each do |trip| %>
       <% photos = trip.photos_dataset.order(:taken_at, :id).all %>
       <% trip_excerpt = trip.report_markdown.to_s.gsub(PHOTO_HANDLE_PATTERN, " ").gsub(/\s+/, " ").strip %>
+      <% gallery_photo_count = (trip.lat && trip.lng) ? 5 : 6 %>
       <article class="trip-row home-trip-row" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(photos)))}") unless photos.empty? %>>
         <div class="home-trip-content">
           <p class="meta"><%= h(date_label(trip.hiked_at)) %> / <a href="<%= h(trip.account.public_path) %>"><%= h(trip.account.name) %></a></p>
@@ -18,7 +19,7 @@
           <% end %>
         </div>
         <% if photos.any? %>
-          <%= trip_photo_gallery_html(photos.first(6), all_photos: photos) %>
+          <%= trip_photo_gallery_html(photos.first(gallery_photo_count), all_photos: photos, map_trip: trip) %>
         <% elsif trip.lat && trip.lng %>
           <div class="home-trip-map" data-static-map data-lat="<%= h(trip.lat) %>" data-lng="<%= h(trip.lng) %>" data-title="<%= h(trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>" aria-hidden="true"></div>
         <% end %>

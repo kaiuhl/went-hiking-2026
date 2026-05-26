@@ -173,8 +173,10 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Burnt Lake")
     expect(last_response.body).to include("profile-trip-list")
     expect(last_response.body).to include("trip-photo-gallery")
+    expect(last_response.body).to include("trip-map-tile")
     expect(last_response.body).to include("data-photo-lightbox-gallery")
     expect(last_response.body).to include("Lovely day.")
+    expect(last_response.body).to match(/trip-map-tile.*data-photo-index="0"/m)
     expect(last_response.body).not_to include("profile-trip-photo")
     expect(last_response.body).not_to include("<h2>Photos</h2>")
     expect(last_response.body).not_to include("2026 Trips")
@@ -241,6 +243,7 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("data-photo-lightbox-gallery")
     expect(last_response.body).to include("trip-photo-gallery")
     expect(last_response.body).to include("data-static-map")
+    expect(last_response.body).to include("trip-map-tile")
   end
 
   it "renders the hike index with the shared hike list treatment" do
@@ -262,8 +265,10 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("data-photo-lightbox-gallery")
     expect(last_response.body).to include("data-static-map")
     expect(last_response.body).to include("trip-photo-gallery")
+    expect(last_response.body).to include("trip-map-tile")
     expect(last_response.body).to include("Lovely day.")
     expect(last_response.body).not_to include("<h2>Photos</h2>")
+    expect(last_response.body).to match(/trip-map-tile.*data-photo-index="0"/m)
     expect(last_response.body).to include('data-photo-index="1"')
     expect(last_response.body).to include('data-photo-index="2"')
     expect(last_response.body).to include('data-photo-index="3"')

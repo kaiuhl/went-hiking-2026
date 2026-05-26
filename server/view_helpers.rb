@@ -183,18 +183,20 @@ module ViewHelpers
     HTML
   end
 
-  def trip_photo_gallery_html(photos, all_photos:)
+  def trip_photo_gallery_html(photos, all_photos:, map_trip: nil)
     return "" if photos.empty?
 
     photo_indexes = all_photos.each_with_index.each_with_object({}) { |(photo, index), memo| memo[photo.id] = index }
-    items = photos.map do |photo|
+    items = [trip_gallery_map_tile_html(map_trip)]
+    items += photos.map do |photo|
       index = photo_indexes[photo.id] || 0
       <<~HTML
         <a href="#{h(photo.public_path)}" data-photo-lightbox-trigger data-photo-index="#{h(index)}">
           <img src="#{h(image_url(photo, "large"))}" alt="#{h(photo.caption)}" loading="lazy">
         </a>
       HTML
-    end.join
+    end
+    items = items.compact.join
 
     <<~HTML
       <section class="trip-photo-gallery" aria-label="Trip photos">
@@ -202,6 +204,16 @@ module ViewHelpers
           #{items}
         </div>
       </section>
+    HTML
+  end
+
+  def trip_gallery_map_tile_html(trip)
+    return nil unless trip&.lat && trip.lng
+
+    <<~HTML
+      <a class="trip-map-tile" href="#{h(trip.public_path)}" aria-label="#{h("#{trip.name} map")}">
+        <div class="trip-map-tile-map" data-static-map data-lat="#{h(trip.lat)}" data-lng="#{h(trip.lng)}" data-title="#{h(trip.name)}" data-tile-url="#{h(leaflet_tile_url)}" aria-hidden="true"></div>
+      </a>
     HTML
   end
 

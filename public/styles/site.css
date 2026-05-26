@@ -569,11 +569,26 @@ h3 {
   min-width: 0;
 }
 
-.trip-photo-grid img {
+.trip-photo-grid img,
+.trip-map-tile-map {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   background: var(--soft);
+}
+
+.trip-map-tile {
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.trip-map-tile-map {
+  display: block;
+  pointer-events: none;
+}
+
+.trip-map-tile-map .leaflet-control-container {
+  display: none;
 }
 
 .trip-photo-gallery {
