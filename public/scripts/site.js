@@ -788,6 +788,9 @@
     let currentIndex = 0;
     let thumbnailButtons = [];
     let previousFocus = null;
+    let swipePointerId = null;
+    let swipeStartX = 0;
+    let swipeStartY = 0;
 
     const icon = (path) => `
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -823,6 +826,7 @@
 
     const image = document.createElement("img");
     image.className = "photo-lightbox-image";
+    image.draggable = false;
 
     const caption = document.createElement("figcaption");
     caption.className = "photo-lightbox-caption";
@@ -950,6 +954,40 @@
 
     const move = (offset) => showPhoto(currentIndex + offset);
 
+    const resetSwipe = () => {
+      swipePointerId = null;
+      swipeStartX = 0;
+      swipeStartY = 0;
+    };
+
+    const beginSwipe = (event) => {
+      if (items.length < 2) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      swipePointerId = event.pointerId;
+      swipeStartX = event.clientX;
+      swipeStartY = event.clientY;
+
+      if (figure.setPointerCapture) {
+        figure.setPointerCapture(event.pointerId);
+      }
+    };
+
+    const finishSwipe = (event) => {
+      if (swipePointerId !== event.pointerId) return;
+
+      const deltaX = event.clientX - swipeStartX;
+      const deltaY = event.clientY - swipeStartY;
+      const horizontalSwipe = Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+
+      if (figure.releasePointerCapture && figure.hasPointerCapture && figure.hasPointerCapture(event.pointerId)) {
+        figure.releasePointerCapture(event.pointerId);
+      }
+
+      resetSwipe();
+      if (horizontalSwipe) move(deltaX < 0 ? 1 : -1);
+    };
+
     const trapFocus = (event) => {
       const focusable = Array.from(lightbox.querySelectorAll("button:not([disabled])"));
       if (focusable.length === 0) return;
@@ -969,6 +1007,9 @@
     previousButton.addEventListener("click", () => move(-1));
     nextButton.addEventListener("click", () => move(1));
     closeButton.addEventListener("click", closeLightbox);
+    figure.addEventListener("pointerdown", beginSwipe);
+    figure.addEventListener("pointerup", finishSwipe);
+    figure.addEventListener("pointercancel", resetSwipe);
 
     lightbox.addEventListener("click", (event) => {
       if (event.target === lightbox) closeLightbox();

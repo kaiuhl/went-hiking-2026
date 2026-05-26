@@ -1254,6 +1254,8 @@ body.photo-lightbox-open {
   max-height: 100%;
   margin: 0;
   gap: 10px;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .photo-lightbox-image {
@@ -2091,25 +2093,12 @@ form.rodauth {
   }
 
   .photo-lightbox-nav {
-    position: absolute;
-    z-index: 2;
-    top: 50%;
-    width: 42px;
-    height: 50px;
-    transform: translateY(-50%);
-  }
-
-  .photo-lightbox-previous {
-    left: 0;
-  }
-
-  .photo-lightbox-next {
-    right: 0;
+    display: none;
   }
 
   .photo-lightbox-figure {
     width: 100%;
-    padding: 0 48px;
+    padding: 0;
   }
 
   .photo-lightbox-image {
