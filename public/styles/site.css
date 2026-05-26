@@ -1035,42 +1035,22 @@ body.profile-follow-modal-open {
 }
 
 .profile-trip-list .profile-trip-row {
-  display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
-  gap: 20px;
+  display: block;
+  max-width: 900px;
   border-top: 0;
   border-bottom: 1px solid var(--line);
-  padding: 18px 0;
+  padding: 28px 0 34px;
 }
 
 .profile-trip-list .profile-trip-row:first-child {
   padding-top: 18px;
 }
 
-.profile-trip-photo {
-  display: grid;
-  place-items: center;
-  align-self: start;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background:
-    linear-gradient(135deg, transparent 46%, rgba(17, 17, 17, 0.08) 47%, rgba(17, 17, 17, 0.08) 53%, transparent 54%),
-    var(--soft);
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.profile-trip-photo-empty {
-  border-color: transparent;
-  background: transparent;
-}
-
 .profile-trip-map {
+  width: min(100%, 640px);
+  height: 260px;
+  margin-top: 22px;
+  border: 1px solid var(--line);
   pointer-events: none;
 }
 
@@ -1078,37 +1058,43 @@ body.profile-follow-modal-open {
   display: none;
 }
 
-.profile-trip-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .profile-trip-content {
+  max-width: 720px;
   min-width: 0;
-  padding-top: 1px;
 }
 
 .profile-trip-row .trip-row-heading {
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-bottom: 4px;
+  gap: 10px 14px;
+  margin-bottom: 6px;
 }
 
 .profile-trip-row .trip-row-heading h2 {
-  font-size: 26px;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 0.98;
 }
 
 .profile-trip-stats {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .profile-trip-excerpt {
   max-width: 680px;
   margin-bottom: 0;
-  color: var(--muted);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.65;
+}
+
+.profile-trip-row .trip-photo-gallery {
+  margin-top: 22px;
+  margin-bottom: 0;
+}
+
+.profile-trip-row .trip-photo-gallery .trip-photo-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .photo-page {
@@ -1971,17 +1957,11 @@ form.rodauth {
   }
 
   .profile-trip-list .profile-trip-row {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: 14px;
-    padding: 16px 0;
-  }
-
-  .profile-trip-photo {
-    aspect-ratio: 1;
+    padding: 24px 0 30px;
   }
 
   .profile-trip-row .trip-row-heading h2 {
-    font-size: 22px;
+    font-size: 32px;
   }
 
   .profile-trip-stats {
@@ -1990,7 +1970,16 @@ form.rodauth {
   }
 
   .profile-trip-excerpt {
-    display: none;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .profile-trip-row .trip-photo-gallery .trip-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .profile-trip-map {
+    height: 220px;
   }
 
   .home-trip-row {

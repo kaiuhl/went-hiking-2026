@@ -155,8 +155,12 @@ RSpec.describe RodaApp do
 
   it "renders profile trip stats and navigation by year" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", location: "Portland, OR", status_id: 2, created_at: Time.now, updated_at: Time.now)
-    WentHiking.db[:trips].insert(account_id: account_id, name: "Lookout Mountain", slug: "lookout-mountain", nights: 1, mileage: 12.0, elevation: 1700, hiked_at: Time.utc(2026, 7, 1), lat: 45.4, lng: -121.7, report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Lookout Mountain", slug: "lookout-mountain", nights: 1, mileage: 12.0, elevation: 1700, hiked_at: Time.utc(2026, 7, 1), lat: 45.4, lng: -121.7, report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
     WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, mileage: 8.5, elevation: 900, hiked_at: Time.utc(2025, 7, 1), lat: 45.6, lng: -121.9, report_markdown: "Lake day.", created_at: Time.now, updated_at: Time.now)
+    first_photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_photo_id: 171, legacy_image_file_name: "lookout-1.jpg", caption: "Lookout light", taken_at: Time.utc(2026, 7, 1, 12), created_at: Time.now, updated_at: Time.now)
+    second_photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_photo_id: 172, legacy_image_file_name: "lookout-2.jpg", caption: "Trail light", taken_at: Time.utc(2026, 7, 1, 13), created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: first_photo_id, style: "large", filename: "lookout-1.jpg", s3_key: "system/images/171/large/lookout-1.jpg", created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: second_photo_id, style: "large", filename: "lookout-2.jpg", s3_key: "system/images/172/large/lookout-2.jpg", created_at: Time.now, updated_at: Time.now)
 
     get "/people/#{account_id}-kai"
 
@@ -167,6 +171,12 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include('<select id="profile-year"')
     expect(last_response.body).to include('<option value="2026" selected>2026</option>')
     expect(last_response.body).to include("Burnt Lake")
+    expect(last_response.body).to include("profile-trip-list")
+    expect(last_response.body).to include("trip-photo-gallery")
+    expect(last_response.body).to include("data-photo-lightbox-gallery")
+    expect(last_response.body).to include("Lovely day.")
+    expect(last_response.body).not_to include("profile-trip-photo")
+    expect(last_response.body).not_to include("<h2>Photos</h2>")
     expect(last_response.body).not_to include("2026 Trips")
 
     get "/people/#{account_id}-kai", {"year" => "2025"}

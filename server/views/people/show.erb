@@ -90,18 +90,9 @@
   <% else %>
     <div class="trip-list profile-trip-list">
       <% @trips.each do |trip| %>
-        <% photo = trip.photos_dataset.order(:taken_at, :id).first %>
-        <% trip_excerpt = trip.report_markdown.to_s.gsub(/\s+/, " ").strip %>
-        <article class="trip-row profile-trip-row">
-          <% if photo %>
-            <a class="profile-trip-photo" href="<%= h(trip.public_path) %>" aria-hidden="true" tabindex="-1">
-              <img src="<%= h(image_url(photo, "large")) %>" alt="">
-            </a>
-          <% elsif trip.lat && trip.lng %>
-            <div class="profile-trip-photo profile-trip-map" data-static-map data-lat="<%= h(trip.lat) %>" data-lng="<%= h(trip.lng) %>" data-title="<%= h(trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>" aria-hidden="true"></div>
-          <% else %>
-            <div class="profile-trip-photo profile-trip-photo-empty" aria-hidden="true"></div>
-          <% end %>
+        <% photos = trip.photos_dataset.order(:taken_at, :id).all %>
+        <% trip_excerpt = trip.report_markdown.to_s.gsub(PHOTO_HANDLE_PATTERN, " ").gsub(/\s+/, " ").strip %>
+        <article class="trip-row profile-trip-row" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(photos)))}") unless photos.empty? %>>
           <div class="profile-trip-content">
             <p class="meta"><%= h(trip_date_label(trip)) %></p>
             <div class="trip-row-heading">
@@ -110,9 +101,14 @@
             </div>
             <p class="profile-trip-stats"><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), night_count_label(trip.nights)].compact.join(" / ") %></p>
             <% unless trip_excerpt.empty? %>
-              <p class="profile-trip-excerpt"><%= h(trip_excerpt[0, 150]) %><%= "..." if trip_excerpt.length > 150 %></p>
+              <p class="profile-trip-excerpt"><%= h(trip_excerpt[0, 360]) %><%= "..." if trip_excerpt.length > 360 %></p>
             <% end %>
           </div>
+          <% if photos.any? %>
+            <%= trip_photo_gallery_html(photos.first(6), all_photos: photos) %>
+          <% elsif trip.lat && trip.lng %>
+            <div class="profile-trip-map" data-static-map data-lat="<%= h(trip.lat) %>" data-lng="<%= h(trip.lng) %>" data-title="<%= h(trip.name) %>" data-tile-url="<%= h(leaflet_tile_url) %>" aria-hidden="true"></div>
+          <% end %>
         </article>
       <% end %>
     </div>
