@@ -2,8 +2,9 @@
 
 ## 2026-05-18 Preview
 
-- Public preview: `http://35.160.199.53/`
-- Health check: `http://35.160.199.53/health`
+- Public preview: `https://new.wenthiking.com/`
+- Health check: `https://new.wenthiking.com/health`
+- Raw instance preview: `http://35.160.199.53/`
 - AWS account: `825135541567`
 - AWS region: `us-west-2`
 - Lightsail instance: `went-hiking-2026`
@@ -92,7 +93,9 @@ the Lightsail static IP `35.160.199.53`, then restore HTTPS in
 
 - The production database schema is migrated and the real legacy archive has been imported into Lightsail.
 - The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo archive has been synced and the skip-existing confirmation uploaded no additional objects.
-- Caddy is serving HTTP only for `wenthiking.com`/`www.wenthiking.com` until DNS is pointed at the new instance. Re-enable HTTPS after cutover.
+- Caddy serves HTTPS for `new.wenthiking.com`. The apex `wenthiking.com`/`www.wenthiking.com`
+  cutover still needs DNS pointed at the new instance and HTTPS re-enabled for
+  those hostnames.
 - Production auth email delivery is enabled through SES.
 - Production app credentials have a narrow inline IAM policy allowing object
   read/write/delete for `system/images/*` and `system/avatars/*` in the media

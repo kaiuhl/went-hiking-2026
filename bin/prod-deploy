@@ -19,7 +19,7 @@ Environment overrides:
   WENT_HIKING_PATH        App path on the server. Default: /srv/went-hiking-2026
   WENT_HIKING_REPO        Git repo URL. Default: https://github.com/kaiuhl/went-hiking-2026.git
   WENT_HIKING_BRANCH      Git branch. Default: main
-  WENT_HIKING_BASE_URL    Public base URL. Default: http://35.160.199.53
+  WENT_HIKING_BASE_URL    Public base URL. Default: https://new.wenthiking.com
 USAGE
 }
 
@@ -57,7 +57,7 @@ WENT_HIKING_KEY="${WENT_HIKING_KEY:-$ROOT/.deploy/lightsail.pem}"
 WENT_HIKING_PATH="${WENT_HIKING_PATH:-/srv/went-hiking-2026}"
 WENT_HIKING_REPO="${WENT_HIKING_REPO:-https://github.com/kaiuhl/went-hiking-2026.git}"
 WENT_HIKING_BRANCH="${WENT_HIKING_BRANCH:-main}"
-WENT_HIKING_BASE_URL="${WENT_HIKING_BASE_URL:-http://35.160.199.53}"
+WENT_HIKING_BASE_URL="${WENT_HIKING_BASE_URL:-https://new.wenthiking.com}"
 WENT_HIKING_KNOWN_HOSTS="${WENT_HIKING_KNOWN_HOSTS:-$ROOT/.deploy/known_hosts}"
 
 current_branch="$(git branch --show-current)"
@@ -138,6 +138,7 @@ echo "Deploying production HEAD: ${after_sha}"
 "${compose[@]}" up -d postgres
 "${compose[@]}" run --rm -T web bundle exec rake db:migrate </dev/null
 "${compose[@]}" up -d web worker caddy
+"${compose[@]}" up -d --force-recreate --no-deps caddy
 "${compose[@]}" ps
 REMOTE
 

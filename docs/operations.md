@@ -31,8 +31,9 @@ bin/prod-deploy --skip-smoke
 
 ## Host Defaults
 
-- Public preview: `http://35.160.199.53/`
-- Health check: `http://35.160.199.53/health`
+- Public preview: `https://new.wenthiking.com/`
+- Health check: `https://new.wenthiking.com/health`
+- Raw instance preview: `http://35.160.199.53/`
 - SSH user: `ubuntu`
 - SSH key: `.deploy/lightsail.pem`
 - App path: `/srv/went-hiking-2026`

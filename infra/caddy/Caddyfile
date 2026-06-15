@@ -1,20 +1,30 @@
 {
-  servers {
-    protocols h1 h2
-  }
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://new.wenthiking.com {
+	encode zstd gzip
+
+	reverse_proxy web:9292
+}
+
+http://new.wenthiking.com {
+	redir https://new.wenthiking.com{uri} permanent
 }
 
 http://wenthiking.com, http://www.wenthiking.com {
-  encode zstd gzip
+	encode zstd gzip
 
-  @www host www.wenthiking.com
-  redir @www http://wenthiking.com{uri} permanent
+	@www host www.wenthiking.com
+	redir @www http://wenthiking.com{uri} permanent
 
-  reverse_proxy web:9292
+	reverse_proxy web:9292
 }
 
 :80 {
-  encode zstd gzip
+	encode zstd gzip
 
-  reverse_proxy web:9292
+	reverse_proxy web:9292
 }
