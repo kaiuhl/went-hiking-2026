@@ -34,6 +34,22 @@ RSpec.describe ViewHelpers do
     end
   end
 
+  describe "#photo_metadata_label" do
+    let(:photo_class) { Struct.new(:taken_at, :camera_model, :camera_f_stop, :camera_exposure, :camera_iso, keyword_init: true) }
+
+    it "omits zero-valued camera metadata" do
+      photo = photo_class.new(camera_f_stop: 0.0, camera_iso: 0)
+
+      expect(helpers.photo_metadata_label(photo)).to eq("")
+    end
+
+    it "renders positive camera metadata" do
+      photo = photo_class.new(camera_model: "Test Camera", camera_f_stop: 5.6, camera_exposure: "1/250", camera_iso: 200)
+
+      expect(helpers.photo_metadata_label(photo)).to eq("Test Camera · f/5.6 · 1/250 · ISO 200")
+    end
+  end
+
   describe "#static_asset_path" do
     it "adds a file timestamp version for public assets" do
       expect(helpers.static_asset_path("/styles/site.css")).to match(%r{\A/styles/site\.css\?v=\d+\z})

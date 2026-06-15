@@ -25,7 +25,7 @@ module WentHiking
         lng: gps_coordinate(exif&.gps_longitude, exif&.gps_longitude_ref),
         camera_model: exif&.model,
         camera_exposure: exif&.exposure_time&.to_s,
-        camera_f_stop: exif&.f_number&.to_f,
+        camera_f_stop: positive_float(exif&.f_number),
         camera_iso: Array(exif&.iso_speed_ratings).first
       }.compact
     end
@@ -49,6 +49,13 @@ module WentHiking
       end
 
       %w[S W].include?(ref.to_s.upcase) ? -decimal : decimal
+    end
+
+    def positive_float(value)
+      return nil if value.nil?
+
+      number = value.to_f
+      number.positive? ? number : nil
     end
   end
 end

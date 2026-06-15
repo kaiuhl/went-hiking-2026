@@ -87,15 +87,12 @@ module ViewHelpers
   end
 
   def photo_metadata_label(photo)
-    f_stop = photo.camera_f_stop.to_s
-    iso = photo.camera_iso.to_s
-
     [
       date_label(photo.taken_at),
-      photo.camera_model.to_s,
-      (f_stop.empty? ? nil : "f/#{f_stop}"),
-      photo.camera_exposure.to_s,
-      (iso.empty? ? nil : "ISO #{iso}")
+      metadata_text(photo.camera_model),
+      f_stop_label(photo.camera_f_stop),
+      metadata_text(photo.camera_exposure),
+      iso_label(photo.camera_iso)
     ].compact.reject(&:empty?).join(" · ")
   end
 
@@ -128,6 +125,34 @@ module ViewHelpers
       caption_url: "#{photo.trip.public_path}/photos/#{photo.id}/caption",
       metadata: photo_metadata_label(photo)
     }
+  end
+
+  def metadata_text(value)
+    text = value.to_s.strip
+    text.empty? ? nil : text
+  end
+
+  def f_stop_label(value)
+    number = positive_number(value)
+    return nil unless number
+
+    "f/#{format_number(number)}"
+  end
+
+  def iso_label(value)
+    number = positive_number(value)
+    return nil unless number
+
+    "ISO #{format_number(number)}"
+  end
+
+  def positive_number(value)
+    return nil if value.nil?
+
+    number = Float(value)
+    number.positive? ? number : nil
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def trip_report_render(trip, photos, body: nil)

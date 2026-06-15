@@ -63,7 +63,7 @@ module WentHiking
           caption: present(row[:caption]),
           camera_model: present(row[:camera_model]),
           camera_exposure: present(row[:camera_exposure]),
-          camera_f_stop: row[:camera_f_stop],
+          camera_f_stop: positive_float(row[:camera_f_stop]),
           camera_iso: row[:camera_iso],
           legacy_stats_added: truthy?(row[:stats_added]),
           created_at: row[:created_at] || Time.now,
@@ -120,6 +120,15 @@ module WentHiking
 
       def truthy?(value)
         value == true || value.to_s == "1"
+      end
+
+      def positive_float(value)
+        return nil if value.nil?
+
+        number = Float(value)
+        number.positive? ? number : nil
+      rescue ArgumentError, TypeError
+        nil
       end
 
       def derivative_filename(filename, style)

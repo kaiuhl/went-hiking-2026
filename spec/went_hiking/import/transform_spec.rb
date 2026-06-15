@@ -21,4 +21,10 @@ RSpec.describe WentHiking::Import::Transform do
     expect(variants.map { |variant| variant[:style] }).to include("original", "large", "thumbnail")
     expect(variants.find { |variant| variant[:style] == "large" }[:s3_key]).to eq("system/images/32585/large/photo.jpg")
   end
+
+  it "treats zero f-stop values as missing metadata" do
+    photo = described_class.new.photo({id: 32585, camera_f_stop: 0.0}, account_id: 1, trip_id: 2)
+
+    expect(photo[:camera_f_stop]).to be_nil
+  end
 end
