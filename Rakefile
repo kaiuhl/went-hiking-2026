@@ -1,11 +1,36 @@
+default_tasks = []
+
 begin
   require "rspec/core/rake_task"
 
   RSpec::Core::RakeTask.new(:spec)
-  task default: :spec
+  default_tasks << :spec
 rescue LoadError
   warn "RSpec is not available in this bundle; skipping spec rake task."
 end
+
+namespace :spec do
+  # The compose editor promises to hand the server back exactly the markdown it
+  # was given, and the only thing standing behind that promise is this harness.
+  # It is plain node with no dependencies so it can ride along with the Ruby
+  # suite, but the deploy image carries no node at all, so a missing runtime is
+  # a warning rather than a failure.
+  desc "Run the compose editor markdown round-trip harness"
+  task :js do
+    script = File.join(__dir__, "spec/js/editor_round_trip.js")
+    node = ENV.fetch("NODE", "node")
+
+    unless system(node, "--version", out: File::NULL, err: File::NULL)
+      warn "#{node} is not available; skipping spec/js/editor_round_trip.js."
+      next
+    end
+
+    abort "Editor round-trip harness failed." unless system(node, script)
+  end
+end
+
+default_tasks << "spec:js"
+task default: default_tasks
 
 namespace :db do
   desc "Run Sequel migrations"
