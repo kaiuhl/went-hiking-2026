@@ -1,11 +1,147 @@
+/* ==========================================================================
+   Went Hiking — design tokens
+   Paper and ink: off-white ground, near-black type, square corners,
+   uppercase micro-labels. Everything below is consumed by the rules that
+   follow; prefer adding a token over introducing a new literal.
+   ========================================================================== */
+
 :root {
+  color-scheme: light;
+
+  /* --- Color: ground and ink ------------------------------------------- */
   --bg: #f7f7f4;
   --paper: #ffffff;
   --ink: #111111;
+  --ink-soft: #2e2e2a;
   --muted: #696963;
+  --faint: #aaa9a2;
   --line: #d9d9d2;
   --soft: #eeeeea;
+
+  /* --- Color: signal ---------------------------------------------------- */
+  --danger: #b8403a;
+  --danger-strong: #8a2b24;
+  --success: #2f6b44;
+
+  /* --- Color: media surfaces -------------------------------------------- */
+  --photo-void: #050505;
+  --map-wash: #dfe7df;
+
+  /* --- Color: veils and scrims ------------------------------------------ */
+  --paper-veil: rgba(255, 255, 255, 0.58);
+  --paper-veil-strong: rgba(255, 255, 255, 0.92);
+  --scrim: rgba(17, 17, 17, 0.42);
+  --scrim-deep: rgba(0, 0, 0, 0.9);
+  --on-dark: #ffffff;
+  --on-dark-muted: rgba(255, 255, 255, 0.88);
+  --on-dark-faint: rgba(255, 255, 255, 0.62);
+  --on-dark-dim: rgba(255, 255, 255, 0.42);
+  --on-dark-veil: rgba(255, 255, 255, 0.16);
+  --dark-control: rgba(15, 15, 15, 0.74);
+  --header-veil: rgba(247, 247, 244, 0.86);
+
+  /* --- Elevation -------------------------------------------------------- */
+  --shadow-sm: 0 8px 18px rgba(17, 17, 17, 0.18);
+  --shadow-md: 0 12px 24px rgba(17, 17, 17, 0.2);
+  --shadow-lg: 0 14px 28px rgba(17, 17, 17, 0.12);
+  --shadow-xl: 0 24px 70px rgba(17, 17, 17, 0.26);
+  --shadow-photo: 0 18px 70px rgba(0, 0, 0, 0.42);
+
+  /* --- Space (4px base) -------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+
+  /* --- Measure and rhythm ------------------------------------------------ */
   --max: 1120px;
+  --measure: 760px;
+  --measure-narrow: 620px;
+  --measure-wide: 900px;
+  --gutter: 32px;
+  --map-band: clamp(260px, 30vw, 400px);
+  --map-band-expanded: min(76vh, 680px);
+
+  /* --- Type ramp — 12 · 13 · 14 · 15 · 16 · 17 · 18 · 21 · 26 · 34 · 44 --- */
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-script: "Went Hiking Script", "Brush Script MT", cursive;
+  --text-3xs: 12px;
+  --text-2xs: 13px;
+  --text-xs: 14px;
+  --text-s: 15px;
+  --text-m: 16px;
+  --text-l: 17px;
+  --text-xl: 18px;
+  --text-2xl: 21px;
+  --text-3xl: 26px;
+  --text-4xl: 34px;
+  --text-5xl: 44px;
+  --text-display: clamp(40px, 6vw, 72px);
+  --text-display-sm: clamp(30px, 4vw, 46px);
+
+  --leading-display: 0.98;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-body: 1.6;
+  --leading-relaxed: 1.7;
+
+  --tracking-label: 0.08em;
+  --tracking-display: -0.02em;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Line and shape ---------------------------------------------------- */
+  --border: 1px;
+  --border-strong: 2px;
+  --radius: 0;
+  --radius-round: 50%;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+  --dur-3: 260ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Focus ------------------------------------------------------------- */
+  --focus-width: 2px;
+  --focus-color: var(--ink);
+  --focus-offset: 3px;
+
+  /* --- Depth ladder ------------------------------------------------------ */
+  --z-below: 0;
+  --z-raised: 1;
+  --z-float: 2;
+  --z-header: 100;
+  --z-overlay: 900;
+  --z-modal: 1000;
+  --z-lightbox: 1100;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
@@ -24,15 +160,107 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  font-size: var(--text-m);
+  font-feature-settings: "cv05" 1, "cv08" 1;
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a {
   color: inherit;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
+  transition:
+    color var(--dur-1) var(--ease-out),
+    opacity var(--dur-1) var(--ease-out),
+    text-decoration-color var(--dur-1) var(--ease-out),
+    text-decoration-thickness var(--dur-1) var(--ease-out);
+}
+
+/* --------------------------------------------------------------------------
+   Interaction states. One focus ring for the whole site, set at zero-ish
+   specificity via :where() so any component can still speak for itself (the
+   lightbox, for instance, needs a white ring on black). The hover vocabulary
+   is deliberately quiet: prose links thicken their rule, media dims a touch,
+   controls invert.
+   -------------------------------------------------------------------------- */
+
+:where(a, button, summary, input, select, textarea, [tabindex], [role="button"]):focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+}
+
+/* Prose and utility links: the underline is the affordance, so hover leans on
+   it rather than on colour. */
+a:hover {
+  text-decoration-thickness: var(--border-strong);
+}
+
+.site-nav a,
+.site-nav-greeting {
+  text-decoration: none;
+}
+
+.site-nav a:not(.site-nav-add):hover,
+.site-nav a:not(.site-nav-add):focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.32em;
+}
+
+/* Trip titles carry a hairline rule at rest that inks in on hover — loud
+   enough to read as a link, quiet enough for a 46px headline. */
+.trip-row-heading a,
+.trip-title-bar a {
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-decoration-thickness: var(--border-strong);
+  text-underline-offset: 0.12em;
+}
+
+.trip-row-heading a:hover,
+.trip-row-heading a:focus-visible,
+.trip-title-bar a:hover,
+.trip-title-bar a:focus-visible {
+  text-decoration-color: var(--ink);
+}
+
+/* Photo thumbs and map tiles dim slightly under the cursor. */
+.trip-photo-grid a img,
+.photo-gallery a img,
+.trip-inline-photo a img,
+.member-list img {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.trip-photo-grid a:hover img,
+.trip-photo-grid a:focus-visible img,
+.photo-gallery a:hover img,
+.photo-gallery a:focus-visible img,
+.trip-inline-photo a:hover img,
+.trip-inline-photo a:focus-visible img,
+.member-list a:hover img {
+  opacity: 0.78;
+}
+
+.trip-map-tile .trip-map-tile-map {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.trip-map-tile:hover .trip-map-tile-map,
+.trip-map-tile:focus-visible .trip-map-tile-map {
+  opacity: 0.78;
+}
+
+.member-list a:hover span,
+.leaderboard-list a:hover,
+.section-heading a:hover,
+.breadcrumbs a:hover {
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-strong);
 }
 
 img {
@@ -53,14 +281,14 @@ img {
 
 .site-header {
   width: 100%;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--border) solid var(--line);
 }
 
 .site-header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--space-6);
   width: min(var(--max), calc(100vw - 32px));
   margin: 0 auto;
   padding: 22px 0 26px;
@@ -87,34 +315,29 @@ img {
 .logo-text {
   font-family: "Went Hiking Script", "Brush Script MT", cursive;
   font-size: 92px;
-  font-weight: 400;
+  font-weight: var(--weight-regular);
   letter-spacing: -0.025em;
 }
 
 .logo-text-shadow {
-  fill: rgb(17, 17, 17);
+  fill: var(--ink);
   opacity: 0.16;
   paint-order: stroke fill;
-  stroke: rgb(17, 17, 17);
+  stroke: var(--ink);
   stroke-linejoin: round;
   stroke-width: 7px;
   transform: translate(8px, 6px);
 }
 
 .logo-text-fill {
-  fill: rgb(17, 17, 17);
+  fill: var(--ink);
 }
 
 .site-nav {
   display: flex;
   align-items: center;
   gap: 18px;
-  font-size: 14px;
-}
-
-.site-nav a,
-.site-nav-greeting {
-  text-decoration: none;
+  font-size: var(--text-xs);
 }
 
 .site-nav-greeting {
@@ -126,16 +349,16 @@ img {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--ink);
+  border: var(--border) solid var(--ink);
   border-radius: 50%;
   background: var(--ink);
   color: var(--paper);
-  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.18);
+  box-shadow: var(--shadow-sm);
   transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    transform 120ms ease,
-    box-shadow 120ms ease;
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
 }
 
 .site-nav-add svg {
@@ -153,11 +376,11 @@ img {
   background: var(--paper);
   color: var(--ink);
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(17, 17, 17, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 .site-nav-add:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: 3px;
 }
 
@@ -180,6 +403,17 @@ main {
   padding: 30px 0 8px;
 }
 
+/* The home page's editorial statement. It is a real h1 but sits at statement
+   scale rather than display scale, so the trip feed below stays the subject. */
+.home-title {
+  max-width: var(--measure-wide);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
+}
+
 .narrow {
   max-width: 720px;
   padding: 80px 0;
@@ -189,7 +423,7 @@ main {
 .meta,
 .breadcrumbs {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
 }
 
@@ -201,7 +435,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .inline-kicker > * {
@@ -215,8 +449,8 @@ main {
 
 .inline-kicker > *:not(:last-child)::after {
   content: "/";
-  margin-left: 12px;
-  color: #aaa9a2;
+  margin-left: var(--space-3);
+  color: var(--faint);
 }
 
 h1,
@@ -227,27 +461,28 @@ p {
 }
 
 h1 {
-  max-width: 900px;
+  max-width: var(--measure-wide);
   margin-bottom: 18px;
-  font-size: clamp(44px, 8vw, 112px);
-  line-height: 0.95;
-  font-weight: 600;
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
 }
 
 h2 {
-  font-size: 24px;
-  line-height: 1.15;
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
 }
 
 h3 {
-  font-size: 18px;
+  font-size: var(--text-xl);
   line-height: 1.25;
 }
 
 .lede {
-  max-width: 680px;
-  color: #2e2e2a;
-  font-size: 20px;
+  max-width: var(--measure);
+  color: var(--ink-soft);
+  font-size: var(--text-2xl);
   margin-bottom: 0;
 }
 
@@ -263,150 +498,136 @@ h3 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+  border-bottom: var(--border) solid var(--line);
 }
 
-.section-heading h1,
 .section-heading h2 {
   margin-bottom: 0;
-  font-size: 24px;
-  line-height: 1.15;
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+}
+
+/* A section heading that is also the page title (/hikes, /search) reads a
+   step larger than the in-page section labels it sits alongside. */
+.section-heading h1 {
+  max-width: none;
+  margin-bottom: 0;
+  font-size: var(--text-4xl);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.015em;
 }
 
 .hike-index-section .search-form {
   margin-bottom: 28px;
 }
 
-.trip-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
-}
-
-.trip-row,
 .comment {
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
   padding-top: 18px;
 }
 
-.trip-list .trip-row:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
+/* --------------------------------------------------------------------------
+   Trip rows — one editorial list unit, shared by the home feed, /hikes,
+   /search and profiles. The text holds a readable measure while the photo
+   grid runs the full column, so the page reads as a deliberate frame instead
+   of a left-aligned block with a dead gutter.
+   -------------------------------------------------------------------------- */
 
-.trip-card img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  margin-bottom: 16px;
-  background: var(--soft);
-}
-
-.home-trip-list {
+.trip-list {
+  display: grid;
   gap: 0;
 }
 
-.home-trip-row {
+.trip-row {
   display: block;
-  max-width: 900px;
-  border-top: 0;
-  border-bottom: 1px solid var(--line);
-  padding: 34px 0 42px;
+  border-bottom: var(--border) solid var(--line);
+  padding: var(--space-7) 0 var(--space-8);
 }
 
-.home-trip-row:first-child {
-  padding-top: 8px;
+.trip-list .trip-row:first-child {
+  padding-top: var(--space-2);
 }
 
-.home-trip-map {
-  width: min(100%, 640px);
-  height: 260px;
-  margin-top: 18px;
-  border: 1px solid var(--line);
-  background: var(--soft);
-  pointer-events: none;
-}
-
-.home-trip-map .leaflet-control-container {
-  display: none;
-}
-
-.home-trip-content {
-  max-width: 720px;
+.trip-row-content {
+  max-width: var(--measure);
   min-width: 0;
 }
 
-.home-trip-row .trip-row-heading {
+.trip-row .trip-row-heading {
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-bottom: 4px;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-1);
 }
 
-.home-trip-row .trip-row-heading h3 {
-  margin-bottom: 0;
-  font-size: clamp(32px, 5vw, 58px);
+.trip-row-heading h2,
+.trip-row-heading h3 {
+  max-width: none;
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-semibold);
   line-height: 1;
+  letter-spacing: var(--tracking-display);
 }
 
-.home-trip-row .meta a {
+.trip-row .meta a {
   color: inherit;
 }
 
-.home-trip-stats {
+.trip-row-stats {
   margin-bottom: 14px;
 }
 
-.home-trip-excerpt {
-  max-width: 720px;
+.trip-row-excerpt {
+  max-width: var(--measure);
   margin-bottom: 0;
   color: var(--ink);
-  font-size: 20px;
+  font-size: var(--text-2xl);
   line-height: 1.65;
 }
 
-.home-trip-row .trip-photo-gallery {
+.trip-row .trip-photo-gallery {
+  max-width: none;
   margin-top: 22px;
   margin-bottom: 0;
 }
 
-.home-trip-row .trip-photo-gallery .trip-photo-grid {
+.trip-row .trip-photo-gallery .trip-photo-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  max-width: 720px;
 }
 
-.trip-list {
-  display: grid;
-  gap: 26px;
+.trip-row-map {
+  width: min(100%, var(--measure));
+  height: 280px;
+  margin-top: var(--space-5);
+  border: var(--border) solid var(--line);
+  background: var(--soft);
+  pointer-events: none;
 }
 
-.trip-row h2 {
-  margin-bottom: 8px;
+.trip-row-map .leaflet-control-container {
+  display: none;
 }
 
 .trip-header {
-  max-width: 720px;
-  padding: 28px 0 24px;
+  max-width: var(--measure-wide);
+  padding: 28px 0 var(--space-6);
 }
 
 .trip-header h1 {
-  margin-bottom: 12px;
-  font-size: clamp(40px, 6vw, 72px);
+  margin-bottom: var(--space-3);
 }
 
-.trip-card-heading,
 .trip-row-heading,
 .trip-title-bar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 12px 16px;
+  gap: var(--space-3) var(--space-4);
 }
 
-.trip-card-heading h3,
 .trip-row-heading h2,
 .trip-row-heading h3,
 .trip-title-bar h1 {
@@ -414,16 +635,12 @@ h3 {
   margin-bottom: 0;
 }
 
-.profile-header h1 {
-  font-size: clamp(44px, 7vw, 88px);
-}
-
 .trip-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 16px;
-  font-size: 14px;
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
 }
 
 .heart-form {
@@ -431,11 +648,7 @@ h3 {
   margin: 4px 0 0;
 }
 
-.trip-card-heading .heart-form,
-.trip-row-heading .heart-form {
-  margin-top: 0;
-}
-
+.trip-row-heading .heart-form,
 .trip-title-bar .heart-form {
   margin-top: 0;
 }
@@ -448,38 +661,38 @@ h3 {
   gap: 6px;
   min-width: 42px;
   height: 34px;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--paper-veil);
   color: var(--muted);
   padding: 0 10px;
-  font-size: 13px;
+  font-size: var(--text-2xs);
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
   transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease,
-    transform 120ms ease;
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 }
 
 .heart-button:hover,
 .heart-button:focus-visible {
   border-color: var(--ink);
-  background: #ffffff;
+  background: var(--paper);
   color: var(--ink);
   transform: translateY(-1px);
 }
 
 .heart-button:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: 2px;
 }
 
 .heart-button.is-hearted {
-  border-color: #b8403a;
-  color: #b8403a;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .heart-button-compact {
@@ -507,55 +720,22 @@ h3 {
 
 .heart-count {
   min-width: 1ch;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
 }
 
 .trip-post-layout {
   display: grid;
-  grid-template-columns: minmax(0, 720px) minmax(230px, 320px);
-  grid-template-areas: "main photos";
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 34px clamp(28px, 5vw, 54px);
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
+  gap: 34px;
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-4);
   padding-bottom: 28px;
 }
 
-.trip-post-layout-single {
-  grid-template-columns: minmax(0, 900px);
-  grid-template-areas: "main";
-}
-
 .trip-post-main {
-  grid-area: main;
   min-width: 0;
-}
-
-.trip-photo-sidebar {
-  grid-area: photos;
-  position: sticky;
-  top: 24px;
-  min-width: 0;
-}
-
-.trip-photo-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.trip-photo-heading h2 {
-  margin-bottom: 0;
-  font-size: 18px;
-}
-
-.trip-photo-heading a {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .trip-photo-grid {
@@ -579,7 +759,7 @@ h3 {
 
 .trip-map-tile {
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
 }
 
 .trip-map-tile-map {
@@ -592,7 +772,7 @@ h3 {
 }
 
 .trip-photo-gallery {
-  max-width: 900px;
+  max-width: none;
   margin-bottom: 42px;
 }
 
@@ -609,7 +789,7 @@ h3 {
   width: 100%;
   max-height: 760px;
   object-fit: contain;
-  background: #050505;
+  background: var(--photo-void);
 }
 
 .trip-inline-photo figcaption {
@@ -620,7 +800,7 @@ h3 {
 
 .trip-inline-photo figcaption p {
   margin-bottom: 2px;
-  font-size: 14px;
+  font-size: var(--text-xs);
   line-height: 1.45;
 }
 
@@ -628,7 +808,7 @@ h3 {
   width: 100%;
   height: 360px;
   margin: 0 0 44px;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--soft);
 }
 
@@ -638,37 +818,25 @@ h3 {
 
 .profile-map-band {
   position: relative;
-  z-index: 0;
+  z-index: var(--z-below);
 }
 
+/* One band ratio for every hero map. The old fixed 190px letterboxed to
+   6.7:1 on a desktop viewport, which is why fitBounds kept framing open
+   ocean; clamping to roughly 3:1 (and proportionally taller on phones) lets
+   the region fill the frame. */
 .site-map {
-  height: 190px;
+  height: var(--map-band);
   margin: 0;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: #dfe7df;
+  border-bottom: var(--border) solid var(--line);
+  background: var(--map-wash);
   overflow: hidden;
-  transition: height 160ms ease;
+  transition: height var(--dur-3) var(--ease-out);
 }
 
 .site-map.map-expanded {
-  height: min(72vh, 640px);
-}
-
-.home-map {
-  height: 190px;
-}
-
-.profile-map {
-  height: 220px;
-}
-
-.trip-map {
-  height: 180px;
-}
-
-.map-panel.compact {
-  height: 300px;
+  height: var(--map-band-expanded);
 }
 
 .map-size-control {
@@ -684,25 +852,25 @@ h3 {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--ink);
+  border: var(--border) solid var(--ink);
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--paper-veil-strong);
   color: var(--ink);
   cursor: pointer;
   line-height: 1;
   transition:
-    background-color 120ms ease,
-    transform 120ms ease;
+    background-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 }
 
 .map-size-button:hover,
 .map-size-button:focus-visible {
-  background: #ffffff;
+  background: var(--paper);
   transform: translateY(-1px);
 }
 
 .map-size-button:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: 2px;
 }
 
@@ -719,20 +887,7 @@ h3 {
   stroke-linecap: square;
   stroke-linejoin: miter;
   stroke-width: 2.5;
-  transition: transform 160ms ease;
-}
-
-.photo-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 48px;
-}
-
-.photo-strip img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
+  transition: transform var(--dur-2) var(--ease-out);
 }
 
 [data-photo-lightbox-trigger] {
@@ -742,7 +897,7 @@ h3 {
 .leaderboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px;
+  gap: var(--space-7);
 }
 
 .leaderboard-grid h3 {
@@ -761,9 +916,9 @@ h3 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   padding: 10px 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
 }
 
 .leaderboard-list span {
@@ -807,14 +962,137 @@ h3 {
 }
 
 .trip-body > :not(.trip-inline-photo) {
-  max-width: 720px;
+  max-width: var(--measure);
 }
 
 .trip-body p,
 .trip-body li,
 .comment p {
-  font-size: 17px;
-  line-height: 1.7;
+  font-size: var(--text-l);
+  line-height: var(--leading-relaxed);
+}
+
+/* --------------------------------------------------------------------------
+   Author-written markdown. Headings inside a trip report, a comment, or the
+   editor preview belong to the content, not to the page — they get a content
+   ramp instead of inheriting the page display ramp (a `# heading` in a report
+   used to render at 100px and blow past the column).
+   -------------------------------------------------------------------------- */
+
+.trip-body h1,
+.trip-body h2,
+.trip-body h3,
+.trip-body h4,
+.trip-body h5,
+.trip-body h6,
+.comment h1,
+.comment h2,
+.comment h3,
+.comment h4,
+.comment h5,
+.comment h6,
+.preview-body h1,
+.preview-body h2,
+.preview-body h3,
+.preview-body h4,
+.preview-body h5,
+.preview-body h6 {
+  max-width: var(--measure);
+  margin: 1.7em 0 0.45em;
+  font-weight: var(--weight-semibold);
+  letter-spacing: normal;
+  line-height: var(--leading-snug);
+}
+
+.trip-body > :first-child,
+.comment > :first-child,
+.preview-body > :first-child {
+  margin-top: 0;
+}
+
+.trip-body h1,
+.comment h1,
+.preview-body h1 {
+  font-size: var(--text-3xl);
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
+}
+
+.trip-body h2,
+.comment h2,
+.preview-body h2 {
+  font-size: var(--text-2xl);
+}
+
+.trip-body h3,
+.comment h3,
+.preview-body h3 {
+  font-size: var(--text-xl);
+}
+
+.trip-body h4,
+.comment h4,
+.preview-body h4 {
+  font-size: var(--text-l);
+}
+
+.trip-body h5,
+.comment h5,
+.preview-body h5 {
+  font-size: var(--text-m);
+}
+
+.trip-body h6,
+.comment h6,
+.preview-body h6 {
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.trip-body blockquote,
+.comment blockquote,
+.preview-body blockquote {
+  max-width: var(--measure);
+  margin: 1.6em 0;
+  border-left: var(--border-strong) solid var(--line);
+  padding: 2px 0 2px var(--space-5);
+  color: var(--ink-soft);
+}
+
+.trip-body hr,
+.comment hr,
+.preview-body hr {
+  max-width: var(--measure);
+  margin: 2.2em 0;
+  border: 0;
+  border-top: var(--border) solid var(--line);
+}
+
+.trip-body code,
+.comment code,
+.preview-body code {
+  background: var(--soft);
+  padding: 0.1em 0.34em;
+  font-size: 0.92em;
+}
+
+.trip-body pre,
+.comment pre,
+.preview-body pre {
+  max-width: var(--measure);
+  overflow-x: auto;
+  border: var(--border) solid var(--line);
+  background: var(--soft);
+  padding: var(--space-3) var(--space-4);
+}
+
+.trip-body pre code,
+.comment pre code,
+.preview-body pre code {
+  background: none;
+  padding: 0;
 }
 
 .profile-header {
@@ -822,7 +1100,7 @@ h3 {
   z-index: 1;
   display: block;
   padding: 40px 0 28px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--border) solid var(--line);
 }
 
 .profile-header-with-map {
@@ -838,11 +1116,11 @@ h3 {
   place-items: center;
   width: 132px;
   height: 132px;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   border-radius: 50%;
   background: var(--paper);
   padding: 6px;
-  box-shadow: 0 14px 28px rgba(17, 17, 17, 0.12);
+  box-shadow: var(--shadow-lg);
 }
 
 .profile-header-with-map .profile-avatar {
@@ -865,8 +1143,8 @@ h3 {
 
 .profile-avatar span {
   color: var(--muted);
-  font-size: 52px;
-  font-weight: 700;
+  font-size: var(--text-5xl);
+  font-weight: var(--weight-bold);
   line-height: 1;
 }
 
@@ -882,8 +1160,7 @@ h3 {
 }
 
 .profile-summary h1 {
-  margin-bottom: 12px;
-  font-size: clamp(56px, 7vw, 92px);
+  margin-bottom: var(--space-3);
 }
 
 .profile-summary .lede {
@@ -909,8 +1186,8 @@ h3 {
 .profile-follow-notice {
   max-width: 520px;
   margin: 12px 0 0;
-  color: #2f6b44;
-  font-size: 14px;
+  color: var(--success);
+  font-size: var(--text-xs);
 }
 
 .profile-follow-modal {
@@ -934,7 +1211,7 @@ body.profile-follow-modal-open {
 .profile-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(17, 17, 17, 0.42);
+  background: var(--scrim);
 }
 
 .profile-modal-panel {
@@ -943,15 +1220,15 @@ body.profile-follow-modal-open {
   width: min(100%, 460px);
   max-height: calc(100vh - 48px);
   overflow: auto;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--paper);
   padding: 28px;
-  box-shadow: 0 24px 70px rgba(17, 17, 17, 0.26);
+  box-shadow: var(--shadow-xl);
 }
 
 .profile-modal-panel h2 {
   margin-bottom: 18px;
-  font-size: 28px;
+  font-size: var(--text-3xl);
 }
 
 .profile-modal-close {
@@ -963,7 +1240,7 @@ body.profile-follow-modal-open {
   width: 34px;
   height: 34px;
   color: var(--muted);
-  font-size: 26px;
+  font-size: var(--text-3xl);
   line-height: 1;
   text-decoration: none;
 }
@@ -976,7 +1253,7 @@ body.profile-follow-modal-open {
 .profile-follow-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .profile-follow-controls input {
@@ -985,18 +1262,16 @@ body.profile-follow-modal-open {
 
 .profile-follow-errors p {
   margin-bottom: 0;
-  font-size: 14px;
-}
-
-.profile-follow-errors p {
-  color: #8a2b24;
-  font-weight: 700;
+  color: var(--danger-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
 }
 
 .inline-hints {
-  margin: 0;
+  margin: 0 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
+  line-height: 1.4;
 }
 
 .honey-field {
@@ -1018,7 +1293,7 @@ body.profile-follow-modal-open {
   appearance: none;
   max-width: 78px;
   border: 0;
-  border-bottom: 1px solid transparent;
+  border-bottom: var(--border) solid transparent;
   border-radius: 0;
   background:
     linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat,
@@ -1038,78 +1313,11 @@ body.profile-follow-modal-open {
 }
 
 .profile-trips-section {
-  padding-top: 20px;
+  padding-top: var(--space-5);
 }
 
 .profile-trips-section .section-heading {
   margin-bottom: 0;
-}
-
-.profile-trip-list {
-  gap: 0;
-}
-
-.profile-trip-list .profile-trip-row {
-  display: block;
-  max-width: 900px;
-  border-top: 0;
-  border-bottom: 1px solid var(--line);
-  padding: 28px 0 34px;
-}
-
-.profile-trip-list .profile-trip-row:first-child {
-  padding-top: 18px;
-}
-
-.profile-trip-map {
-  width: min(100%, 640px);
-  height: 260px;
-  margin-top: 22px;
-  border: 1px solid var(--line);
-  pointer-events: none;
-}
-
-.profile-trip-map .leaflet-control-container {
-  display: none;
-}
-
-.profile-trip-content {
-  max-width: 720px;
-  min-width: 0;
-}
-
-.profile-trip-row .trip-row-heading {
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-  margin-bottom: 6px;
-}
-
-.profile-trip-row .trip-row-heading h2 {
-  font-size: clamp(32px, 5vw, 58px);
-  line-height: 0.98;
-}
-
-.profile-trip-stats {
-  margin-bottom: 12px;
-}
-
-.profile-trip-excerpt {
-  max-width: 680px;
-  margin-bottom: 0;
-  color: var(--ink);
-  font-size: 20px;
-  line-height: 1.65;
-}
-
-.profile-trip-row .trip-photo-gallery {
-  margin-top: 22px;
-  margin-bottom: 0;
-}
-
-.profile-trip-row .trip-photo-gallery .trip-photo-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .photo-page {
@@ -1128,7 +1336,7 @@ body.profile-follow-modal-open {
 
 .photo-gallery {
   columns: 3 260px;
-  column-gap: 12px;
+  column-gap: var(--space-3);
 }
 
 .photo-gallery a {
@@ -1148,7 +1356,7 @@ body.profile-follow-modal-open {
   display: block;
   padding-top: 6px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
 }
 
 .photo-page figure {
@@ -1159,7 +1367,7 @@ body.profile-follow-modal-open {
   width: 100%;
   max-height: 82vh;
   object-fit: contain;
-  background: #050505;
+  background: var(--photo-void);
 }
 
 .photo-page figcaption {
@@ -1179,7 +1387,7 @@ body.photo-lightbox-open {
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 18px;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.9);
+  background: var(--scrim-deep);
   color: #ffffff;
 }
 
@@ -1190,9 +1398,9 @@ body.photo-lightbox-open {
 .photo-lightbox button {
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  border: var(--border) solid var(--on-dark-faint);
   border-radius: 0;
-  background: rgba(15, 15, 15, 0.74);
+  background: var(--dark-control);
   color: #ffffff;
   padding: 0;
   cursor: pointer;
@@ -1200,11 +1408,11 @@ body.photo-lightbox-open {
 
 .photo-lightbox button:hover,
 .photo-lightbox button:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--on-dark-veil);
 }
 
 .photo-lightbox button:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: var(--focus-width) solid var(--on-dark);
   outline-offset: 3px;
 }
 
@@ -1238,7 +1446,7 @@ body.photo-lightbox-open {
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   min-height: 0;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .photo-lightbox-nav {
@@ -1263,14 +1471,14 @@ body.photo-lightbox-open {
   max-width: 100%;
   max-height: calc(100vh - 178px);
   object-fit: contain;
-  background: #050505;
-  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.42);
+  background: var(--photo-void);
+  box-shadow: var(--shadow-photo);
 }
 
 .photo-lightbox-caption {
   max-width: min(760px, 100%);
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 14px;
+  color: var(--on-dark-muted);
+  font-size: var(--text-xs);
   line-height: 1.45;
   text-align: center;
 }
@@ -1284,18 +1492,18 @@ body.photo-lightbox-open {
 }
 
 .photo-lightbox-metadata {
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 12px;
+  color: var(--on-dark-faint);
+  font-size: var(--text-3xs);
   text-transform: uppercase;
 }
 
 .photo-lightbox-thumbnails {
   display: flex;
   min-width: 0;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
   padding: 2px 56px 4px;
-  scrollbar-color: rgba(255, 255, 255, 0.42) transparent;
+  scrollbar-color: var(--on-dark-dim) transparent;
 }
 
 .photo-lightbox-thumb {
@@ -1326,31 +1534,31 @@ body.photo-lightbox-open {
 
 .form-header {
   max-width: 760px;
-  margin-bottom: 32px;
+  margin-bottom: var(--space-7);
 }
 
 .form-errors {
   max-width: 760px;
   margin-bottom: 28px;
-  border-top: 2px solid var(--ink);
-  border-bottom: 1px solid var(--line);
+  border-top: var(--border-strong) solid var(--ink);
+  border-bottom: var(--border) solid var(--line);
   padding: 16px 0;
 }
 
 .form-errors p {
-  margin-bottom: 8px;
-  font-weight: 700;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-bold);
 }
 
 .form-errors ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--space-5);
 }
 
 .form-notice {
   max-width: 760px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
+  border-bottom: var(--border) solid var(--line);
   padding: 14px 0;
 }
 
@@ -1358,7 +1566,7 @@ body.photo-lightbox-open {
 .account-form,
 .photo-form {
   display: grid;
-  gap: 32px;
+  gap: var(--space-7);
 }
 
 .form-grid {
@@ -1380,7 +1588,7 @@ body.photo-lightbox-open {
 
 label {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
 }
 
@@ -1396,7 +1604,7 @@ input,
 textarea,
 select {
   width: min(100%, 760px);
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--paper);
   padding: 10px 12px;
 }
@@ -1406,8 +1614,8 @@ input[type="file"] {
 }
 
 input[type="file"]::file-selector-button {
-  margin-right: 12px;
-  border: 1px solid var(--ink);
+  margin-right: var(--space-3);
+  border: var(--border) solid var(--ink);
   background: var(--ink);
   color: var(--paper);
   padding: 8px 12px;
@@ -1423,22 +1631,53 @@ textarea {
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--ink);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: 2px;
 }
 
 button,
 input[type="submit"] {
   width: auto;
-  border: 1px solid var(--ink);
+  border: var(--border) solid var(--ink);
   background: var(--ink);
   color: var(--paper);
   padding: 10px 14px;
   cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+button:hover,
+input[type="submit"]:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button:active,
+input[type="submit"]:active {
+  background: var(--soft);
 }
 
 .secondary-button {
   border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.secondary-button:hover {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+input[type="file"]::file-selector-button {
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+input[type="file"]:hover::file-selector-button {
   background: var(--paper);
   color: var(--ink);
 }
@@ -1451,13 +1690,13 @@ input[type="submit"] {
 
 .trip-location-picker {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   max-width: 760px;
 }
 
 .trip-location-map {
   height: 360px;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--soft);
 }
 
@@ -1465,13 +1704,13 @@ input[type="submit"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .trip-location-status p {
   margin-bottom: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-xs);
 }
 
 .trip-location-status button[hidden] {
@@ -1479,14 +1718,14 @@ input[type="submit"] {
 }
 
 .coordinate-fallback {
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
   padding-top: 10px;
 }
 
 .coordinate-fallback summary {
   cursor: pointer;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
 }
 
@@ -1503,7 +1742,7 @@ input[type="submit"] {
   align-items: center;
   gap: 14px;
   max-width: 520px;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--paper);
   padding: 10px;
 }
@@ -1526,7 +1765,7 @@ input[type="submit"] {
 
 .photo-upload-progress {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   max-width: 760px;
 }
 
@@ -1546,12 +1785,12 @@ input[type="submit"] {
   height: 8px;
   margin-top: -16px;
   background: var(--ink);
-  transition: width 120ms ease;
+  transition: width var(--dur-1) var(--ease-out);
 }
 
 .photo-upload-progress span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
 }
 
 .search-form {
@@ -1578,20 +1817,20 @@ form.rodauth,
 }
 
 form.rodauth {
-  padding-top: 80px;
+  padding-top: var(--space-11);
 }
 
 .auth-migration-notice {
   margin-top: 72px;
-  margin-bottom: 24px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-6);
+  border-top: var(--border) solid var(--line);
+  border-bottom: var(--border) solid var(--line);
   padding: 20px 0;
 }
 
 .auth-migration-notice h1 {
-  margin-bottom: 8px;
-  font-size: 28px;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-3xl);
   line-height: 1.1;
 }
 
@@ -1616,42 +1855,35 @@ form.rodauth {
   width: 100%;
 }
 
-.inline-hints {
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
 .rodauth-login-form-footer-links-heading {
-  margin-top: 32px;
-  font-size: 18px;
+  margin-top: var(--space-7);
+  font-size: var(--text-xl);
 }
 
 .rodauth-links {
   display: grid;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   margin-bottom: 0;
   padding: 0 0 80px;
   list-style: none;
-  font-size: 14px;
+  font-size: var(--text-xs);
 }
 
 .trip-editor-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-  gap: 32px;
+  gap: var(--space-7);
   align-items: start;
 }
 
 .markdown-editor {
   display: grid;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .markdown-preview {
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
   padding-top: 14px;
 }
 
@@ -1659,7 +1891,7 @@ form.rodauth {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   margin-bottom: 14px;
 }
 
@@ -1671,7 +1903,7 @@ form.rodauth {
   max-width: none;
   min-height: 320px;
   margin-bottom: 0;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--paper);
   padding: 18px;
   overflow-wrap: anywhere;
@@ -1683,7 +1915,7 @@ form.rodauth {
   display: grid;
   gap: 14px;
   min-width: 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
   padding-top: 14px;
 }
 
@@ -1691,7 +1923,7 @@ form.rodauth {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .trip-photo-workbench-heading h2,
@@ -1702,14 +1934,14 @@ form.rodauth {
 .trip-photo-workbench-heading a {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-2xs);
 }
 
 .trip-photo-dropzone {
   display: grid;
   place-items: center;
   min-height: 116px;
-  border: 1px dashed var(--muted);
+  border: var(--border) dashed var(--muted);
   background: var(--paper);
   padding: 18px;
   color: var(--muted);
@@ -1731,15 +1963,15 @@ form.rodauth {
 
 .trip-photo-workbench-list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .trip-photo-card {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  gap: 12px;
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
+  gap: var(--space-3);
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-3);
 }
 
 .trip-photo-card img {
@@ -1758,16 +1990,16 @@ form.rodauth {
 .trip-photo-card-tools {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
 .trip-photo-card code {
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: var(--border) solid var(--line);
   background: var(--soft);
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--text-3xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1775,12 +2007,12 @@ form.rodauth {
 .trip-photo-card button {
   flex: 0 0 auto;
   padding: 6px 9px;
-  font-size: 13px;
+  font-size: var(--text-2xs);
 }
 
 .trip-photo-card textarea {
   min-height: 62px;
-  font-size: 14px;
+  font-size: var(--text-xs);
 }
 
 .trip-photo-card-uploading {
@@ -1788,32 +2020,24 @@ form.rodauth {
 }
 
 .trip-photo-card-error {
-  border-top-color: #b8403a;
-}
-
-.honey-field {
-  position: absolute;
-  left: -10000px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+  border-top-color: var(--danger);
 }
 
 .site-footer {
-  margin-top: 64px;
+  margin-top: var(--space-10);
   color: var(--muted);
-  border-top: 1px solid var(--line);
+  border-top: var(--border) solid var(--line);
   background: var(--soft);
 }
 
 .site-footer-inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 32px;
+  gap: var(--space-7);
   width: min(var(--max), calc(100vw - 32px));
   margin: 0 auto;
   padding: 32px 0 40px;
-  font-size: 13px;
+  font-size: var(--text-2xs);
 }
 
 .footer-wordmark {
@@ -1829,15 +2053,17 @@ form.rodauth {
   height: auto;
 }
 
+/* The footer wordmark used to be white on #eeeeea — about 1.1:1, effectively
+   invisible. It is ink now, with the same soft drop shadow as the header. */
 .footer-wordmark-logo .logo-text-shadow {
-  fill: #ffffff;
-  opacity: 0.42;
-  stroke: #ffffff;
+  fill: var(--ink);
+  opacity: 0.14;
+  stroke: var(--ink);
   transform: translate(8px, 6px);
 }
 
 .footer-wordmark-logo .logo-text-fill {
-  fill: #ffffff;
+  fill: var(--ink);
 }
 
 .site-footer p {
@@ -1850,6 +2076,13 @@ form.rodauth {
 
 .site-footer a {
   color: var(--ink);
+  text-decoration-color: var(--faint);
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+  text-decoration-color: var(--ink);
+  text-decoration-thickness: var(--border-strong);
 }
 
 .site-footer-links {
@@ -1859,56 +2092,89 @@ form.rodauth {
 }
 
 .site-footer-links span {
-  color: #aaa9a2;
+  color: var(--faint);
 }
 
-@media (max-width: 900px) {
-  .trip-post-layout {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "photos"
-      "main";
-    gap: 28px;
-  }
-
-  .trip-post-layout-single {
-    grid-template-areas: "main";
-  }
-
-  .trip-photo-sidebar {
-    position: static;
-  }
-
-  .trip-photo-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+@media (max-width: 1040px) {
+  .trip-row .trip-photo-gallery .trip-photo-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .site-header-inner {
-    align-items: flex-start;
-    flex-direction: column;
+  /* Compact, sticky, one row. The old mobile header stacked to 176px with
+     22px tap targets and scrolled away with the page. */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    background: var(--bg);
   }
 
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .site-header {
+      background: var(--header-veil);
+      -webkit-backdrop-filter: saturate(160%) blur(12px);
+      backdrop-filter: saturate(160%) blur(12px);
+    }
+  }
+
+  .site-header-inner {
+    align-items: center;
+    flex-direction: row;
+    gap: var(--space-2);
+    min-height: 56px;
+    padding: var(--space-1) 0;
+  }
+
+  .wordmark-logo {
+    width: 124px;
+    transform: translateY(-2px);
+  }
+
+  /* Signed in there are more destinations than a 375px row can hold, so the
+     row scrolls rather than wrapping to a second line. */
   .site-nav {
-    flex-wrap: wrap;
-    gap: 12px 16px;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    font-size: var(--text-2xs);
+  }
+
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-nav > a,
+  .site-nav > span {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    white-space: nowrap;
+  }
+
+  .site-nav-greeting {
+    display: none;
+  }
+
+  .site-nav .site-nav-add {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin-left: var(--space-1);
   }
 
   .home-hero {
     padding: 24px 0 6px;
   }
 
-  h1 {
-    font-size: 48px;
-  }
-
   .trip-header {
     padding: 24px 0 20px;
-  }
-
-  .trip-header h1 {
-    font-size: 44px;
   }
 
   .profile-header {
@@ -1927,16 +2193,12 @@ form.rodauth {
   }
 
   .profile-avatar span {
-    font-size: 38px;
+    font-size: var(--text-4xl);
   }
 
   .profile-summary {
     min-height: 0;
     padding-right: 0;
-  }
-
-  .profile-summary h1 {
-    font-size: 52px;
   }
 
   .profile-summary h1,
@@ -1958,7 +2220,7 @@ form.rodauth {
 
   .profile-stats {
     gap: 4px 10px;
-    font-size: 12px;
+    font-size: var(--text-3xs);
   }
 
   .profile-follow-controls {
@@ -1970,63 +2232,31 @@ form.rodauth {
   }
 
   .profile-trips-section {
-    padding-top: 16px;
+    padding-top: var(--space-4);
   }
 
-  .profile-trip-list .profile-trip-row {
-    padding: 24px 0 30px;
+  .trip-row {
+    padding: var(--space-6) 0 30px;
   }
 
-  .profile-trip-row .trip-row-heading h2 {
-    font-size: 32px;
-  }
-
-  .profile-trip-stats {
-    font-size: 14px;
+  .trip-row-stats {
+    font-size: var(--text-xs);
     line-height: 1.35;
   }
 
-  .profile-trip-excerpt {
-    font-size: 17px;
+  .trip-row-excerpt {
+    font-size: var(--text-l);
     line-height: 1.6;
   }
 
-  .profile-trip-row .trip-photo-gallery .trip-photo-grid {
+  .trip-row .trip-photo-gallery .trip-photo-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .profile-trip-map {
+  .trip-row-map {
     height: 220px;
   }
 
-  .home-trip-row {
-    padding: 24px 0 30px;
-  }
-
-  .home-trip-row .trip-row-heading h3 {
-    font-size: 32px;
-  }
-
-  .home-trip-stats {
-    font-size: 14px;
-    line-height: 1.35;
-  }
-
-  .home-trip-excerpt {
-    font-size: 17px;
-    line-height: 1.6;
-  }
-
-  .home-trip-row .trip-photo-gallery .trip-photo-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .home-trip-map {
-    height: 220px;
-  }
-
-  .trip-grid,
-  .photo-strip,
   .form-grid,
   .coordinate-grid,
   .trip-editor-layout,
@@ -2062,24 +2292,12 @@ form.rodauth {
     height: 280px;
   }
 
-  .site-map {
-    height: 180px;
-  }
-
-  .site-map.map-expanded {
-    height: min(72vh, 560px);
-  }
-
-  .trip-map {
-    height: 160px;
-  }
-
   .site-footer-inner {
     grid-template-columns: 1fr;
   }
 
   .photo-lightbox {
-    gap: 12px;
+    gap: var(--space-3);
     padding: 64px 12px 12px;
   }
 
@@ -2116,5 +2334,21 @@ form.rodauth {
     width: 62px;
     height: 62px;
     flex-basis: 62px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion. Nothing on this site depends on animation to convey
+   meaning, so honour the request everywhere rather than case by case.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
