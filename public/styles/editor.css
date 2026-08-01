@@ -360,6 +360,10 @@
   font-weight: var(--weight-medium);
 }
 
+.compose-chip-narrow {
+  display: none;
+}
+
 .compose-error {
   display: block;
   max-width: var(--measure);
@@ -977,6 +981,20 @@
   .compose-chip-input,
   .compose-chip-button {
     padding: 6px 0;
+  }
+
+  /* A filled byline has to stay inside two lines at 375px, so the pin reads as
+     a mark rather than a coordinate pair and a long URL gives up its tail. */
+  .compose-chip-wide {
+    display: none;
+  }
+
+  .compose-chip-narrow {
+    display: inline;
+  }
+
+  .compose-chip-url {
+    max-width: 34vw;
   }
 
   .compose-canvas {

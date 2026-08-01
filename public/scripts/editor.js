@@ -1615,8 +1615,21 @@
 
     var unit = input.getAttribute("data-compose-unit");
     var label = chip && chip.querySelector("[data-compose-unit-label]");
+    if (!unit || !label) return;
+
     // "1 nights" reads like a bug report, so the unit agrees with the number.
-    if (unit && label) label.textContent = Number(input.value) === 1 ? unit.replace(/^(night|mile)s/, "$1") : unit;
+    var full = Number(input.value) === 1 ? unit.replace(/^(night|mile)s/, "$1") : unit;
+    var abbreviation = input.getAttribute("data-compose-unit-short");
+
+    if (abbreviation) {
+      // Both spellings ship and CSS picks one, which keeps a full byline inside
+      // two lines on a phone without listening for resizes.
+      label.innerHTML =
+        '<span class="compose-chip-wide">' + escapeHtml(full) + "</span>" +
+        '<span class="compose-chip-narrow">' + escapeHtml(abbreviation) + "</span>";
+    } else {
+      label.textContent = full;
+    }
   }
 
   function refreshChips() {
@@ -1633,7 +1646,11 @@
     var lng = fieldValue("lng");
 
     if (lat && lng) {
-      toggle.textContent = formatCoordinate(lat) + ", " + formatCoordinate(lng);
+      // Coordinates on a wide byline, a mark on a narrow one: CSS picks, so the
+      // label reflows with the viewport instead of on a resize listener.
+      toggle.innerHTML =
+        '<span class="compose-chip-wide">' + escapeHtml(formatCoordinate(lat) + ", " + formatCoordinate(lng)) + "</span>" +
+        '<span class="compose-chip-narrow">Pin set &check;</span>';
       toggle.classList.add("is-set");
     } else {
       toggle.textContent = "+ drop a pin";
