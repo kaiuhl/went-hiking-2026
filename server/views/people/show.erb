@@ -101,3 +101,28 @@
   <% end %>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes logged for this year yet.", heading_level: "h3", show_author: false}) %>
 </section>
+
+<%# Owner-only, and rendered at all only when there is something in it. Before
+    this, a draft that got as far as a title fell out of every listing on the
+    site — the sweep leaves it alone once it has a name, so the only way back to
+    it was a URL nobody kept. %>
+<% if @profile_drafts && !@profile_drafts.empty? %>
+  <section class="section profile-drafts" aria-labelledby="profile-drafts-label">
+    <div class="profile-drafts-heading">
+      <p class="kicker" id="profile-drafts-label">Drafts</p>
+      <p class="meta">Only you can see these</p>
+    </div>
+    <ul class="profile-draft-list">
+      <% @profile_drafts.each do |draft| %>
+        <li class="profile-draft">
+          <a class="profile-draft-link" href="<%= h(draft.public_path) %>/edit"><%= h(draft.name) %></a>
+          <span class="profile-draft-meta">Saved <%= h(date_label(draft.updated_at)) %></span>
+          <form class="profile-draft-delete" action="<%= h(draft.public_path) %>/delete" method="post">
+            <%= csrf_tag %>
+            <button type="submit" data-confirm-submit="Delete the draft &ldquo;<%= h(draft.name) %>&rdquo;? This cannot be undone.">Delete</button>
+          </form>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

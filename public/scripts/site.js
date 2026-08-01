@@ -1206,6 +1206,21 @@
     });
   };
 
+  // Destructive submits ask first. Delegated from the document so any form can
+  // opt in, and hung off submit rather than click so a keyboard submit is caught
+  // too. The attribute is deliberately not the editor's own data-confirm: both
+  // scripts load on the compose page, and sharing a name would ask twice.
+  // Without JavaScript the form still posts — the prompt is a second thought,
+  // not the authorisation.
+  const buildConfirmGuard = () => {
+    document.addEventListener("submit", (event) => {
+      const submitter = event.submitter || event.target.querySelector("[data-confirm-submit]");
+      const message = submitter && submitter.getAttribute("data-confirm-submit");
+      if (!message) return;
+      if (!window.confirm(message)) event.preventDefault();
+    });
+  };
+
   window.addEventListener("DOMContentLoaded", () => {
     if (leafletReady()) {
       document.querySelectorAll("[data-map]").forEach(buildMap);
@@ -1221,5 +1236,6 @@
     document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
     document.querySelectorAll("[data-trip-photo-workbench]").forEach(buildTripPhotoWorkbench);
     buildPhotoLightbox();
+    buildConfirmGuard();
   });
 })();

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "hikes"
 require "went_hiking/slug"
 require "went_hiking/follow_subscription_request"
 
@@ -42,7 +43,32 @@ module PeopleRoutes
     @year = @trip_years.include?(requested_year) ? requested_year : latest_trip_year(@account)
     @trips = @account.trips_dataset.published.where(Sequel.extract(:year, :hiked_at) => @year).reverse_order(:hiked_at).all
     @other_years = @trip_years - [@year]
+    @profile_drafts = owned_drafts(@account)
     @title = @account.name
+  end
+
+  # A draft is half a thought, and half a thought is not publishing: the list
+  # exists only for the hiker whose profile this is. Everyone else — signed in,
+  # signed out, or the neighbouring account — gets the same page they always got.
+  def owned_drafts(account)
+    viewer = current_account
+    return [] unless viewer && viewer.id == account.id
+
+    account.trips_dataset
+      .drafts
+      .reverse_order(:updated_at, :id)
+      .all
+      .reject { |trip| scratch_draft?(trip) }
+  end
+
+  # The compose page mints a draft the moment it opens, so one untouched
+  # "Untitled Hike" is the residue of looking rather than a hike anyone
+  # abandoned. Those are already reused and swept; listing them would only put a
+  # phantom on the profile of everyone who ever clicked New Hike.
+  def scratch_draft?(trip)
+    trip.name.to_s == HikeRoutes::DRAFT_NAME &&
+      trip.report_markdown.to_s.strip.empty? &&
+      trip.photos_dataset.empty?
   end
 
   def account_from_slug(value)

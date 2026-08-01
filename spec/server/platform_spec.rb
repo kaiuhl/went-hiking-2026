@@ -282,6 +282,55 @@ RSpec.describe "platform behaviour" do
       expect(JSON.parse(last_response.body).fetch("trip_id")).not_to eq(other_draft.id)
     end
 
+    it "surfaces a titled draft on the owner's profile and on nobody else's view of it" do
+      account_id = create_account
+      draft = create_trip(account_id, name: "Half A Ridge", slug: "half-a-ridge", status: "draft", report_markdown: "Started writing.")
+      create_trip(account_id, name: "Burnt Lake", slug: "burnt-lake")
+      profile = "/people/#{account_id}-kai"
+
+      get profile
+      expect(last_response).to be_ok
+      expect(last_response.body).not_to include("profile-draft-list")
+      expect(last_response.body).not_to include("Half A Ridge")
+
+      other_id = create_account(email: "other@example.com", name: "Other", slug: "other")
+      login_as(other_id)
+      get profile
+
+      expect(last_response).to be_ok
+      expect(last_response.body).not_to include("profile-draft-list")
+      expect(last_response.body).not_to include("Half A Ridge")
+
+      clear_cookies
+      login_as(account_id)
+      get profile
+
+      expect(last_response).to be_ok
+      expect(last_response.body).to include("profile-draft-list")
+      expect(last_response.body).to include("Half A Ridge")
+      expect(last_response.body).to include(%(href="#{draft.public_path}/edit"))
+      expect(last_response.body).to include(%(action="#{draft.public_path}/delete"))
+    end
+
+    it "keeps the untouched scratch draft off the profile and lists it once it holds work" do
+      account_id = create_account
+      create_trip(account_id, name: "Untitled Hike", slug: "untitled-hike", status: "draft")
+      login_as(account_id)
+
+      get "/people/#{account_id}-kai"
+
+      expect(last_response).to be_ok
+      expect(last_response.body).not_to include("profile-draft-list")
+
+      written = create_trip(account_id, name: "Untitled Hike", slug: "untitled-hike", status: "draft", report_markdown: "Started writing.")
+
+      get "/people/#{account_id}-kai"
+
+      expect(last_response.body).to include("profile-draft-list")
+      expect(last_response.body.scan("profile-draft-link").size).to eq(1)
+      expect(last_response.body).to include(%(href="#{written.public_path}/edit"))
+    end
+
     it "applies photo captions when creating a hike" do
       account_id = create_account
       trip = create_trip(account_id, name: "Draft", slug: "draft", status: "draft")

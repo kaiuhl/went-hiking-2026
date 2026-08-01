@@ -1510,6 +1510,107 @@ body.profile-follow-modal-open {
   margin-bottom: 0;
 }
 
+/* Drafts are workspace, not published work, so the rail stays quiet: rules and
+   label type, no cards, no photography. It sits under the year it belongs to
+   and only the hiker who wrote them ever sees it. */
+.profile-drafts {
+  padding-top: var(--space-7);
+}
+
+/* The cap sits on the children, not the section: .section centres itself, so
+   capping it there would pull the rail off the gutter every other block on the
+   page is aligned to. */
+.profile-drafts-heading,
+.profile-draft-list {
+  max-width: var(--measure);
+}
+
+.profile-drafts-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.profile-drafts-heading p {
+  margin: 0;
+}
+
+.profile-draft-list {
+  margin: 0;
+  border-top: var(--border) solid var(--line);
+  padding: 0;
+  list-style: none;
+}
+
+.profile-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--space-3) var(--space-4);
+  border-bottom: var(--border) solid var(--line);
+  padding: var(--space-3) 0;
+}
+
+.profile-draft-link {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-m);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-draft-meta {
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+
+.profile-draft-delete {
+  margin: 0;
+}
+
+.profile-draft-delete button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.profile-draft-delete button:hover,
+.profile-draft-delete button:focus-visible {
+  background: transparent;
+  color: var(--danger);
+}
+
+@media (max-width: 620px) {
+  /* The date drops under the name so the delete control keeps a real target. */
+  .profile-draft {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .profile-draft-meta {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .profile-draft-delete {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+  }
+
+  .profile-draft-delete button {
+    min-height: 44px;
+    padding: 0 0 0 var(--space-3);
+  }
+}
+
 .photo-page {
   padding: 40px 0 72px;
 }
