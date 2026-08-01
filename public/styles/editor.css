@@ -1,0 +1,1029 @@
+/* ==========================================================================
+   Went Hiking — compose editor
+
+   Loaded only on /hikes/new and /hikes/:slug/edit. The page is meant to read as
+   a sheet of paper with a caret on it, not as a form: metadata is typography,
+   the story is the page, and the only chrome is one quiet bar at the top.
+   Everything here leans on the site's tokens so the editor and the published
+   trip page speak the same language.
+   ========================================================================== */
+
+.compose {
+  width: 100%;
+  padding-bottom: var(--space-11);
+}
+
+/* Menus and popovers are toggled with the hidden attribute, and several of them
+   need a display mode of their own. Without this the attribute loses. */
+.compose [hidden],
+.compose-toolbar[hidden],
+.compose-toolbar [hidden] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Compose bar. Slim, sticky, and almost silent: state on the left, the one
+   decision that matters on the right.
+   -------------------------------------------------------------------------- */
+
+.compose-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  border-bottom: var(--border) solid var(--line);
+  background: var(--header-veil);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+}
+
+.compose-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 10px 0;
+}
+
+.compose-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.compose-state[data-state="saved"] {
+  color: var(--success);
+}
+
+.compose-state[data-state="dirty"] {
+  color: var(--ink-soft);
+}
+
+.compose-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.compose-bar-link {
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.compose-bar-link:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.32em;
+}
+
+.compose-primary {
+  border: var(--border) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 8px 18px;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.compose-menu {
+  position: relative;
+}
+
+.compose-menu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: var(--border) solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  font-size: var(--text-l);
+  line-height: 1;
+}
+
+.compose-menu-toggle:hover {
+  border-color: var(--ink);
+  background: transparent;
+  color: var(--ink);
+}
+
+.compose-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.compose-menu-panel a,
+.compose-menu-panel button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 10px var(--space-4);
+  font-size: var(--text-xs);
+  text-align: left;
+  text-decoration: none;
+}
+
+.compose-menu-panel a:hover,
+.compose-menu-panel button:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.compose-menu-danger {
+  color: var(--danger) !important;
+}
+
+.compose-menu-danger:hover {
+  background: var(--danger) !important;
+  color: var(--on-dark) !important;
+}
+
+.compose-offscreen-form {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   The sheet.
+   -------------------------------------------------------------------------- */
+
+.compose-form {
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding-top: var(--space-6);
+}
+
+.compose-alert {
+  max-width: var(--measure);
+  margin-bottom: var(--space-5);
+  border-left: var(--border-strong) solid var(--danger);
+  padding: var(--space-2) var(--space-4);
+  color: var(--danger-strong);
+  font-size: var(--text-xs);
+}
+
+.compose-alert p {
+  margin: 0;
+}
+
+.compose-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Title: no box, no label, just the caret and the site's display type. */
+.compose-title-field {
+  max-width: none;
+  margin: 0;
+}
+
+.compose-title {
+  display: block;
+  width: 100%;
+  max-width: var(--measure-wide);
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: clamp(34px, 5.4vw, 64px);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-display);
+  resize: none;
+}
+
+.compose-title::placeholder {
+  color: var(--faint);
+}
+
+.compose-title:focus {
+  outline: 0;
+}
+
+.compose-title:focus-visible {
+  outline: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Byline. The metadata row is set as the same uppercase kicker the published
+   page uses, so filled values read as type and empty ones read as an invitation.
+   -------------------------------------------------------------------------- */
+
+.compose-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-3);
+  margin: var(--space-4) 0 0;
+}
+
+.compose-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 28px;
+}
+
+.compose-byline > .compose-chip:not(:last-child)::after {
+  content: "/";
+  margin-left: var(--space-2);
+  color: var(--faint);
+}
+
+.compose-chip-input {
+  width: auto;
+  border: 0;
+  border-bottom: var(--border) dashed transparent;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--faint);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-chip-input::placeholder {
+  color: var(--faint);
+}
+
+.compose-chip-input:hover::placeholder {
+  color: var(--muted);
+}
+
+.compose-chip-input:hover {
+  border-bottom-color: var(--line);
+}
+
+.compose-chip-input.is-set {
+  color: var(--ink-soft);
+  font-weight: var(--weight-medium);
+}
+
+.compose-chip-input:focus {
+  outline: 0;
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+.compose-chip-input:focus-visible {
+  outline: 0;
+  border-bottom-color: var(--ink);
+}
+
+.compose-chip-number {
+  text-align: right;
+}
+
+/* The ghost reads as a kicker like its neighbours; a real URL does not. */
+.compose-chip-url.is-set {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.compose-chip-unit {
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* A unit with nothing in front of it is noise. */
+.compose-chip:not(.is-set) .compose-chip-unit {
+  display: none;
+}
+
+/* A date input will not size to its content, and the browser default leaves a
+   dead gap before the next chip. */
+.compose-date-input {
+  width: 8.2em;
+  color: var(--ink-soft);
+  font-weight: var(--weight-medium);
+}
+
+.compose-date-input::-webkit-calendar-picker-indicator {
+  margin-left: 2px;
+  opacity: 0.4;
+  cursor: pointer;
+}
+
+.compose-date-input:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+}
+
+.compose-chip-button {
+  border: 0;
+  border-bottom: var(--border) dashed transparent;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--faint);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-chip-button:hover {
+  background: transparent;
+  border-bottom-color: var(--line);
+  color: var(--muted);
+}
+
+.compose-chip-button.is-set {
+  color: var(--ink-soft);
+  font-weight: var(--weight-medium);
+}
+
+.compose-error {
+  display: block;
+  max-width: var(--measure);
+  margin-top: 6px;
+  color: var(--danger);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   Location popover: the pin and both coordinates are set and cleared as one
+   thing, which is why the pair can never end up half filled.
+   -------------------------------------------------------------------------- */
+
+.compose-chip-location {
+  position: relative;
+}
+
+.compose-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: var(--z-overlay);
+  width: min(320px, calc(100vw - 32px));
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3);
+}
+
+.compose-map {
+  height: 190px;
+  background: var(--map-wash);
+}
+
+.compose-map .leaflet-control-attribution {
+  font-size: 9px;
+}
+
+.compose-popover-hint {
+  margin: var(--space-2) 0;
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compose-popover-label {
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-popover-input {
+  width: 100%;
+  min-width: 0;
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  padding: 5px 6px;
+  font-size: var(--text-2xs);
+}
+
+.compose-popover-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.compose-popover-clear {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 0;
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-popover-clear:hover {
+  background: transparent;
+  color: var(--danger);
+}
+
+.compose-popover-done {
+  border: var(--border) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 5px 14px;
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   Story canvas. Blocks are the published prose styles, edited in place.
+   -------------------------------------------------------------------------- */
+
+/* The gap between the metadata line and the story is deliberate: it separates
+   the byline from the prose, and it is where the selection toolbar sits. */
+.compose-canvas-shell {
+  position: relative;
+  margin-top: var(--space-8);
+}
+
+.compose-canvas {
+  min-height: 160px;
+  margin-bottom: var(--space-6);
+  outline: 0;
+}
+
+.compose-block {
+  position: relative;
+  outline: 0;
+}
+
+.compose-block-text:focus-visible {
+  outline: 0;
+}
+
+.compose-block-text.is-empty::before {
+  content: attr(data-hint);
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--faint);
+  pointer-events: none;
+}
+
+.compose-block-text.is-lead::before {
+  content: "Tell the story… (optional — a photo and a few lines is plenty)";
+}
+
+.compose-block-text.is-empty:not(.is-lead)::before {
+  content: "";
+}
+
+/* Markdown this editor will not touch: shown as what it is, saved verbatim. */
+.compose-block-raw {
+  position: relative;
+  max-width: var(--measure);
+  margin: var(--space-5) 0;
+  border-left: var(--border-strong) solid var(--line);
+  background: var(--soft);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-4);
+}
+
+.compose-raw-tag {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: var(--faint);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-raw-input {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  resize: none;
+}
+
+.compose-raw-input:focus {
+  outline: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Photo figures inside the story.
+   -------------------------------------------------------------------------- */
+
+.compose-figure {
+  width: min(900px, 100%);
+  max-width: none !important;
+  margin: var(--space-7) 0;
+}
+
+.compose-figure.is-dragging {
+  opacity: 0.4;
+}
+
+.compose-figure-media {
+  position: relative;
+  background: var(--photo-void);
+}
+
+.compose-figure-image {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.compose-figure-tools {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.compose-figure:hover .compose-figure-tools,
+.compose-figure:focus-within .compose-figure-tools,
+.compose-figure:focus .compose-figure-tools {
+  opacity: 1;
+}
+
+.compose-figure-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: var(--dark-control);
+  color: var(--on-dark);
+  padding: 0;
+  font-size: var(--text-l);
+  line-height: 1;
+}
+
+.compose-figure-toggle:hover {
+  background: var(--ink);
+  color: var(--on-dark);
+}
+
+.compose-figure-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--z-float);
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.compose-figure-menu-item {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 9px var(--space-3);
+  font-size: var(--text-2xs);
+  text-align: left;
+}
+
+.compose-figure-menu-item:hover {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.compose-figure-menu-item[data-figure-action="delete"] {
+  color: var(--danger);
+}
+
+.compose-figure-caption {
+  max-width: var(--measure);
+  margin-top: var(--space-2);
+}
+
+.compose-caption-input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: var(--border) solid transparent;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.compose-caption-input::placeholder {
+  color: var(--faint);
+}
+
+.compose-caption-input:hover {
+  border-bottom-color: var(--line);
+}
+
+.compose-caption-input:focus {
+  outline: 0;
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+.compose-figure-progress,
+.compose-tray-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--on-dark-veil);
+}
+
+.compose-figure-progress-bar,
+.compose-tray-progress-bar {
+  display: block;
+  width: 4%;
+  height: 100%;
+  background: var(--on-dark);
+  transition: width var(--dur-2) var(--ease-out);
+}
+
+.compose-figure.is-uploading .compose-figure-image,
+.compose-tray-card.is-uploading .compose-tray-image {
+  opacity: 0.55;
+}
+
+.compose-upload-error {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-drop-marker {
+  height: 2px;
+  margin: var(--space-3) 0;
+  background: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   Selection toolbar.
+   -------------------------------------------------------------------------- */
+
+.compose-toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: var(--border) solid var(--ink);
+  background: var(--ink);
+  padding: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.compose-toolbar[hidden] {
+  display: none;
+}
+
+.compose-toolbar-button {
+  min-width: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--on-dark);
+  padding: 6px 9px;
+  font-size: var(--text-2xs);
+  line-height: 1;
+}
+
+.compose-toolbar-button:hover {
+  background: var(--on-dark-veil);
+  color: var(--on-dark);
+}
+
+.compose-toolbar-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-left: var(--border) solid var(--on-dark-veil);
+  padding-left: 4px;
+}
+
+.compose-toolbar-link[hidden] {
+  display: none;
+}
+
+.compose-toolbar-input {
+  width: 190px;
+  border: 0;
+  background: var(--on-dark-veil);
+  padding: 6px 8px;
+  color: var(--on-dark);
+  font-size: var(--text-2xs);
+}
+
+.compose-toolbar-input::placeholder {
+  color: var(--on-dark-dim);
+}
+
+.compose-toolbar-input:focus {
+  outline: 0;
+  background: var(--on-dark-veil);
+}
+
+.compose-toolbar-apply,
+.compose-toolbar-remove {
+  border: 0;
+  background: transparent;
+  color: var(--on-dark-muted);
+  padding: 6px 8px;
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-toolbar-apply:hover,
+.compose-toolbar-remove:hover {
+  background: var(--on-dark-veil);
+  color: var(--on-dark);
+}
+
+/* --------------------------------------------------------------------------
+   Gallery tray. The default resting place for photos: a hike with a title and
+   two pictures never has to make a layout decision.
+   -------------------------------------------------------------------------- */
+
+.compose-tray {
+  margin-top: var(--space-8);
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-4);
+}
+
+.compose-tray-label {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-tray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+
+.compose-tray-grid:empty {
+  display: none;
+}
+
+/* With no photos yet the dropzone says everything the label would. */
+.compose-tray.is-empty .compose-tray-label {
+  display: none;
+}
+
+.compose-tray-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compose-tray-card.is-dragging {
+  opacity: 0.4;
+}
+
+.compose-tray-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--photo-void);
+}
+
+.compose-tray-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.compose-tray-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.compose-tray-insert,
+.compose-tray-delete {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 0;
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-tray-insert:hover {
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.32em;
+}
+
+.compose-tray-delete:hover {
+  background: transparent;
+  color: var(--danger);
+}
+
+.compose-tray-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  margin-top: var(--space-4);
+  border: var(--border) dashed var(--line);
+  background: transparent;
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.compose-tray-drop:hover {
+  border-color: var(--ink);
+  background: transparent;
+  color: var(--ink);
+}
+
+.compose-tray-drop-line {
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-tray-drop-hint {
+  color: var(--faint);
+  font-size: var(--text-3xs);
+}
+
+.compose-tray.is-drop-target .compose-tray-drop {
+  border-color: var(--ink);
+  border-style: solid;
+  background: var(--soft);
+  color: var(--ink);
+}
+
+/* The plain markdown field is the no-JavaScript fallback; the canvas replaces
+   it as soon as the editor boots. */
+.compose-source {
+  display: block;
+  width: 100%;
+  max-width: var(--measure);
+  min-height: 240px;
+}
+
+.compose.is-live .compose-source {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Narrow screens. One column, chips wrap, every action is a tap.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .compose-bar-inner {
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+  }
+
+  .compose-bar-actions {
+    gap: var(--space-2);
+  }
+
+  /* Status, one button and the overflow menu are all a 375px bar can hold.
+     View hike is already the first item inside that menu. */
+  .compose-bar-link {
+    display: none;
+  }
+
+  .compose-primary {
+    padding: 8px 14px;
+  }
+
+  .compose-form {
+    padding-top: var(--space-4);
+  }
+
+  .compose-title {
+    font-size: clamp(30px, 8.6vw, 40px);
+  }
+
+  .compose-byline {
+    gap: 2px var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .compose-byline > .compose-chip:not(:last-child)::after {
+    margin-left: 6px;
+  }
+
+  .compose-chip {
+    min-height: 34px;
+  }
+
+  /* Fingers need more than the 26px a line of kicker type occupies. */
+  .compose-chip-input,
+  .compose-chip-button {
+    padding: 6px 0;
+  }
+
+  .compose-canvas {
+    min-height: 120px;
+  }
+
+  .compose-canvas-shell {
+    margin-top: var(--space-4);
+  }
+
+  .compose-figure {
+    margin: var(--space-5) 0;
+  }
+
+  .compose-figure-image {
+    max-height: 300px;
+  }
+
+  /* Touch has no hover, so the photo menu is always within reach. */
+  .compose-figure-tools {
+    opacity: 1;
+  }
+
+  .compose-tray-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .compose-tray-drop {
+    padding: var(--space-5) var(--space-3);
+  }
+
+  .compose-popover {
+    left: auto;
+    right: 0;
+  }
+
+  .compose-toolbar-input {
+    width: 130px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compose-figure-tools,
+  .compose-figure-progress-bar,
+  .compose-tray-progress-bar,
+  .compose-tray-drop {
+    transition: none;
+  }
+}

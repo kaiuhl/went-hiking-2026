@@ -1,164 +1,287 @@
-<% form_trip = @form_trip %>
-<% form_photos = @form_photos || [] %>
-<% form_upload_url = form_trip ? "#{form_trip.public_path}/photos/direct-upload" : "" %>
-<% form_direct_upload = direct_photo_upload_available? %>
+<%
+  # The compose page. One view serves /hikes/new and /hikes/:slug/edit: the only
+  # difference is whether a trip row exists yet and whether it has been published.
+  @needs_editor = true
 
-<section class="form-page">
-  <p class="breadcrumbs"><a href="/hikes">Hikes</a></p>
-  <header class="form-header">
-    <p class="kicker"><%= h(@form_values[:account_name]) %></p>
-    <h1><%= h(@form_heading) %></h1>
-  </header>
+  trip = @form_trip
+  values = @form_values
+  photos = @form_photos || []
+  errors = @form_errors || []
+  published = trip && trip.published?
+  mode = if trip.nil?
+    "new"
+  elsif published
+    "published"
+  else
+    "draft"
+  end
 
-  <% unless @form_errors.empty? %>
-    <div class="form-errors" role="alert">
-      <p>A couple things need fixing before this hike can go live:</p>
-      <ul>
-        <% @form_errors.each do |error| %>
-          <li><%= h(error) %></li>
+  # Server-side validation errors are pinned to the control that caused them
+  # rather than dumped at the top of the page.
+  error_for = lambda do |*fragments|
+    errors.find { |error| fragments.any? { |fragment| error.downcase.include?(fragment) } }
+  end
+  name_error = error_for.call("name is required")
+  date_error = error_for.call("hike date")
+  nights_error = error_for.call("nights")
+  mileage_error = error_for.call("mileage")
+  elevation_error = error_for.call("elevation")
+  location_error = error_for.call("latitude", "longitude", "map pin")
+  url_error = error_for.call("reference url")
+  claimed = [name_error, date_error, nights_error, mileage_error, elevation_error, location_error, url_error].compact
+  other_errors = errors - claimed
+
+  nights_value = values[:nights].to_s
+  nights_value = "" if nights_value == "0"
+  has_location = !values[:lat].to_s.empty? && !values[:lng].to_s.empty?
+
+  photo_items = photos.map { |photo| photo_editor_item(photo) }
+  # JSON inside a <script> block: escaping "<" keeps a caption from closing the tag.
+  photo_json = json(photo_items).gsub("<", "\\u003c")
+
+  chip_error = lambda do |key, message|
+    next "" unless message
+    %(<span class="compose-error" data-compose-error="#{h(key)}">#{h(message)}</span>)
+  end
+%>
+
+<section
+  class="compose"
+  data-compose
+  data-mode="<%= h(mode) %>"
+  data-trip-id="<%= h(trip&.id) %>"
+  data-draft-url="/hikes/drafts"
+  data-save-url="<%= h(@form_action) %>"
+  data-autosave-url="<%= h(trip ? "#{trip.public_path}/autosave" : "") %>"
+  data-upload-url="<%= h(trip ? "#{trip.public_path}/photos/direct-upload" : "") %>"
+  data-photo-url="<%= h(trip ? "#{trip.public_path}/photos" : "") %>"
+  data-edit-url="<%= h(trip ? "#{trip.public_path}/edit" : "") %>"
+  data-trip-url="<%= h(trip&.public_path) %>"
+  data-direct-upload="<%= direct_photo_upload_available? ? "true" : "false" %>"
+>
+  <div class="compose-bar">
+    <div class="compose-bar-inner">
+      <p class="compose-state" data-compose-state aria-live="polite" aria-atomic="true"><%= published ? "Published" : "Draft" %></p>
+
+      <div class="compose-bar-actions">
+        <% if published %>
+          <a class="compose-bar-link" href="<%= h(trip.public_path) %>">View hike</a>
         <% end %>
-      </ul>
-    </div>
-  <% end %>
 
-  <form class="trip-form" action="<%= h(@form_action) %>" method="post" data-trip-editor data-trip-id="<%= h(form_trip&.id) %>">
-    <%= csrf_tag %>
-    <div class="form-grid">
-      <div class="form-row form-row-full">
-        <label for="trip-name">Name</label>
-        <input id="trip-name" name="name" value="<%= h(@form_values[:name]) %>" autocomplete="off" required>
-      </div>
+        <button class="compose-primary" type="submit" form="compose-form" data-compose-submit>
+          <%= published ? "Save changes" : "Publish" %>
+        </button>
 
-      <div class="form-row">
-        <label for="trip-hiked-at">Date</label>
-        <input id="trip-hiked-at" name="hiked_at" type="date" value="<%= h(@form_values[:hiked_at]) %>" required>
-      </div>
-
-      <div class="form-row">
-        <label for="trip-nights">Nights</label>
-        <input id="trip-nights" name="nights" type="number" min="0" step="1" value="<%= h(@form_values[:nights]) %>">
-      </div>
-
-      <div class="form-row">
-        <label for="trip-mileage">Mileage</label>
-        <input id="trip-mileage" name="mileage" type="number" min="0" step="0.1" value="<%= h(@form_values[:mileage]) %>">
-      </div>
-
-      <div class="form-row">
-        <label for="trip-elevation">Elevation gain</label>
-        <input id="trip-elevation" name="elevation" type="number" min="0" step="1" value="<%= h(@form_values[:elevation]) %>">
-      </div>
-
-      <div class="form-row form-row-full">
-        <label for="trip-source-url">Reference URL</label>
-        <input id="trip-source-url" name="source_url" type="url" value="<%= h(@form_values[:source_url]) %>" placeholder="https://">
-      </div>
-
-      <div class="form-row form-row-full">
-        <label for="trip-location-map">Location</label>
-        <div class="trip-location-picker" data-trip-location-picker data-tile-url="<%= h(leaflet_tile_url) %>" data-default-lat="45.52" data-default-lng="-122.67" data-default-zoom="6">
-          <div id="trip-location-map" class="trip-location-map" data-location-map role="application" aria-label="Trip location picker"></div>
-          <div class="trip-location-status">
-            <p data-location-summary>
-              <% if @form_values[:lat].to_s.empty? || @form_values[:lng].to_s.empty? %>
-                Click the map to drop a pin.
-              <% else %>
-                Pin set at <%= h(@form_values[:lat]) %>, <%= h(@form_values[:lng]) %>.
+        <%# Rendered even before a draft row exists: the editor reveals it the
+            moment the draft is created, so there is nothing to inject later. %>
+          <div class="compose-menu" data-compose-menu <%= "hidden" unless trip %>>
+            <button
+              class="compose-menu-toggle"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="More hike actions"
+              data-compose-menu-toggle
+            >
+              <span aria-hidden="true">&hellip;</span>
+            </button>
+            <div class="compose-menu-panel" data-compose-menu-panel hidden>
+              <% if published %>
+                <a href="<%= h(trip.public_path) %>">View hike</a>
               <% end %>
-            </p>
-            <button class="secondary-button" type="button" data-location-clear>Clear pin</button>
-          </div>
-          <details class="coordinate-fallback">
-            <summary>Manual coordinates</summary>
-            <div class="coordinate-grid">
-              <div class="form-row">
-                <label for="trip-lat">Latitude</label>
-                <input id="trip-lat" name="lat" type="number" min="-90" max="90" step="any" value="<%= h(@form_values[:lat]) %>" data-location-lat>
-              </div>
-
-              <div class="form-row">
-                <label for="trip-lng">Longitude</label>
-                <input id="trip-lng" name="lng" type="number" min="-180" max="180" step="any" value="<%= h(@form_values[:lng]) %>" data-location-lng>
-              </div>
+              <button
+                class="compose-menu-danger"
+                type="submit"
+                form="compose-delete"
+                data-compose-delete
+                data-confirm="Delete this hike and every photo on it? This cannot be undone."
+              >Delete hike</button>
             </div>
-          </details>
-        </div>
+          </div>
       </div>
     </div>
+  </div>
 
-    <div class="trip-editor-layout">
-      <div class="markdown-editor" data-markdown-editor data-trip-id="<%= h(form_trip&.id) %>">
-        <div class="form-row">
-          <label for="trip-report">Trip report</label>
-          <textarea id="trip-report" name="report_markdown" rows="16" data-markdown-input><%= h(@form_values[:report_markdown]) %></textarea>
-        </div>
-        <section class="markdown-preview" aria-live="polite">
-          <div class="preview-heading">
-            <h2>Preview</h2>
-            <span class="meta" data-markdown-status>Markdown</span>
-          </div>
-          <div class="preview-body trip-body" data-markdown-preview>
-            <% if @form_values[:report_markdown].to_s.empty? %>
-              <p class="empty">Start writing to see the story take shape.</p>
-            <% elsif form_trip %>
-              <% preview_render = trip_report_render(form_trip, form_photos, body: @form_values[:report_markdown]) %>
-              <%= preview_render.html %>
-              <%= trip_photo_gallery_html(form_photos.reject { |photo| preview_render.inline_photo_ids.include?(photo.id) }, all_photos: form_photos) %>
-            <% else %>
-              <%= markdown(@form_values[:report_markdown]) %>
-            <% end %>
-          </div>
-        </section>
-      </div>
-
-      <aside
-        class="trip-photo-workbench"
-        data-trip-photo-workbench
-        data-draft-url="/hikes/drafts"
-        data-upload-url="<%= h(form_upload_url) %>"
-        data-direct-upload-available="<%= form_direct_upload ? "true" : "false" %>"
-      >
-        <div class="trip-photo-workbench-heading">
-          <div>
-            <h2>Photos</h2>
-            <p class="meta"><%= h(format_number(form_photos.size)) %> uploaded</p>
-          </div>
-          <% if form_trip %>
-            <a href="<%= h(form_trip.public_path) %>/photos/new">Single upload</a>
-          <% end %>
-        </div>
-
-        <% if form_direct_upload %>
-          <label class="trip-photo-dropzone" data-trip-photo-dropzone>
-            <span>Upload trail photos</span>
-            <input name="editor_photos" type="file" accept="image/jpeg,image/png,image/gif" multiple data-trip-photo-input>
-          </label>
-        <% else %>
-          <p class="inline-hints">Save the hike first, then use the photo upload page to add trail photos.</p>
-        <% end %>
-
-        <div class="trip-photo-workbench-list" data-trip-photo-list>
-          <% form_photos.each do |photo| %>
-            <article class="trip-photo-card" data-trip-photo-card data-photo-id="<%= h(photo.id) %>" data-handle="<%= h(photo_handle(photo)) %>" data-caption-url="<%= h(photo_editor_item(photo)[:caption_url]) %>">
-              <img src="<%= h(image_url(photo, "large")) %>" alt="" data-trip-photo-thumb>
-              <div class="trip-photo-card-body">
-                <div class="trip-photo-card-tools">
-                  <code data-photo-handle><%= h(photo_handle(photo)) %></code>
-                  <button class="secondary-button" type="button" data-insert-photo>Insert</button>
-                </div>
-                <label for="photo-caption-<%= h(photo.id) %>">Caption</label>
-                <textarea id="photo-caption-<%= h(photo.id) %>" name="photo_captions[<%= h(photo.id) %>]" rows="2" data-photo-caption><%= h(photo.caption) %></textarea>
-                <p class="meta" data-photo-status>Saved</p>
-              </div>
-            </article>
-          <% end %>
-        </div>
-      </aside>
-    </div>
-
-    <div class="form-actions">
-      <button type="submit"><%= h(@form_submit_label) %></button>
-      <a href="/hikes">Cancel</a>
-    </div>
+  <form id="compose-delete" class="compose-offscreen-form" action="<%= h(trip ? "#{trip.public_path}/delete" : "") %>" method="post" <%= "hidden" unless trip %>>
+    <%= csrf_tag %>
   </form>
+
+  <form id="compose-form" class="compose-form" action="<%= h(@form_action) %>" method="post" data-compose-form novalidate>
+    <%= csrf_tag %>
+
+    <% unless other_errors.empty? %>
+      <div class="compose-alert" role="alert">
+        <% other_errors.each do |error| %>
+          <p><%= h(error) %></p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <h1 class="compose-title-field">
+      <label class="compose-visually-hidden" for="compose-title">Hike name</label>
+      <textarea
+        id="compose-title"
+        class="compose-title"
+        name="name"
+        rows="1"
+        spellcheck="false"
+        autocomplete="off"
+        enterkeyhint="next"
+        placeholder="Name this hike"
+        data-compose-title
+      ><%= h(values[:name]) %></textarea>
+    </h1>
+    <%= chip_error.call("name", name_error) %>
+
+    <div class="compose-byline kicker" data-compose-byline>
+      <span class="compose-chip compose-chip-date">
+        <label class="compose-visually-hidden" for="compose-date">Hike date</label>
+        <input
+          id="compose-date"
+          class="compose-chip-input compose-date-input"
+          type="date"
+          name="hiked_at"
+          value="<%= h(values[:hiked_at]) %>"
+          required
+          data-compose-field="hiked_at"
+        >
+      </span>
+
+      <span class="compose-chip" data-compose-chip="nights">
+        <label class="compose-visually-hidden" for="compose-nights">Nights out</label>
+        <input
+          id="compose-nights"
+          class="compose-chip-input compose-chip-number"
+          type="text"
+          inputmode="numeric"
+          name="nights"
+          value="<%= h(nights_value) %>"
+          placeholder="+ nights"
+          autocomplete="off"
+          data-compose-field="nights"
+          data-compose-unit="nights"
+        >
+        <span class="compose-chip-unit" aria-hidden="true" data-compose-unit-label>nights</span>
+      </span>
+
+      <span class="compose-chip" data-compose-chip="mileage">
+        <label class="compose-visually-hidden" for="compose-mileage">Miles walked</label>
+        <input
+          id="compose-mileage"
+          class="compose-chip-input compose-chip-number"
+          type="text"
+          inputmode="decimal"
+          name="mileage"
+          value="<%= h(values[:mileage]) %>"
+          placeholder="+ miles"
+          autocomplete="off"
+          data-compose-field="mileage"
+          data-compose-unit="miles"
+        >
+        <span class="compose-chip-unit" aria-hidden="true" data-compose-unit-label>miles</span>
+      </span>
+
+      <span class="compose-chip" data-compose-chip="elevation">
+        <label class="compose-visually-hidden" for="compose-elevation">Feet gained</label>
+        <input
+          id="compose-elevation"
+          class="compose-chip-input compose-chip-number"
+          type="text"
+          inputmode="numeric"
+          name="elevation"
+          value="<%= h(values[:elevation]) %>"
+          placeholder="+ ft gained"
+          autocomplete="off"
+          data-compose-field="elevation"
+          data-compose-unit="ft gained"
+        >
+        <span class="compose-chip-unit" aria-hidden="true" data-compose-unit-label>ft gained</span>
+      </span>
+
+      <span class="compose-chip compose-chip-location" data-compose-chip="location" data-compose-location>
+        <button
+          class="compose-chip-button"
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          data-compose-location-toggle
+        ><%= has_location ? "Pin set &check;" : "+ drop a pin" %></button>
+        <input type="hidden" name="lat" value="<%= h(values[:lat]) %>" data-compose-field="lat">
+        <input type="hidden" name="lng" value="<%= h(values[:lng]) %>" data-compose-field="lng">
+
+        <div class="compose-popover" role="dialog" aria-label="Hike location" data-compose-location-panel hidden>
+          <div
+            class="compose-map"
+            data-compose-map
+            data-tile-url="<%= h(leaflet_tile_url) %>"
+            data-default-lat="45.52"
+            data-default-lng="-122.67"
+            data-default-zoom="6"
+            role="application"
+            aria-label="Click the map to drop a pin"
+          ></div>
+          <p class="compose-popover-hint" data-compose-location-summary>Click the map to drop a pin.</p>
+          <div class="compose-popover-row">
+            <label class="compose-popover-label" for="compose-lat">Lat</label>
+            <input id="compose-lat" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" autocomplete="off" data-compose-lat>
+            <label class="compose-popover-label" for="compose-lng">Lng</label>
+            <input id="compose-lng" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lng]) %>" autocomplete="off" data-compose-lng>
+          </div>
+          <div class="compose-popover-actions">
+            <button class="compose-popover-clear" type="button" data-compose-location-clear>Clear pin</button>
+            <button class="compose-popover-done" type="button" data-compose-popover-close>Done</button>
+          </div>
+        </div>
+      </span>
+
+      <span class="compose-chip compose-chip-link" data-compose-chip="source_url">
+        <label class="compose-visually-hidden" for="compose-source-url">Reference link</label>
+        <input
+          id="compose-source-url"
+          class="compose-chip-input compose-chip-url"
+          type="url"
+          name="source_url"
+          value="<%= h(values[:source_url]) %>"
+          placeholder="+ link"
+          autocomplete="off"
+          spellcheck="false"
+          data-compose-field="source_url"
+        >
+      </span>
+    </div>
+
+    <%= chip_error.call("hiked_at", date_error) %>
+    <%= chip_error.call("nights", nights_error) %>
+    <%= chip_error.call("mileage", mileage_error) %>
+    <%= chip_error.call("elevation", elevation_error) %>
+    <%= chip_error.call("location", location_error) %>
+    <%= chip_error.call("source_url", url_error) %>
+
+    <div class="compose-canvas-shell">
+      <div class="compose-canvas trip-body" data-compose-canvas hidden></div>
+
+      <label class="compose-visually-hidden" for="compose-source">Trip report markdown</label>
+      <textarea
+        id="compose-source"
+        class="compose-source"
+        name="report_markdown"
+        rows="12"
+        placeholder="Tell the story&hellip;"
+        data-compose-source
+      ><%= h(values[:report_markdown]) %></textarea>
+    </div>
+
+    <section class="compose-tray" data-compose-tray aria-label="Photos in this hike">
+      <p class="compose-tray-label" data-compose-tray-label>Also from this hike</p>
+      <div class="compose-tray-grid" data-compose-tray-grid></div>
+      <button class="compose-tray-drop" type="button" data-compose-tray-drop>
+        <span class="compose-tray-drop-line">Drop photos here</span>
+        <span class="compose-tray-drop-hint">or click to choose files</span>
+      </button>
+    </section>
+
+    <input class="compose-visually-hidden" type="file" accept="image/jpeg,image/png,image/gif" multiple data-compose-file tabindex="-1" aria-hidden="true">
+  </form>
+
+  <script type="application/json" data-compose-photos><%= photo_json %></script>
 </section>
