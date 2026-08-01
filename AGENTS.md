@@ -3,6 +3,22 @@
 ## Local Development
 
 - Use `/Users/kaiuhl/Code/went-hiking-2026` as the active checkout for this app.
+- Photo uploads work locally with zero config: `Storage::Local` supports the same
+  direct-upload contract as S3 (`POST /uploads/direct` with an HMAC ticket), variants
+  generate inline at finalize, and `/system/*` streams from `tmp/uploads` when no
+  `MEDIA_BASE_URL` is configured.
+- Dev email delivery falls back to an outbox: with `SES_FROM_EMAIL` unset, messages
+  are written as `.eml` files to `tmp/outbox/` instead of raising. Production fails
+  fast at boot if `SES_FROM_EMAIL` is missing.
+- Run the test suite (the app image omits dev/test gems, so override `BUNDLE_WITHOUT`):
+  `docker compose run --rm -e BUNDLE_WITHOUT= -e RACK_ENV=test web sh -c "bundle install --quiet && bundle exec rake"`.
+  This runs RSpec (in-memory sqlite; never touches the dev Postgres) plus the editor's
+  markdown round-trip harness (`spec/js/editor_round_trip.js`, plain node, no deps).
+- The compose editor (`/hikes/new`, `/hikes/:slug/edit`) serializes to
+  `report_markdown` + `{{ photo:ID }}` handles and must round-trip byte-identically;
+  the harness above is the guard. Treat any change to `public/scripts/editor.js`
+  parsing/serialization as suspect until it passes.
+- Seeded dev login: `kaiuhl@gmail.com` / `password`.
 - The local development stack is intended to stay running while work happens:
   - `docker compose up -d postgres web`
   - App: `http://localhost:9292`
