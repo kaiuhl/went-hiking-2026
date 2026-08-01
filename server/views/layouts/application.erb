@@ -19,7 +19,10 @@
     <meta name="twitter:image" content="<%= h(social_image_url) %>">
     <link rel="canonical" href="<%= h(canonical_url) %>">
     <link rel="icon" href="<%= h(static_asset_path("/favicon.ico")) %>" sizes="any">
-    <link rel="preload" href="<%= h(static_asset_path("/fonts/InterVariable.woff2")) %>" as="font" type="font/woff2" crossorigin>
+    <%# Deliberately unversioned: site.css asks for this exact URL from an
+        @font-face rule that cannot be templated, and a preload that does not
+        match it byte for byte downloads the font a second time. %>
+    <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<%= h(static_asset_path("/styles/site.css")) %>">
     <% if @needs_editor %>
       <link rel="stylesheet" href="<%= h(static_asset_path("/styles/editor.css")) %>">
