@@ -2128,6 +2128,10 @@ form.rodauth {
 @media (max-width: 760px) {
   /* Compact, sticky, one row. The old mobile header stacked to 176px with
      22px tap targets and scrolled away with the page. */
+  html {
+    scroll-padding-top: 68px;
+  }
+
   .site-header {
     position: sticky;
     top: 0;
@@ -2182,7 +2186,8 @@ form.rodauth {
     white-space: nowrap;
   }
 
-  .site-nav-greeting {
+  /* The greeting is decorative; the row is short on space. */
+  .site-nav .site-nav-greeting {
     display: none;
   }
 
