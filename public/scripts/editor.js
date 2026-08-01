@@ -955,8 +955,15 @@
     var match = /^(#{1,6})[ \t]/.exec(first.nodeValue);
     if (!match) return false;
 
+    // The trip's title is the page's only h1, so "# " here has to land at h2
+    // rather than giving the page a second one — and the prefix has to be
+    // clamped alongside the level, because the prefix is what gets written back
+    // out as markdown. Anything past h3 flattens too: a trip report has no use
+    // for six levels. Headings already in the source keep their own prefix and
+    // round-trip untouched; only what is typed here is decided here.
+    var level = Math.min(Math.max(match[1].length, 2), 3);
     var meta = blockMeta(node);
-    var heading = createTextBlock({type: "heading", level: match[1].length, prefix: match[1] + " ", nodes: []});
+    var heading = createTextBlock({type: "heading", level: level, prefix: (level === 2 ? "## " : "### "), nodes: []});
     heading._block.id = meta.id;
     heading._block.sepAfter = meta.sepAfter;
     heading._block.origNextId = meta.origNextId;
