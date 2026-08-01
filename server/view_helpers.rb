@@ -311,8 +311,39 @@ module ViewHelpers
     HTML
   end
 
+  # A listing renders one heart button per row, and each one used to ask the
+  # database for its own count (and, signed in, whether this viewer is in it).
+  # Asking once for the whole page instead is the difference between two
+  # queries and two hundred; anything not primed still answers for itself.
+  def prime_heart_counts(trips)
+    @heart_counts ||= {}
+    @hearted_trip_ids ||= {}
+    ids = trips.map(&:id).reject { |id| @heart_counts.key?(id) }
+    return if ids.empty?
+
+    ids.each { |id| @heart_counts[id] = 0 }
+    WentHiking::Models::Heart.where(trip_id: ids).group_and_count(:trip_id).each do |row|
+      @heart_counts[row[:trip_id]] = row[:count]
+    end
+
+    return unless rodauth.logged_in?
+
+    ids.each { |id| @hearted_trip_ids[id] = false }
+    WentHiking::Models::Heart
+      .where(trip_id: ids, account_id: rodauth.session_value.to_i)
+      .select_map(:trip_id)
+      .each { |id| @hearted_trip_ids[id] = true }
+  end
+
+  def heart_count(trip)
+    primed = @heart_counts && @heart_counts[trip.id]
+    return primed if primed
+
+    trip.hearts_dataset.count
+  end
+
   def heart_button(trip, compact: false)
-    heart_count = trip.hearts_dataset.count
+    heart_count = heart_count(trip)
     hearted = trip_hearted_by_current_account?(trip)
     label_on = "Remove heart from #{trip.name}"
     label_off = "Heart #{trip.name}"
@@ -340,6 +371,20 @@ module ViewHelpers
         </a>
       HTML
     end
+  end
+
+  # Page one keeps the bare path so the archive has one canonical URL per page
+  # rather than two spellings of the first.
+  def pager_path(path, params, page)
+    pairs = params.reject { |_key, value| value.to_s.empty? }
+    pairs = pairs.merge("page" => page) unless page.to_i <= 1
+    query = pairs.map { |key, value| "#{CGI.escape(key.to_s)}=#{CGI.escape(value.to_s)}" }.join("&")
+    query.empty? ? path : "#{path}?#{query}"
+  end
+
+  def pager_range_label(pagination, noun)
+    plural = (pagination.total == 1) ? noun : "#{noun}s"
+    "Showing #{format_number(pagination.first_item)}&ndash;#{format_number(pagination.last_item)} of #{format_number(pagination.total)} #{plural}"
   end
 
   def heart_count_label(count)
@@ -440,7 +485,12 @@ module ViewHelpers
   end
 
   def trip_hearted_by_current_account?(trip)
-    rodauth.logged_in? && trip.hearts_dataset.where(account_id: rodauth.session_value.to_i).any?
+    return false unless rodauth.logged_in?
+
+    primed = @hearted_trip_ids && @hearted_trip_ids[trip.id]
+    return primed unless primed.nil?
+
+    trip.hearts_dataset.where(account_id: rodauth.session_value.to_i).any?
   end
 
   def return_to_path

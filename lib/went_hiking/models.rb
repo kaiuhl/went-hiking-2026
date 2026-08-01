@@ -28,7 +28,10 @@ module WentHiking
 
     class Trip < Sequel::Model(:trips)
       many_to_one :account
-      one_to_many :photos
+      # Ordered to match the `photos_dataset.order(:taken_at, :id)` every caller
+      # was writing out by hand, so a listing can eager-load the association and
+      # get the same sequence it used to pay a query per row for.
+      one_to_many :photos, order: [:taken_at, :id]
       one_to_many :comments
       one_to_many :hearts
       one_to_many :hike_follow_notifications
@@ -40,6 +43,33 @@ module WentHiking
 
         def drafts
           where(status: "draft")
+        end
+
+        # One row of totals for the whole archive instead of one model per trip.
+        # `count` is the row count; the sums skip NULLs, which is what summing
+        # `mileage.to_f` and `nights.to_i` in Ruby did too.
+        def totals
+          aggregate = select {
+            [
+              count(:id).as(:trip_count),
+              sum(:mileage).as(:mileage_total),
+              sum(:nights).as(:nights_total)
+            ]
+          }
+          row = aggregate.first || {}
+
+          {
+            trips: row[:trip_count].to_i,
+            miles: row[:mileage_total].to_f,
+            nights: row[:nights_total].to_i
+          }
+        end
+
+        # Half-open range rather than `EXTRACT(year FROM hiked_at) = ?`: a bare
+        # column is what lets the (account_id, hiked_at) index serve the lookup.
+        def in_year(year)
+          start_at = Time.utc(year, 1, 1)
+          where { (hiked_at >= start_at) & (hiked_at < Time.utc(year + 1, 1, 1)) }
         end
       end
 
@@ -75,8 +105,16 @@ module WentHiking
         LegacyUrls.photo_path(self)
       end
 
+      # A listing eager-loads every variant of every photo it shows, and a photo
+      # is asked for two or three styles apiece. Once the collection is in hand,
+      # picking one out of it is what stops each ask from being its own query;
+      # on a photo loaded by itself the dataset lookup is still the cheap answer.
       def variant(style)
-        photo_variants_dataset.where(style: style.to_s).first
+        wanted = style.to_s
+        loaded = associations[:photo_variants]
+        return loaded.find { |variant| variant.style == wanted } if loaded
+
+        photo_variants_dataset.where(style: wanted).first
       end
     end
 

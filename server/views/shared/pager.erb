@@ -1,0 +1,36 @@
+<%# Archive pager. Locals: pagination, path, params, label, noun.
+    Every page is a real href so the archive is walkable by a crawler with no
+    JavaScript at all; the steps at either end become plain text rather than
+    dead links so nothing focusable does nothing. %>
+<% pager_label = (defined?(label) && label) || "Pagination" %>
+<% pager_noun = (defined?(noun) && noun) || "hike" %>
+<% if pagination.multiple_pages? %>
+  <nav class="pager" aria-label="<%= h(pager_label) %>">
+    <div class="pager-row">
+      <% if pagination.previous_page %>
+        <a class="pager-step" href="<%= h(pager_path(path, params, pagination.previous_page)) %>" rel="prev">Previous</a>
+      <% else %>
+        <span class="pager-step is-disabled">Previous</span>
+      <% end %>
+
+      <ol class="pager-pages">
+        <% pagination.page_numbers.each do |number| %>
+          <% if number == :gap %>
+            <li class="pager-gap" aria-hidden="true">&hellip;</li>
+          <% elsif number == pagination.page %>
+            <li><a class="pager-page is-current" href="<%= h(pager_path(path, params, number)) %>" aria-current="page"><%= h(number) %></a></li>
+          <% else %>
+            <li><a class="pager-page" href="<%= h(pager_path(path, params, number)) %>" aria-label="<%= h("Page #{number}") %>"><%= h(number) %></a></li>
+          <% end %>
+        <% end %>
+      </ol>
+
+      <% if pagination.next_page %>
+        <a class="pager-step" href="<%= h(pager_path(path, params, pagination.next_page)) %>" rel="next">Next</a>
+      <% else %>
+        <span class="pager-step is-disabled">Next</span>
+      <% end %>
+    </div>
+    <p class="kicker pager-status"><%= pager_range_label(pagination, pager_noun) %></p>
+  </nav>
+<% end %>

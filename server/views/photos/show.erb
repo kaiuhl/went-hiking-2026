@@ -1,10 +1,10 @@
 <%# Same order the gallery and the lightbox use, so "next" means the next one
     the reader just saw. Computed here rather than in the route because the page
     already has the trip and this is presentation, not routing. %>
-<% trip_photos = @trip.photos_dataset.order(:taken_at, :id).all %>
-<% position = trip_photos.index { |photo| photo.id == @photo.id } %>
-<% previous_photo = (position && position.positive?) ? trip_photos[position - 1] : nil %>
-<% next_photo = (position && position < trip_photos.size - 1) ? trip_photos[position + 1] : nil %>
+<% siblings = trip_photos(@trip) %>
+<% position = siblings.index { |photo| photo.id == @photo.id } %>
+<% previous_photo = (position && position.positive?) ? siblings[position - 1] : nil %>
+<% next_photo = (position && position < siblings.size - 1) ? siblings[position + 1] : nil %>
 
 <article class="photo-page">
   <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
@@ -20,14 +20,14 @@
     <% end %>
   </figure>
 
-  <% if trip_photos.size > 1 %>
+  <% if siblings.size > 1 %>
     <nav class="photo-pager" aria-label="Photos from this hike">
       <% if previous_photo %>
         <a class="photo-pager-step" rel="prev" href="<%= h(previous_photo.public_path) %>"><span aria-hidden="true">&larr;</span> Previous</a>
       <% else %>
         <span class="photo-pager-step is-disabled"><span aria-hidden="true">&larr;</span> Previous</span>
       <% end %>
-      <p class="photo-pager-position">Photo <%= h(position + 1) %> of <%= h(trip_photos.size) %></p>
+      <p class="photo-pager-position">Photo <%= h(position + 1) %> of <%= h(siblings.size) %></p>
       <% if next_photo %>
         <a class="photo-pager-step" rel="next" href="<%= h(next_photo.public_path) %>">Next <span aria-hidden="true">&rarr;</span></a>
       <% else %>
@@ -37,7 +37,7 @@
   <% end %>
 
   <nav class="photo-page-links" aria-label="More from this hike">
-    <a href="<%= h(@trip.public_path) %>/photos">All <%= h(format_number(trip_photos.size)) %> photos from this hike</a>
+    <a href="<%= h(@trip.public_path) %>/photos">All <%= h(format_number(siblings.size)) %> photos from this hike</a>
     <a href="<%= h(@trip.public_path) %>">Read the trip report</a>
   </nav>
 </article>

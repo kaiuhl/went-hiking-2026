@@ -4,9 +4,13 @@
 <% if trips.empty? %>
   <p class="empty"><%= h(empty_message) %></p>
 <% else %>
+  <%# One query for every heart count on the page instead of one per row. The
+      routes feeding this partial eager-load `account` and `photos =>
+      photo_variants`, which is what keeps the loop below query-free. %>
+  <% prime_heart_counts(trips) %>
   <div class="trip-list">
     <% trips.each do |trip| %>
-      <% photos = trip.photos_dataset.order(:taken_at, :id).all %>
+      <% photos = trip.photos %>
       <% trip_excerpt = trip.report_markdown.to_s.gsub(PHOTO_HANDLE_PATTERN, " ").gsub(/\s+/, " ").strip %>
       <% gallery_photo_count = (trip.lat && trip.lng) ? 5 : 6 %>
       <article class="trip-row" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(photos)))}") unless photos.empty? %>>

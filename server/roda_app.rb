@@ -2,6 +2,7 @@
 
 require_relative "../config/boot"
 require_relative "response_headers"
+require_relative "trip_listing"
 require_relative "view_helpers"
 require_relative "routes/accounts"
 require_relative "routes/api"
@@ -23,6 +24,7 @@ require "went_hiking/models"
 
 class RodaApp < Roda
   include ResponseHeaders
+  include TripListing
   include ViewHelpers
   include AccountRoutes
   include ApiRoutes
