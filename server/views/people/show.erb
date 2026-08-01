@@ -1,9 +1,8 @@
-<% profile_map_trips = @account.trips_dataset.published.exclude(lat: nil).exclude(lng: nil).reverse_order(:hiked_at).all %>
-<% profile_map_points = profile_map_trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} } %>
-<% trip_count = @trips.size %>
+<% profile_map_points = @profile_map_trips.map { |trip| {lat: trip.lat, lng: trip.lng, title: trip.name, url: trip.public_path} } %>
+<% trip_count = @year_totals[:trips] %>
 <% trip_label = trip_count == 1 ? "trip" : "trips" %>
-<% total_miles = @trips.sum { |trip| trip.mileage.to_f } %>
-<% total_nights = @trips.sum { |trip| trip.nights.to_i } %>
+<% total_miles = @year_totals[:miles] %>
+<% total_nights = @year_totals[:nights] %>
 <% night_label = total_nights == 1 ? "night out" : "nights out" %>
 <% profile_years = @trip_years || ([@year] + @other_years).uniq.sort.reverse %>
 <% follow_modal_open = @follow_errors && !@follow_errors.empty? %>
@@ -100,6 +99,9 @@
     </nav>
   <% end %>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes logged for this year yet.", heading_level: "h3", show_author: false}) %>
+  <% if @pagination %>
+    <%= render("shared/pager", locals: {pagination: @pagination, path: @pager[:path], params: @pager[:params], label: @pager[:label], noun: "hike"}) %>
+  <% end %>
 </section>
 
 <%# Owner-only, and rendered at all only when there is something in it. Before

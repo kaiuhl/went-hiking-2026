@@ -1,12 +1,25 @@
 # frozen_string_literal: true
 
 require_relative "hikes"
+require "went_hiking/pagination"
 require "went_hiking/slug"
 require "went_hiking/follow_subscription_request"
 
 module PeopleRoutes
+  MEMBERS_PER_PAGE = 40
+
   def route_people(r)
     r.on "people" do
+      # Before this there was no index of members at all: a profile was
+      # reachable from a trip byline or not at all, which left most hikers with
+      # no inbound link anywhere on the site.
+      r.get true do
+        @accounts, @pagination = members_page(request.params["page"])
+        @pager = {path: "/people", params: {}, label: "Member pages"}
+        @title = "Hikers"
+        view("people/index")
+      end
+
       r.post String, "follow" do |person_slug|
         @account = account_from_slug(person_slug)
         result = WentHiking::FollowSubscriptionRequest.new(
@@ -36,12 +49,37 @@ module PeopleRoutes
 
   private
 
+  # The map used to plot every published trip this account ever logged — four
+  # thousand markers and three quarters of a megabyte of attribute on the
+  # heaviest profile, for a band a few hundred pixels tall. Home has always
+  # shown its most recent hundred; profiles now do the same.
+  PROFILE_MAP_LIMIT = 100
+
   def setup_profile(account)
     @account = account
     @trip_years = trip_years(@account)
     requested_year = request.params["year"]&.to_i
-    @year = @trip_years.include?(requested_year) ? requested_year : latest_trip_year(@account)
-    @trips = @account.trips_dataset.published.where(Sequel.extract(:year, :hiked_at) => @year).reverse_order(:hiked_at).all
+    # The year list is already in hand; asking the database for it a second time
+    # to find the newest one is a scan of the account's whole archive for a
+    # number sitting in a local variable.
+    @year = @trip_years.include?(requested_year) ? requested_year : (@trip_years.first || Time.now.year)
+    year_trips = @account.trips_dataset.published.in_year(@year)
+    # The header counts the whole year, not the page of it being shown, so the
+    # totals come from an aggregate rather than from summing the loaded rows.
+    @year_totals = year_trips.totals
+    @trips, @pagination = paginated_trip_list(year_trips, request.params["page"])
+    @pager = {
+      path: @account.public_path,
+      params: {"year" => @year},
+      label: "#{@account.name} #{@year} hike pages"
+    }
+    @profile_map_trips = @account.trips_dataset
+      .published
+      .exclude(lat: nil)
+      .exclude(lng: nil)
+      .reverse_order(:hiked_at, :id)
+      .limit(PROFILE_MAP_LIMIT)
+      .all
     @other_years = @trip_years - [@year]
     @profile_drafts = owned_drafts(@account)
     @title = @account.name
@@ -71,6 +109,31 @@ module PeopleRoutes
       trip.photos_dataset.empty?
   end
 
+  # Published trip counts come from one grouped aggregate joined to the page of
+  # accounts, so the index costs two queries however many members there are.
+  def members_page(page)
+    counts = WentHiking::Models::Trip
+      .published
+      .group(:account_id)
+      .select(:account_id) { count(:id).as(:trip_count) }
+    trip_count = Sequel.function(:coalesce, Sequel[:trip_counts][:trip_count], 0)
+
+    pagination = WentHiking::Pagination.new(
+      page: page,
+      total: WentHiking::Models::Account.count,
+      per_page: MEMBERS_PER_PAGE
+    )
+    accounts = WentHiking::Models::Account
+      .left_join(counts.from_self.as(:trip_counts), account_id: :id)
+      .select_all(:accounts)
+      .select_append(Sequel.as(trip_count, :trip_count))
+      .order(Sequel.desc(trip_count), Sequel[:accounts][:name], Sequel[:accounts][:id])
+      .limit(pagination.per_page, pagination.offset)
+      .all
+
+    [accounts, pagination]
+  end
+
   def account_from_slug(value)
     id = WentHiking::Slug.extract_id(value)
     account = WentHiking::Models::Account[id] || WentHiking::Models::Account.where(legacy_user_id: id).first
@@ -78,13 +141,12 @@ module PeopleRoutes
     account
   end
 
+  # DISTINCT rather than one row per trip: this used to drag every one of an
+  # account's several thousand hiked_at values across the wire to keep sixteen
+  # of them.
   def trip_years(account)
-    account.trips_dataset.published.select_map { Sequel.extract(:year, :hiked_at) }.compact.map(&:to_i).uniq.sort.reverse
+    account.trips_dataset.published.distinct.select_map { Sequel.extract(:year, :hiked_at) }.compact.map(&:to_i).sort.reverse
   rescue Sequel::DatabaseError
     account.trips.select(&:published?).map { |trip| trip.hiked_at&.year }.compact.uniq.sort.reverse
-  end
-
-  def latest_trip_year(account)
-    trip_years(account).first || Time.now.year
   end
 end

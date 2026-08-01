@@ -1,0 +1,36 @@
+<section class="section member-index-section">
+  <div class="section-heading">
+    <h1>Hikers</h1>
+    <% if @pagination.total.positive? %>
+      <span class="meta"><%= h(format_number(@pagination.total)) %> <%= h((@pagination.total == 1) ? "hiker" : "hikers") %></span>
+    <% end %>
+  </div>
+
+  <% if @accounts.empty? %>
+    <p class="empty">No hikers yet.</p>
+  <% else %>
+    <ul class="member-index">
+      <% @accounts.each do |account| %>
+        <% trip_count = account[:trip_count].to_i %>
+        <li class="member-index-row">
+          <a class="member-index-link" href="<%= h(account.public_path) %>">
+            <span class="member-index-avatar">
+              <% if (avatar = avatar_url(account, "micro")) %>
+                <img src="<%= h(avatar) %>" alt="" width="36" height="36">
+              <% else %>
+                <span aria-hidden="true"><%= h(account.name.to_s[0].to_s.upcase) %></span>
+              <% end %>
+            </span>
+            <span class="member-index-name"><%= h(account.name) %></span>
+          </a>
+          <% if account.location %>
+            <span class="member-index-location"><%= h(account.location) %></span>
+          <% end %>
+          <span class="member-index-count"><%= h(format_number(trip_count)) %> <%= h((trip_count == 1) ? "hike" : "hikes") %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%= render("shared/pager", locals: {pagination: @pagination, path: @pager[:path], params: @pager[:params], label: @pager[:label], noun: "hiker"}) %>
+</section>
