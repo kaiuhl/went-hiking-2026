@@ -9,6 +9,9 @@ require "went_hiking/storage"
 module ViewHelpers
   PHOTO_HANDLE_PATTERN = /\{\{\s*photo:\s*(\d+)\s*\}\}/
   TripReportRender = Struct.new(:html, :inline_photo_ids, keyword_init: true)
+  LEAFLET_TILE_URL = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"
+  DEFAULT_DESCRIPTION = "Plan hikes, share trip reports, map routes, and browse photos from the trail."
+
 
   def h(value)
     CGI.escape_html(value.to_s)
@@ -282,8 +285,39 @@ module ViewHelpers
     WentHiking::LegacyUrls.legacy_media_url(key)
   end
 
+  # Every element that renders a Leaflet map asks for the tile URL, so asking
+  # is what marks the page as needing Leaflet. The layout renders after the
+  # view in Roda, so the flag is set by the time the <head> is built and no
+  # view has to remember to declare it.
   def leaflet_tile_url
-    "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"
+    @needs_map = true
+    LEAFLET_TILE_URL
+  end
+
+  def map_required?
+    @needs_map == true
+  end
+
+  def canonical_url
+    absolute_url(request.path)
+  end
+
+  def page_description
+    return @description if @description
+
+    excerpt = trip_description_excerpt
+    excerpt || DEFAULT_DESCRIPTION
+  end
+
+  def social_image_url
+    photo = social_image_photo
+    return image_url(photo, "large") if photo
+
+    absolute_url("/images/og-default.png")
+  end
+
+  def absolute_url(path)
+    "#{WentHiking.public_base_url.to_s.sub(%r{/+\z}, "")}/#{path.to_s.sub(%r{\A/+}, "")}"
   end
 
   def direct_photo_upload_available?
@@ -313,6 +347,22 @@ module ViewHelpers
   end
 
   private
+
+  def social_image_photo
+    return @photo if @photo
+    return nil unless @trip
+
+    @trip.photos_dataset.order(:taken_at, :id).first
+  end
+
+  def trip_description_excerpt
+    return nil unless @trip
+
+    text = @trip.report_markdown.to_s.gsub(PHOTO_HANDLE_PATTERN, " ").gsub(/\s+/, " ").strip
+    return nil if text.empty?
+
+    (text.length > 200) ? "#{text[0, 197]}..." : text
+  end
 
   def trip_hearted_by_current_account?(trip)
     rodauth.logged_in? && trip.hearts_dataset.where(account_id: rodauth.session_value.to_i).any?

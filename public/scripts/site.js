@@ -56,21 +56,26 @@
     afterLayout(refresh);
   };
 
+  // Leaflet is only loaded on pages that render a map, so every entry point
+  // has to tolerate its absence.
+  const leafletReady = () => typeof L !== "undefined";
+
   const fitMapToPoints = (map, points, options = {}) => {
     if (points.length === 0) {
-      map.setView([45, -121], 5);
+      map.setView([45.4, -121.7], 7);
       return;
     }
 
     if (points.length === 1) {
-      map.setView(points[0], options.singlePointZoom || 9);
+      map.setView(points[0], options.singlePointZoom || 10);
       return;
     }
 
+    // Tight padding and a higher zoom ceiling so the region fills the band
+    // instead of centring on open ocean.
     map.fitBounds(points, {
-      paddingTopLeft: options.paddingTopLeft || [36, 28],
-      paddingBottomRight: options.paddingBottomRight || [36, 44],
-      maxZoom: options.maxZoom || 10
+      padding: options.padding || [18, 18],
+      maxZoom: options.maxZoom || 12
     });
   };
 
@@ -1050,9 +1055,12 @@
   };
 
   window.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-map]").forEach(buildMap);
-    document.querySelectorAll("[data-map-collection]").forEach(buildCollectionMap);
-    document.querySelectorAll("[data-static-map]").forEach(buildStaticMap);
+    if (leafletReady()) {
+      document.querySelectorAll("[data-map]").forEach(buildMap);
+      document.querySelectorAll("[data-map-collection]").forEach(buildCollectionMap);
+      document.querySelectorAll("[data-static-map]").forEach(buildStaticMap);
+    }
+
     document.querySelectorAll("[data-year-switcher]").forEach(buildYearSwitcher);
     document.querySelectorAll("[data-profile-follow-modal]").forEach(buildProfileFollowModal);
     document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
