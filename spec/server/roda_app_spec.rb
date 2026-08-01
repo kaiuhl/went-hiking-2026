@@ -171,7 +171,9 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include('<select id="profile-year"')
     expect(last_response.body).to include('<option value="2026" selected>2026</option>')
     expect(last_response.body).to include("Burnt Lake")
-    expect(last_response.body).to include("profile-trip-list")
+    expect(last_response.body).to include('<div class="trip-list">')
+    expect(last_response.body).to include('<article class="trip-row"')
+    expect(last_response.body).to include("trip-row-content")
     expect(last_response.body).to include("trip-photo-gallery")
     expect(last_response.body).to include("trip-map-tile")
     expect(last_response.body).to include("data-photo-lightbox-gallery")
@@ -260,8 +262,8 @@ RSpec.describe RodaApp do
     get "/hikes"
 
     expect(last_response).to be_ok
-    expect(last_response.body).to include("home-trip-list")
-    expect(last_response.body).to include("home-trip-row")
+    expect(last_response.body).to include('<div class="trip-list">')
+    expect(last_response.body).to include('<article class="trip-row"')
     expect(last_response.body).to include("data-photo-lightbox-gallery")
     expect(last_response.body).to include("data-static-map")
     expect(last_response.body).to include("trip-photo-gallery")

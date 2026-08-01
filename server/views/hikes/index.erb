@@ -12,5 +12,5 @@
       <button type="submit">Search</button>
     </div>
   </form>
-  <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes match that search yet. Try another peak, lake, or trail name."}) %>
+  <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes match that search yet. Try another peak, lake, or trail name.", heading_level: "h2", show_author: true}) %>
 </section>

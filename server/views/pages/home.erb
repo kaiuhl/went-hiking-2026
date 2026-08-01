@@ -18,7 +18,8 @@
     <% end %>
     <span class="home-kicker-since">since 2010</span>
   </p>
-  <p class="lede">A tool for recording your trips into the wilderness and discovering new ones. Join the hundreds of people recording their stories from the trail.</p>
+  <h1 class="home-title">A tool for recording your trips into the wilderness and discovering new ones.</h1>
+  <p class="lede">Join the hundreds of people recording their stories from the trail.</p>
 </section>
 
 <section class="section">
@@ -26,7 +27,7 @@
     <h2>Recent Hikes</h2>
     <a href="/hikes">View all</a>
   </div>
-  <%= render("hikes/trip_list", locals: {trips: @recent_trips, empty_message: "No hikes yet. Be the first to get one on the map."}) %>
+  <%= render("hikes/trip_list", locals: {trips: @recent_trips, empty_message: "No hikes yet. Be the first to get one on the map.", heading_level: "h3", show_author: true}) %>
 </section>
 
 <% if @archive_stats[:trips].positive? %>

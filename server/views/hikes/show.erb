@@ -32,7 +32,7 @@
     <% end %>
   </header>
 
-  <div class="trip-post-layout trip-post-layout-single">
+  <div class="trip-post-layout">
     <div class="trip-post-main" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(@photos)))}") unless @photos.empty? %>>
       <section class="trip-body">
         <% if @trip.report_markdown.to_s.empty? %>
