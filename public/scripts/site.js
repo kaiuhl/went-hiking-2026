@@ -60,6 +60,41 @@
   // has to tolerate its absence.
   const leafletReady = () => typeof L !== "undefined";
 
+  // Fitting the extremes is how a hiker with one trip to Nepal and four hundred
+  // in the Gorge ends up looking at the whole planet, with every hike they
+  // actually did stacked on one unreadable pixel. Framing the closest 90% of
+  // points to the middle of the collection puts the body of it on screen; the
+  // outliers are still plotted, still clickable, and a pinch away.
+  //
+  // Ranked by distance rather than trimmed a percentile off each axis, because
+  // trimming axes throws away extreme *coordinates*, not extreme *points* — with
+  // eight international trips in a hundred, a 5% trim on longitude still leaves
+  // three of them, and three is all it takes to stretch the frame to Ottawa.
+  const CENTRAL_MIN_POINTS = 8;
+  const CENTRAL_KEEP = 0.9;
+
+  const median = (sorted) => sorted[Math.floor(sorted.length / 2)];
+
+  const centralPoints = (points, keep) => {
+    if (points.length < CENTRAL_MIN_POINTS) return points;
+
+    const centreLat = median(points.map((point) => point[0]).sort((a, b) => a - b));
+    const centreLng = median(points.map((point) => point[1]).sort((a, b) => a - b));
+    // A degree of longitude is a shorter distance than a degree of latitude
+    // everywhere but the equator, so weight it or the ranking is skewed north.
+    const lngScale = Math.cos((centreLat * Math.PI) / 180);
+
+    return points
+      .map((point) => {
+        const dLat = point[0] - centreLat;
+        const dLng = (point[1] - centreLng) * lngScale;
+        return {point: point, distance: (dLat * dLat) + (dLng * dLng)};
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, Math.max(2, Math.ceil(points.length * keep)))
+      .map((entry) => entry.point);
+  };
+
   const fitMapToPoints = (map, points, options = {}) => {
     if (points.length === 0) {
       map.setView([45.4, -121.7], 7);
@@ -71,14 +106,22 @@
       return;
     }
 
+    const bounds = L.latLngBounds(centralPoints(points, options.keep || CENTRAL_KEEP));
+
     // A higher zoom ceiling so the region fills the band instead of centring
     // on open ocean, with enough top padding to clear a marker's 37px pin
     // (it is anchored at the tip, so it hangs above its own coordinate).
-    map.fitBounds(points, {
+    map.fitBounds(bounds, {
       paddingTopLeft: options.paddingTopLeft || [30, 48],
       paddingBottomRight: options.paddingBottomRight || [30, 22],
       maxZoom: options.maxZoom || 12
     });
+
+    // A floor on how far out the fit is allowed to pull. Below this the band is
+    // ocean and coastline with nothing legible on it, which is worse than
+    // cropping a genuinely worldwide collection.
+    const floor = options.minZoom || 3;
+    if (map.getZoom() < floor) map.setView(bounds.getCenter(), floor);
   };
 
   const addMapResizeControl = (map, container) => {

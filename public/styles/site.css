@@ -1173,6 +1173,184 @@ h3 {
 }
 
 /* --------------------------------------------------------------------------
+   Pager. The archive is eight thousand hikes deep and the listings used to
+   stop dead at fifty, so this is the only way into most of it — for a reader
+   and for a crawler alike. Every target is a real href. It reads as an index
+   rail rather than a widget: a rule above, label type, and the current page
+   marked the way the year rail on a profile marks its year.
+   -------------------------------------------------------------------------- */
+
+.pager {
+  margin-top: var(--space-8);
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-4);
+}
+
+.pager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.pager-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.pager-page,
+.pager-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-bottom: var(--border-strong) solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.pager-page {
+  min-width: 24px;
+  padding-bottom: 2px;
+  font-size: var(--text-l);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pager-page:hover,
+.pager-page:focus-visible,
+.pager-step:hover,
+.pager-step:focus-visible {
+  border-bottom-color: var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.pager-page.is-current {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+}
+
+.pager-step {
+  flex: 0 0 auto;
+  padding-bottom: 2px;
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The end of the run is stated, not linked: a disabled control that still takes
+   focus and then does nothing is worse than plain text. */
+.pager-step.is-disabled {
+  color: var(--faint);
+}
+
+.pager-gap {
+  color: var(--faint);
+  line-height: 1;
+}
+
+.pager-status {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Members index. A roster, not a gallery: one line per hiker, ruled like the
+   leaderboards, so a few dozen names read as a list rather than a wall.
+   -------------------------------------------------------------------------- */
+
+.member-index {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-index-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  border-top: var(--border) solid var(--line);
+  padding: var(--space-3) 0;
+}
+
+.member-index-row:last-child {
+  border-bottom: var(--border) solid var(--line);
+}
+
+.member-index-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1 1 auto;
+  text-decoration: none;
+}
+
+.member-index-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--soft);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.member-index-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-index-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-l);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-index-location,
+.member-index-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.member-index-location {
+  overflow: hidden;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+}
+
+.member-index-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
    Author-written markdown. Headings inside a trip report, a comment, or the
    editor preview belong to the content, not to the page — they get a content
    ramp instead of inheriting the page display ramp (a `# heading` in a report
@@ -3014,6 +3192,33 @@ form.rodauth {
     width: 62px;
     height: 62px;
     flex-basis: 62px;
+  }
+
+  /* Prev and Next earn the width on a phone; the numbers between them scroll
+     rather than wrapping into a block or pushing the page sideways. */
+  .pager-row {
+    gap: var(--space-3);
+  }
+
+  .pager-pages {
+    flex-wrap: nowrap;
+    gap: 0 var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .pager-pages::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pager-page,
+  .pager-step {
+    min-height: 44px;
+  }
+
+  .member-index-location {
+    display: none;
   }
 }
 
