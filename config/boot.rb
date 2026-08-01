@@ -12,6 +12,16 @@ require "que"
 require "sequel"
 
 module WentHiking
+  class ConfigurationError < StandardError; end
+
+  # Settings production cannot start without. SES_FROM_EMAIL is here because
+  # its absence is silent by design everywhere else: delivery falls back to a
+  # .eml in a container-local outbox, so signups and password resets would look
+  # like they worked and simply never arrive. Better to refuse to boot.
+  REQUIRED_PRODUCTION_ENV = {
+    "SES_FROM_EMAIL" => "the From address for account email (verification, password resets, hike follows)"
+  }.freeze
+
   def self.root
     @root ||= File.expand_path("..", __dir__)
   end
@@ -57,6 +67,20 @@ module WentHiking
   def self.media_base_url_configured?
     !ENV["MEDIA_BASE_URL"].to_s.strip.empty?
   end
+
+  def self.validate_production_env!(env = ENV)
+    return unless production?
+
+    missing = REQUIRED_PRODUCTION_ENV.reject { |key, _| env[key].to_s.strip != "" }
+    return if missing.empty?
+
+    details = missing.map { |key, purpose| "  #{key} — #{purpose}" }.join("\n")
+    raise ConfigurationError, "Went Hiking cannot start in production without:\n#{details}"
+  end
 end
 
 $LOAD_PATH.unshift(File.join(WentHiking.root, "lib"))
+
+# Every production process loads this file, so the check covers the web app,
+# the worker, and rake alike.
+WentHiking.validate_production_env!

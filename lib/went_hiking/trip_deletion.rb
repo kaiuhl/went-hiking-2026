@@ -12,7 +12,8 @@ module WentHiking
 
     def call(trip)
       photos = trip.photos_dataset.all
-      photos.each { |photo| delete_photo_files(photo) }
+      storage = Storage.current
+      photos.each { |photo| delete_photo_files(photo, storage: storage) }
 
       WentHiking.db.transaction do
         photos.each do |photo|
@@ -33,18 +34,21 @@ module WentHiking
       true
     end
 
-    def delete_photo_files(photo)
-      storage = Storage.current
-      return unless storage.local?
-
+    # Both backends implement #delete, so this is no longer local-only: on S3 a
+    # deleted trip used to leave every one of its variants in the bucket
+    # forever. Failures are logged rather than raised — an orphaned object costs
+    # storage, but a trip that refuses to delete costs the hiker their trust.
+    def delete_photo_files(photo, storage: Storage.current)
       photo.photo_variants_dataset.all.each do |variant|
         key = variant.s3_key.to_s
         next if key.empty?
 
-        storage.delete(key)
+        begin
+          storage.delete(key)
+        rescue => error
+          warn("[went-hiking] could not delete stored object #{key}: #{error.class}: #{error.message}")
+        end
       end
-    rescue
-      nil
     end
   end
 end

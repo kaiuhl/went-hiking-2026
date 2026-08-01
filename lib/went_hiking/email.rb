@@ -49,6 +49,11 @@ module WentHiking
       end
 
       if from.empty?
+        # Boot validation should have caught this long before a hiker hit send;
+        # if something slipped past it, failing loudly beats a password reset
+        # quietly landing in a container-local outbox nobody reads.
+        raise WentHiking::ConfigurationError, "SES_FROM_EMAIL is not configured" if WentHiking.production?
+
         deliver_to_outbox(message, DEFAULT_FROM, "SES_FROM_EMAIL is not configured")
         return true
       end
