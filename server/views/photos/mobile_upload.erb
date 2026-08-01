@@ -1,0 +1,235 @@
+<% direct_upload = direct_photo_upload_available? %>
+
+<section class="form-page">
+  <header class="form-header">
+    <p class="kicker"><%= h(@trip.account.name) %></p>
+    <h1>Add photos to <%= h(@trip.name) %></h1>
+  </header>
+
+  <p class="inline-hints">
+    Pick photos from your camera roll. When you're done, head back to your chat
+    and say the photos are uploaded.
+  </p>
+
+  <div
+    class="trip-photo-workbench"
+    data-mobile-upload
+    data-upload-token="<%= h(@upload_token) %>"
+    data-direct-upload-available="<%= direct_upload ? "true" : "false" %>"
+    data-direct-upload-url="<%= h("#{@trip.public_path}/photos/direct-upload") %>"
+    data-classic-upload-url="<%= h("#{@trip.public_path}/photos") %>"
+  >
+    <label class="trip-photo-dropzone" data-mobile-dropzone>
+      <span>Upload trail photos</span>
+      <input name="photos" type="file" accept="image/jpeg,image/png,image/gif" multiple data-mobile-photo-input>
+    </label>
+
+    <p class="meta" data-mobile-count><%= h(format_number(@photos.size)) %> uploaded</p>
+
+    <div class="trip-photo-workbench-list" data-mobile-photo-list>
+      <% @photos.each do |photo| %>
+        <article class="trip-photo-card" data-mobile-photo-card data-caption-url="<%= h(photo_editor_item(photo)[:caption_url]) %>">
+          <img src="<%= h(image_url(photo, "large")) %>" alt="">
+          <div class="trip-photo-card-body">
+            <label for="photo-caption-<%= h(photo.id) %>">Caption</label>
+            <textarea id="photo-caption-<%= h(photo.id) %>" rows="2" data-mobile-photo-caption><%= h(photo.caption) %></textarea>
+            <p class="meta" data-photo-status>Saved</p>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const root = document.querySelector("[data-mobile-upload]");
+    if (!root) return;
+
+    const token = root.dataset.uploadToken;
+    const directAvailable = root.dataset.directUploadAvailable === "true";
+    const list = root.querySelector("[data-mobile-photo-list]");
+    const input = root.querySelector("[data-mobile-photo-input]");
+    const count = root.querySelector("[data-mobile-count]");
+
+    const withToken = (url) => url + (url.includes("?") ? "&" : "?") + "upload_token=" + encodeURIComponent(token);
+
+    const jsonPayload = (response) => response.text().then((text) => {
+      try {
+        return text ? JSON.parse(text) : {};
+      } catch (_error) {
+        return {};
+      }
+    });
+
+    const updateCount = () => {
+      if (!count) return;
+      const total = list.querySelectorAll("[data-mobile-photo-card]").length;
+      count.textContent = `${total.toLocaleString()} uploaded`;
+    };
+
+    const setStatus = (card, message) => {
+      const status = card.querySelector("[data-photo-status]");
+      if (status) status.textContent = message;
+    };
+
+    const cardTemplate = (file) => {
+      const card = document.createElement("article");
+      card.className = "trip-photo-card trip-photo-card-uploading";
+      card.setAttribute("data-mobile-photo-card", "");
+
+      const image = document.createElement("img");
+      image.alt = "";
+      if (file.type && file.type.startsWith("image/")) {
+        image.src = URL.createObjectURL(file);
+      }
+
+      const body = document.createElement("div");
+      body.className = "trip-photo-card-body";
+
+      const label = document.createElement("label");
+      label.textContent = "Caption";
+      const caption = document.createElement("textarea");
+      caption.rows = 2;
+      caption.disabled = true;
+      caption.setAttribute("data-mobile-photo-caption", "");
+      const status = document.createElement("p");
+      status.className = "meta";
+      status.setAttribute("data-photo-status", "");
+      status.textContent = file.name;
+
+      body.append(label, caption, status);
+      card.append(image, body);
+      list.prepend(card);
+      updateCount();
+      return card;
+    };
+
+    const uploadToStorage = (upload, file, onProgress) => new Promise((resolve, reject) => {
+      const body = new FormData();
+      Object.entries(upload.fields || {}).forEach(([key, value]) => body.append(key, value));
+      body.append("file", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", upload.url);
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      });
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error("Upload to media storage failed"));
+        }
+      });
+      xhr.addEventListener("error", () => reject(new Error("Upload to media storage failed")));
+      xhr.send(body);
+    });
+
+    const applyPhotoPayload = (card, payload) => {
+      card.classList.remove("trip-photo-card-uploading");
+      if (payload.caption_url) card.dataset.captionUrl = payload.caption_url;
+      const image = card.querySelector("img");
+      if (image && payload.thumb_url) image.src = payload.thumb_url;
+      const caption = card.querySelector("[data-mobile-photo-caption]");
+      if (caption) {
+        caption.disabled = false;
+        caption.value = payload.caption || "";
+      }
+      setStatus(card, "Saved");
+    };
+
+    const uploadDirect = (file, card) => {
+      const payload = new URLSearchParams({
+        filename: file.name,
+        content_type: file.type || "application/octet-stream",
+        file_size: String(file.size),
+        caption: ""
+      });
+
+      return fetch(withToken(root.dataset.directUploadUrl), {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: payload
+      })
+        .then((response) => jsonPayload(response).then((body) => {
+          if (!response.ok) throw body;
+          setStatus(card, "Uploading");
+          return uploadToStorage(body.upload, file, (amount) => {
+            setStatus(card, `Uploading ${Math.round(amount * 100)}%`);
+          }).then(() => body);
+        }))
+        .then((body) => {
+          setStatus(card, "Finishing");
+          return fetch(withToken(body.finalize_url), {method: "POST"})
+            .then((response) => jsonPayload(response).then((finalizeBody) => {
+              if (!response.ok) throw finalizeBody;
+              return {...body, ...finalizeBody};
+            }));
+        })
+        .then((body) => applyPhotoPayload(card, body));
+    };
+
+    const uploadClassic = (file, card) => {
+      const body = new FormData();
+      body.append("image", file);
+      body.append("caption", "");
+      setStatus(card, "Uploading");
+
+      return fetch(withToken(root.dataset.classicUploadUrl), {method: "POST", body})
+        .then((response) => {
+          if (!response.ok) throw new Error("Upload failed");
+          setStatus(card, "Saved");
+          card.dataset.needsReload = "true";
+        });
+    };
+
+    let queue = Promise.resolve();
+    const enqueue = (file) => {
+      const card = cardTemplate(file);
+      setStatus(card, "Waiting");
+      queue = queue
+        .then(() => (directAvailable ? uploadDirect(file, card) : uploadClassic(file, card)))
+        .catch((error) => {
+          const messages = Array.isArray(error && error.errors) ? error.errors : [error && error.message].filter(Boolean);
+          setStatus(card, messages[0] || "Upload failed");
+          card.classList.add("trip-photo-card-error");
+        });
+      return queue;
+    };
+
+    input.addEventListener("change", () => {
+      const files = Array.from(input.files || []);
+      input.value = "";
+      files.forEach(enqueue);
+      queue.then(() => {
+        // Classic uploads only report back via redirect; reload once the
+        // batch settles so captions become editable.
+        if (list.querySelector("[data-needs-reload]")) window.location.reload();
+      });
+    });
+
+    const captionTimers = new WeakMap();
+    list.addEventListener("input", (event) => {
+      const caption = event.target.closest("[data-mobile-photo-caption]");
+      if (!caption || caption.disabled) return;
+      const card = caption.closest("[data-mobile-photo-card]");
+      if (!card || !card.dataset.captionUrl) return;
+
+      window.clearTimeout(captionTimers.get(caption));
+      setStatus(card, "Saving caption");
+      captionTimers.set(caption, window.setTimeout(() => {
+        fetch(withToken(card.dataset.captionUrl), {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: new URLSearchParams({caption: caption.value})
+        })
+          .then((response) => {
+            if (!response.ok) throw new Error("Caption not saved");
+            setStatus(card, "Saved");
+          })
+          .catch(() => setStatus(card, "Caption not saved"));
+      }, 450));
+    });
+  })();
+</script>

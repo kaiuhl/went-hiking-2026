@@ -1,0 +1,46 @@
+<% connector_url = "#{WentHiking.public_base_url.to_s.sub(%r{/+\z}, "")}/mcp" %>
+
+<section class="narrow">
+  <p class="kicker">Connect an assistant</p>
+  <h1>Post your hikes by chatting.</h1>
+  <p>
+    Went Hiking connects to Claude and ChatGPT, so you can post a trip the way
+    you'd tell a friend about it &mdash; from the trailhead parking lot, on the
+    drive home, wherever. Say something like <em>&ldquo;post my trip to the
+    Goat Rocks to Went Hiking&rdquo;</em> and your assistant will interview you
+    about the trip, draft the report in your voice, hand you a link to add
+    photos from your camera roll, and publish only when you say it's ready.
+  </p>
+
+  <h2>Set it up with Claude</h2>
+  <ol>
+    <li>Open <a href="https://claude.ai/settings/connectors" target="_blank" rel="noopener">claude.ai &rarr; Settings &rarr; Connectors</a>.</li>
+    <li>Choose <strong>Add custom connector</strong> and paste in <code><%= h(connector_url) %></code>.</li>
+    <li>When Claude asks to connect, log in with your Went Hiking account and approve access.</li>
+  </ol>
+  <p>
+    Once added on the web, the connector follows you to the Claude apps on
+    iPhone, Android, and desktop automatically.
+  </p>
+
+  <h2>Set it up with ChatGPT</h2>
+  <ol>
+    <li>Open ChatGPT &rarr; <strong>Settings &rarr; Apps &amp; Connectors</strong>. If you don't see an option to add one, enable developer mode under <strong>Advanced settings</strong> first.</li>
+    <li>Add a new connector with the URL <code><%= h(connector_url) %></code>.</li>
+    <li>Log in with your Went Hiking account when prompted and approve access.</li>
+  </ol>
+
+  <h2>Things worth knowing</h2>
+  <p>
+    Everything starts as a private draft &mdash; nothing goes public and nobody
+    gets emailed until you explicitly tell your assistant to publish. Your
+    assistant can only touch your own hikes, and only with the permissions you
+    approve on the consent screen. Photos never pass through the assistant:
+    the upload link opens right here on Went Hiking and the photos go straight
+    to your trip.
+  </p>
+  <p>
+    Questions, or something acting weird?
+    <a href="mailto:kaiuhl+wenthiking@gmail.com">Send feedback</a>.
+  </p>
+</section>

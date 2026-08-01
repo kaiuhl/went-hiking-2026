@@ -6,6 +6,7 @@ require_relative "routes/accounts"
 require_relative "routes/api"
 require_relative "routes/follows"
 require_relative "routes/hikes"
+require_relative "routes/mcp"
 require_relative "routes/media"
 require_relative "routes/pages"
 require_relative "routes/people"
@@ -23,6 +24,7 @@ class RodaApp < Roda
   include ApiRoutes
   include FollowRoutes
   include HikeRoutes
+  include McpRoutes
   include MediaRoutes
   include PageRoutes
   include PeopleRoutes
@@ -32,11 +34,13 @@ class RodaApp < Roda
   plugin :common_logger
   plugin :head
   plugin :json
+  plugin :json_parser
   plugin :public
   plugin :render, engine: "erb", views: "server/views", layout: "layouts/application"
   plugin :sessions, secret: ENV.fetch("SESSION_SECRET", "development-session-secret-change-me-at-deploy-development-session-secret"), key: "went_hiking.session"
   plugin :rodauth, csrf: false do
-    enable :login, :logout, :create_account, :verify_account, :reset_password, :reset_password_verifies_account, :change_password, :lockout
+    enable :login, :logout, :create_account, :verify_account, :reset_password, :reset_password_verifies_account, :change_password, :lockout,
+      :oauth_authorization_code_grant, :oauth_pkce, :oauth_token_revocation, :oauth_dynamic_client_registration
 
     db WentHiking.db
     base_url WentHiking.public_base_url
@@ -128,6 +132,26 @@ class RodaApp < Roda
     send_email do |email|
       WentHiking::Email.deliver(email)
     end
+
+    # OAuth 2.1 authorization server backing the MCP connector. Assistant
+    # clients (Claude, ChatGPT) register themselves as public clients via
+    # dynamic client registration and authenticate members through the normal
+    # login page; access tokens are then presented to POST /mcp.
+    oauth_application_scopes WentHiking::Mcp::SCOPES
+    oauth_token_endpoint_auth_methods_supported %w[client_secret_basic client_secret_post none]
+    oauth_response_mode "query"
+    oauth_valid_uri_schemes(WentHiking.production? ? %w[https] : %w[http https])
+    oauth_authorize_button "Allow access"
+
+    before_register {} # open registration: MCP clients are public clients bound by PKCE + member login
+
+    auth_class_eval do
+      # Public wrapper so the /mcp route can resolve bearer tokens without
+      # touching request params (rodauth's resource-server helpers are private).
+      def mcp_grant_for_token(token)
+        oauth_grant_by_token(token)
+      end
+    end
   end
 
   route do |r|
@@ -138,6 +162,21 @@ class RodaApp < Roda
       json_payload({status: "ok"})
     end
 
+    # RFC 9728 protected resource metadata, so MCP clients can discover the
+    # authorization server from a bare /mcp URL. The path-suffixed variant
+    # covers clients that append the resource path per the RFC.
+    r.get ".well-known/oauth-protected-resource" do
+      json_payload(oauth_protected_resource_metadata)
+    end
+
+    r.get ".well-known/oauth-protected-resource/mcp" do
+      json_payload(oauth_protected_resource_metadata)
+    end
+
+    # RFC 8414 authorization server metadata (/.well-known/oauth-authorization-server).
+    rodauth.load_oauth_server_metadata_route
+
+    route_mcp(r)
     route_media(r)
     route_api(r)
     route_account(r)
@@ -147,6 +186,18 @@ class RodaApp < Roda
     route_pages(r)
 
     not_found
+  end
+
+  def oauth_protected_resource_metadata
+    base = WentHiking.public_base_url.to_s.sub(%r{/+\z}, "")
+
+    {
+      resource: "#{base}/mcp",
+      authorization_servers: [base],
+      scopes_supported: WentHiking::Mcp::SCOPES,
+      bearer_methods_supported: ["header"],
+      resource_name: "Went Hiking"
+    }
   end
 
   def json_payload(payload, status: 200)
