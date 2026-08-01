@@ -37,6 +37,8 @@ module WentHiking
           filename: File.basename(key),
           s3_key: key,
           file_size: file_size,
+          width: metadata[:width],
+          height: metadata[:height],
           created_at: Time.now,
           updated_at: Time.now
         )

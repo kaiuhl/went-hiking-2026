@@ -5,21 +5,36 @@ require "mini_magick"
 
 module WentHiking
   class PhotoMetadata
+    # EXIF orientations 5 through 8 rotate a quarter turn, so the pixels on disk
+    # are the transpose of what a browser lays out.
+    TRANSPOSED_ORIENTATIONS = (5..8)
+
     def self.extract(path)
       new(path).extract
+    end
+
+    # Width and height as rendered, which is what the markup has to promise.
+    def self.dimensions(path)
+      new(path).dimensions
     end
 
     def initialize(path)
       @path = path
     end
 
+    def dimensions
+      image = MiniMagick::Image.open(@path)
+      oriented(image.width, image.height)
+    end
+
     def extract
       image = MiniMagick::Image.open(@path)
       exif = safe_exif
+      width, height = oriented(image.width, image.height, exif: exif)
 
       {
-        width: image.width,
-        height: image.height,
+        width: width,
+        height: height,
         taken_at: exif&.date_time_original,
         lat: gps_coordinate(exif&.gps_latitude, exif&.gps_latitude_ref),
         lng: gps_coordinate(exif&.gps_longitude, exif&.gps_longitude_ref),
@@ -31,6 +46,13 @@ module WentHiking
     end
 
     private
+
+    def oriented(width, height, exif: safe_exif)
+      orientation = exif&.orientation.to_i
+      TRANSPOSED_ORIENTATIONS.cover?(orientation) ? [height, width] : [width, height]
+    rescue
+      [width, height]
+    end
 
     def safe_exif
       EXIFR::JPEG.new(@path)

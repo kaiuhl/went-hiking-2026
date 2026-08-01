@@ -874,9 +874,15 @@ h3 {
   min-width: 0;
 }
 
+/* height: auto is load-bearing. A width/height pair in the markup arrives as a
+   presentational hint, and a definite height beats aspect-ratio — so the moment
+   photos started carrying real dimensions, a landscape shot began reserving a
+   portrait tile. Releasing the height lets the ratio below decide the box while
+   the attributes still tell the browser what is coming. */
 .trip-photo-grid > a:not(.trip-map-tile) > img,
 .trip-map-tile-map {
   width: 100%;
+  height: auto;
   aspect-ratio: 1;
   object-fit: cover;
   background: var(--soft);
@@ -1536,6 +1542,7 @@ body.profile-follow-modal-open {
 
 .photo-gallery img {
   width: 100%;
+  height: auto;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: var(--soft);

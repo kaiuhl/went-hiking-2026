@@ -22,6 +22,15 @@ namespace :db do
 
     WentHiking::Seeds.run
   end
+
+  desc "Fill in missing photo and variant pixel dimensions from stored files"
+  task :backfill_photo_dimensions do
+    require_relative "config/boot"
+    require "went_hiking/photo_dimension_backfill"
+
+    result = WentHiking::PhotoDimensionBackfill.call(logger: ->(line) { puts line })
+    puts "Backfilled #{result}"
+  end
 end
 
 namespace :email do

@@ -76,6 +76,15 @@ module WentHiking
       metadata = metadata_for(storage, original.s3_key)
       photo.update(metadata) unless metadata.empty?
 
+      # The original's row was written before the browser had sent a single
+      # byte, so this is the first moment its dimensions can be known. Doing it
+      # here rather than leaving it to the variant job means the S3 path, where
+      # that job runs on a worker some seconds later, still serves markup that
+      # reserves the right box.
+      if metadata[:width] && metadata[:height]
+        original.update(width: metadata[:width], height: metadata[:height], updated_at: Time.now)
+      end
+
       build_variants(storage, photo)
       FinalizeResult.new(photo: photo.refresh, errors: [])
     rescue

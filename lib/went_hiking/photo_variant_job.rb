@@ -45,6 +45,7 @@ module WentHiking
 
       with_original_file(original.s3_key) do |path|
         update_photo_metadata(photo, path)
+        record_original_dimensions(original, path)
         STYLES.each do |style, options|
           create_variant(photo, path, style, options)
         end
@@ -82,7 +83,9 @@ module WentHiking
           Storage.current.put(key, io: io, content_type: "image/jpeg")
         end
 
-        upsert_variant(photo, style, key, File.size(file.path))
+        # Every derivative is auto-oriented before it is written, so what
+        # ImageMagick reports back is already what a browser will lay out.
+        upsert_variant(photo, style, key, File.size(file.path), [image.width, image.height])
       end
     end
 
@@ -93,7 +96,18 @@ module WentHiking
       nil
     end
 
-    def upsert_variant(photo, style, key, file_size)
+    # The original's row is written before its bytes exist, so it is the one
+    # variant whose dimensions can only be filled in once the file has landed.
+    def record_original_dimensions(original, path)
+      width, height = PhotoMetadata.dimensions(path)
+      return unless width.to_i.positive? && height.to_i.positive?
+
+      original.update(width: width, height: height, updated_at: Time.now)
+    rescue
+      nil
+    end
+
+    def upsert_variant(photo, style, key, file_size, dimensions)
       dataset = Models::PhotoVariant.where(photo_id: photo.id, style: style)
       values = {
         photo_id: photo.id,
@@ -101,6 +115,8 @@ module WentHiking
         filename: File.basename(key),
         s3_key: key,
         file_size: file_size,
+        width: dimensions[0],
+        height: dimensions[1],
         updated_at: Time.now
       }
 

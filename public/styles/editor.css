@@ -563,16 +563,25 @@
   opacity: 0.4;
 }
 
+/* The void backdrop hugs the photo instead of framing it. Capping the height of
+   a full-width image only caps the image: the box stays 900px wide and contain
+   pillarboxes anything landscape inside it, so a wide shot arrived wearing two
+   dark bars. Letting both axes shrink together keeps the cap for tall photos
+   and gives wide ones their own edges back. */
 .compose-figure-media {
   position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   background: var(--photo-void);
 }
 
 .compose-figure-image {
   display: block;
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 420px;
-  object-fit: contain;
 }
 
 .compose-figure-tools {

@@ -88,6 +88,19 @@ RSpec.describe "platform behaviour" do
       expect(photo.height).to eq(600)
       expect(photo.photo_variants_dataset.order(:style).select_map(:style)).to eq(%w[bpl large medium micro original thumbnail])
       expect(File.exist?(File.join(upload_root, "system/images/#{photo.id}/large/direct-local.jpg"))).to be(true)
+
+      # Every variant carries the box it actually occupies, including the square
+      # crops, whose geometry no amount of arithmetic on the original could
+      # recover.
+      dimensions = photo.photo_variants_dataset.order(:style).select_map([:style, :width, :height])
+      expect(dimensions).to eq([
+        ["bpl", 550, 413],
+        ["large", 800, 600],
+        ["medium", 300, 225],
+        ["micro", 25, 25],
+        ["original", 800, 600],
+        ["thumbnail", 125, 125]
+      ])
     end
 
     it "advertises direct uploads for local storage" do
