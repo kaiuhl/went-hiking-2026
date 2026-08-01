@@ -116,15 +116,18 @@ module PeopleRoutes
       .published
       .group(:account_id)
       .select(:account_id) { count(:id).as(:trip_count) }
-    trip_count = Sequel.function(:coalesce, Sequel[:trip_counts][:trip_count], 0)
+    trip_count = Sequel[:trip_counts][:trip_count]
 
+    # Inner join, not left: a directory of hikers should list hikers. The
+    # legacy archive carries accounts that never published a trip, and paging
+    # through them would bury the people who did.
     pagination = WentHiking::Pagination.new(
       page: page,
-      total: WentHiking::Models::Account.count,
+      total: WentHiking::Models::Trip.published.select(:account_id).distinct.from_self.count,
       per_page: MEMBERS_PER_PAGE
     )
     accounts = WentHiking::Models::Account
-      .left_join(counts.from_self.as(:trip_counts), account_id: :id)
+      .join(counts.from_self.as(:trip_counts), account_id: :id)
       .select_all(:accounts)
       .select_append(Sequel.as(trip_count, :trip_count))
       .order(Sequel.desc(trip_count), Sequel[:accounts][:name], Sequel[:accounts][:id])

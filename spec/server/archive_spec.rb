@@ -421,7 +421,7 @@ RSpec.describe "Archive at scale" do
     it "lists hikers with their published trip counts, busiest first" do
       kai = create_account(name: "Kai", location: "Portland, Oregon")
       jen = create_account(name: "Jen")
-      create_account(name: "Newcomer")
+      newcomer = create_account(name: "Newcomer")
 
       3.times { |index| create_trip(account_id: kai, name: "Kai Trip #{index}", hiked_at: Time.utc(2024, 1, 1 + index)) }
       create_trip(account_id: jen, name: "Jen Trip", hiked_at: Time.utc(2024, 2, 1))
@@ -431,19 +431,25 @@ RSpec.describe "Archive at scale" do
 
       expect(last_response).to be_ok
       expect(last_response.body).to include("Hikers")
-      expect(last_response.body).to include("3 hikers")
+      expect(last_response.body).to include("2 hikers")
       expect(last_response.body).to include("href=\"/people/#{kai}-kai\"")
       expect(last_response.body).to include("href=\"/people/#{jen}-jen\"")
       expect(last_response.body).to include("3 hikes")
       # Drafts are not part of anyone's public count.
       expect(last_response.body).to include("1 hike<")
-      expect(last_response.body).to include("0 hikes")
+      # A directory of hikers lists hikers. The legacy archive carries accounts
+      # that never published a trip, and paging through them would bury the
+      # people who did.
+      expect(last_response.body).not_to include("href=\"/people/#{newcomer}-newcomer\"")
       expect(last_response.body).to include("Portland, Oregon")
-      expect(last_response.body.index("Kai")).to be < last_response.body.index("Newcomer")
+      expect(last_response.body.index("Kai")).to be < last_response.body.index("Jen")
     end
 
     it "paginates and clamps like the rest of the archive" do
-      50.times { |index| create_account(name: "Hiker #{format("%03d", index)}") }
+      50.times do |index|
+        account = create_account(name: "Hiker #{format("%03d", index)}")
+        create_trip(account_id: account, name: "Hike #{index}", hiked_at: Time.utc(2024, 1, 1) + (index * 86_400))
+      end
 
       get "/people"
 
@@ -460,11 +466,17 @@ RSpec.describe "Archive at scale" do
     end
 
     it "costs a fixed number of queries however many members there are" do
-      5.times { |index| create_account(name: "Hiker #{index}") }
+      5.times do |index|
+        account = create_account(name: "Hiker #{index}")
+        create_trip(account_id: account, name: "Hike #{index}", hiked_at: Time.utc(2024, 1, 1) + (index * 86_400))
+      end
       get "/people"
       small = count_queries { get "/people" }
 
-      35.times { |index| create_account(name: "Later Hiker #{index}") }
+      35.times do |index|
+        account = create_account(name: "Later Hiker #{index}")
+        create_trip(account_id: account, name: "Later Hike #{index}", hiked_at: Time.utc(2024, 6, 1) + (index * 86_400))
+      end
       get "/people"
       large = count_queries { get "/people" }
 
