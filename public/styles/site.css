@@ -2785,6 +2785,20 @@ form.rodauth {
     grid-template-columns: 1fr;
   }
 
+  .site-footer-links {
+    gap: 0 var(--space-4);
+  }
+
+  .site-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .site-footer-links span {
+    display: none;
+  }
+
   .photo-lightbox {
     gap: var(--space-3);
     padding: 64px 12px 12px;
