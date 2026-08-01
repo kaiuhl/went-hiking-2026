@@ -169,8 +169,9 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("1 trip")
     expect(last_response.body).to include("12 miles logged")
     expect(last_response.body).to include("1 night out")
-    expect(last_response.body).to include('<select id="profile-year"')
-    expect(last_response.body).to include('<option value="2026" selected>2026</option>')
+    expect(last_response.body).to include('<nav class="profile-years"')
+    expect(last_response.body).to include(%(href="/people/#{account_id}-kai?year=2025"))
+    expect(last_response.body).to include(%(class="profile-year is-current" href="/people/#{account_id}-kai?year=2026" aria-current="page">2026</a>))
     expect(last_response.body).to include("Burnt Lake")
     expect(last_response.body).to include('<div class="trip-list">')
     expect(last_response.body).to include('<article class="trip-row"')
@@ -188,7 +189,7 @@ RSpec.describe RodaApp do
 
     expect(last_response).to be_ok
     expect(last_response.body).to include("Burnt Lake")
-    expect(last_response.body).to include('<option value="2025" selected>2025</option>')
+    expect(last_response.body).to include(%(class="profile-year is-current" href="/people/#{account_id}-kai?year=2025" aria-current="page">2025</a>))
   end
 
   it "toggles hearts for authenticated hikers" do
@@ -207,7 +208,10 @@ RSpec.describe RodaApp do
     get trip.public_path
 
     expect(last_response.body).to include('aria-pressed="true"')
-    expect(last_response.body).to include("1 person has hearted this trip.")
+    expect(last_response.body).to include('title="1 heart"')
+    expect(last_response.body).to include('<span class="heart-count" data-heart-count>1</span>')
+    # Hearts alone no longer conjure a Trail Talk section out of nothing.
+    expect(last_response.body).not_to include("Trail Talk")
 
     post "#{trip.public_path}/hearts", {"return_to" => trip.public_path}
 

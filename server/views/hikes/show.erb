@@ -44,7 +44,9 @@
 
       <%= trip_photo_gallery_html(remaining_photos, all_photos: @photos) %>
 
-      <% unless @comments.empty? && @hearts.empty? %>
+      <%# Hearts are already counted on the button beside the title, so a trip
+          with hearts and no comments has nothing to say here. %>
+      <% unless @comments.empty? %>
         <section class="legacy-social">
           <h2>Trail Talk</h2>
           <% unless @hearts.empty? %>

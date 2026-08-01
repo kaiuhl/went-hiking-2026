@@ -173,9 +173,144 @@
     refreshMapSize(map);
   };
 
-  const buildYearSwitcher = (element) => {
-    element.addEventListener("change", () => {
-      if (element.form) element.form.submit();
+  // Shared by every focus trap on the site. querySelectorAll order is DOM order,
+  // which is the tab order here because nothing sets a positive tabindex; the
+  // filters drop anything the browser would skip (hidden, disabled, roving -1).
+  const FOCUSABLE_SELECTOR = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]";
+
+  const focusableWithin = (root) => Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR))
+    .filter((element) => element.tabIndex >= 0 && element.offsetParent !== null);
+
+  // Keeps Tab inside `root`. Anything focused outside the trap — or parked on a
+  // roving tabindex="-1" element inside it — is pulled back to an edge.
+  const containFocus = (event, root) => {
+    const focusable = focusableWithin(root);
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const index = focusable.indexOf(document.activeElement);
+
+    if (index === -1) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && index === 0) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && index === focusable.length - 1) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const groupedNumber = (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  const heartTitle = (count) => `${groupedNumber(count)} ${(count === 1) ? "heart" : "hearts"}`;
+
+  // Without JS this form posts and the server redirects back, which throws away
+  // scroll position on a long index. Enhanced, the toggle lands immediately and
+  // the POST goes out in the background; a failure puts the old state back.
+  const buildHeartForm = (form) => {
+    const button = form.querySelector("button[type='submit']");
+    const count = form.querySelector("[data-heart-count]");
+    if (!button || !count) return;
+
+    let pending = false;
+
+    const render = (hearted, total) => {
+      button.classList.toggle("is-hearted", hearted);
+      button.setAttribute("aria-pressed", hearted ? "true" : "false");
+      button.setAttribute("aria-label", hearted ? form.dataset.heartLabelOn : form.dataset.heartLabelOff);
+      button.title = heartTitle(total);
+      count.textContent = groupedNumber(total);
+      form.dataset.heartCountValue = String(total);
+    };
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (pending) return;
+
+      const wasHearted = button.classList.contains("is-hearted");
+      const previousTotal = Number.parseInt(form.dataset.heartCountValue, 10) || 0;
+      const nextHearted = !wasHearted;
+      const nextTotal = Math.max(0, previousTotal + (nextHearted ? 1 : -1));
+
+      pending = true;
+      render(nextHearted, nextTotal);
+
+      button.classList.remove("is-hearting");
+      void button.offsetWidth; // Restart the pop rather than letting it no-op.
+      button.classList.toggle("is-hearting", nextHearted);
+
+      window.fetch(form.action, {
+        method: "POST",
+        headers: postHeaders(),
+        body: new FormData(form),
+        credentials: "same-origin",
+        redirect: "manual"
+      })
+        .then((response) => {
+          // The route answers 302; with redirect: "manual" that arrives as an
+          // opaque response with status 0, so only 4xx/5xx count as a failure.
+          if (response.status >= 400) throw new Error(`Heart request failed: ${response.status}`);
+        })
+        .catch(() => render(wasHearted, previousTotal))
+        .finally(() => {
+          pending = false;
+        });
+    });
+  };
+
+  // Signed in there are five destinations and room for two, so everything but
+  // Hikes and the add button folds into a disclosure. Desktop never sees it, and
+  // neither does a browser without JS: the fold is gated on a class added here,
+  // so the plain scrolling row stays the fallback rather than a dead button.
+  const buildNavMenu = (menu) => {
+    const button = menu.querySelector("[data-nav-menu-button]");
+    const panel = menu.querySelector("[data-nav-menu-panel]");
+    const nav = menu.closest(".site-nav");
+    if (!button || !panel || !nav) return;
+
+    nav.classList.add("site-nav-has-menu");
+
+    const isOpen = () => button.getAttribute("aria-expanded") === "true";
+
+    const setOpen = (open) => {
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
+      menu.classList.toggle("is-open", open);
+    };
+
+    const close = ({restoreFocus = false} = {}) => {
+      if (!isOpen()) return;
+      setOpen(false);
+      if (restoreFocus) button.focus();
+    };
+
+    setOpen(false);
+
+    button.addEventListener("click", () => setOpen(!isOpen()));
+
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !isOpen()) return;
+      event.preventDefault();
+      close({restoreFocus: true});
+    });
+
+    // Tabbing or clicking past the menu dismisses it; relatedTarget is null when
+    // focus leaves the document entirely, which should not close anything.
+    menu.addEventListener("focusout", (event) => {
+      if (event.relatedTarget && !menu.contains(event.relatedTarget)) close();
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      if (!menu.contains(event.target)) close();
+    });
+
+    // The button is display:none above the mobile breakpoint, so a panel left
+    // open through a rotate or resize would otherwise strand itself.
+    window.addEventListener("resize", () => {
+      if (button.offsetParent === null) close();
     });
   };
 
@@ -183,7 +318,6 @@
     const openers = document.querySelectorAll(`[data-profile-modal-open="${modal.id}"]`);
     const closers = modal.querySelectorAll("[data-profile-modal-close]");
     const panel = modal.querySelector(".profile-modal-panel");
-    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])";
     let previousFocus = null;
 
     const open = (trigger = null) => {
@@ -204,23 +338,6 @@
 
       if (previousFocus && typeof previousFocus.focus === "function") {
         previousFocus.focus();
-      }
-    };
-
-    const trapFocus = (event) => {
-      const focusable = Array.from(modal.querySelectorAll(focusableSelector))
-        .filter((element) => element.offsetParent !== null);
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
       }
     };
 
@@ -245,7 +362,7 @@
         event.preventDefault();
         close();
       } else if (event.key === "Tab") {
-        trapFocus(event);
+        containFocus(event, modal);
       }
     });
 
@@ -853,8 +970,20 @@
     const metadata = document.createElement("p");
     metadata.className = "photo-lightbox-metadata";
 
+    // A photo that fails to load used to leave nothing but black, which reads as
+    // a broken lightbox rather than a broken file.
+    const failure = document.createElement("p");
+    failure.className = "photo-lightbox-failure";
+    failure.hidden = true;
+    failure.innerHTML = [
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
+      '<path d="M3 5h18v14H3z"></path><path d="M3 16l5-5 4 4 3-3 6 6"></path><circle cx="8.5" cy="9.5" r="1.5"></circle>',
+      "</svg>",
+      "<span>This photo could not be loaded.</span>"
+    ].join("");
+
     caption.append(captionText, metadata);
-    figure.append(image, caption);
+    figure.append(image, failure, caption);
 
     const nextButton = document.createElement("button");
     nextButton.type = "button";
@@ -864,9 +993,13 @@
 
     stage.append(previousButton, figure, nextButton);
 
+    // A toolbar rather than a listbox: these are buttons, not selectable
+    // options, and a toolbar is the role that expects the roving tabindex and
+    // arrow-key movement the lightbox already implements.
     const thumbnails = document.createElement("div");
     thumbnails.className = "photo-lightbox-thumbnails";
-    thumbnails.setAttribute("role", "listbox");
+    thumbnails.setAttribute("role", "toolbar");
+    thumbnails.setAttribute("aria-orientation", "horizontal");
     thumbnails.setAttribute("aria-label", "Photo thumbnails");
 
     lightbox.append(closeButton, stage, thumbnails);
@@ -889,6 +1022,18 @@
       preview.src = neighbor.full;
     };
 
+    const setFailed = (failed) => {
+      figure.classList.toggle("is-failed", failed);
+      failure.hidden = !failed;
+    };
+
+    image.addEventListener("error", () => {
+      // Clearing the src on close is not a load failure, so ignore it.
+      if (image.getAttribute("src")) setFailed(true);
+    });
+
+    image.addEventListener("load", () => setFailed(false));
+
     const updateNavigation = () => {
       const disabled = items.length < 2;
       previousButton.disabled = disabled;
@@ -896,12 +1041,15 @@
 
       thumbnailButtons.forEach((button, index) => {
         const selected = index === currentIndex;
-        button.setAttribute("aria-selected", selected ? "true" : "false");
-        button.tabIndex = selected ? 0 : -1;
 
         if (selected) {
+          button.setAttribute("aria-current", "true");
           button.scrollIntoView({behavior: "smooth", block: "nearest", inline: "center"});
+        } else {
+          button.removeAttribute("aria-current");
         }
+
+        button.tabIndex = selected ? 0 : -1;
       });
     };
 
@@ -911,6 +1059,7 @@
       currentIndex = (index + items.length) % items.length;
       const item = items[currentIndex];
 
+      setFailed(false);
       image.src = item.full;
       image.alt = item.alt || "";
       captionText.textContent = item.caption || "";
@@ -930,8 +1079,7 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "photo-lightbox-thumb";
-        button.setAttribute("role", "option");
-        button.setAttribute("aria-label", `View photo ${index + 1}`);
+        button.setAttribute("aria-label", `View photo ${index + 1} of ${items.length}`);
 
         const thumb = document.createElement("img");
         thumb.src = item.thumb;
@@ -1004,20 +1152,13 @@
       if (horizontalSwipe) move(deltaX < 0 ? 1 : -1);
     };
 
-    const trapFocus = (event) => {
-      const focusable = Array.from(lightbox.querySelectorAll("button:not([disabled])"));
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+    // Arrow keys are the toolbar's own navigation, so when focus is parked on a
+    // thumbnail it should ride along to the new one instead of being stranded on
+    // a button that just lost its place in the roving tabindex.
+    const moveAndKeepFocus = (offset) => {
+      const onThumbnail = thumbnails.contains(document.activeElement);
+      move(offset);
+      if (onThumbnail && thumbnailButtons[currentIndex]) thumbnailButtons[currentIndex].focus();
     };
 
     previousButton.addEventListener("click", () => move(-1));
@@ -1036,15 +1177,15 @@
 
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        move(-1);
+        moveAndKeepFocus(-1);
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        move(1);
+        moveAndKeepFocus(1);
       } else if (event.key === "Escape") {
         event.preventDefault();
         closeLightbox();
       } else if (event.key === "Tab") {
-        trapFocus(event);
+        containFocus(event, lightbox);
       }
     });
 
@@ -1072,7 +1213,8 @@
       document.querySelectorAll("[data-static-map]").forEach(buildStaticMap);
     }
 
-    document.querySelectorAll("[data-year-switcher]").forEach(buildYearSwitcher);
+    document.querySelectorAll("[data-nav-menu]").forEach(buildNavMenu);
+    document.querySelectorAll("[data-heart-form]").forEach(buildHeartForm);
     document.querySelectorAll("[data-profile-follow-modal]").forEach(buildProfileFollowModal);
     document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
     document.querySelectorAll("[data-trip-location-picker]").forEach(buildTripLocationPicker);

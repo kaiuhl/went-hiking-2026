@@ -384,6 +384,84 @@ img {
   outline-offset: 3px;
 }
 
+/* The overflow disclosure is a narrow-screen affordance only; above the mobile
+   breakpoint every destination is already in the row. */
+.site-nav-menu {
+  display: none;
+}
+
+.site-nav-menu-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  padding: 0;
+  cursor: pointer;
+}
+
+.site-nav-menu-button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.site-nav-menu-button:hover,
+.site-nav-menu-button[aria-expanded="true"] {
+  background: none;
+  color: var(--ink);
+}
+
+.site-nav-menu-button[aria-expanded="true"] svg {
+  opacity: 0.55;
+}
+
+.site-nav-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: var(--z-overlay);
+  display: grid;
+  min-width: 172px;
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  padding: var(--space-2) 0;
+  box-shadow: var(--shadow-lg);
+}
+
+/* display:grid above would otherwise beat the UA rule for [hidden]. */
+.site-nav-menu-panel[hidden] {
+  display: none;
+}
+
+.site-nav-menu-greeting {
+  margin: 0;
+  border-bottom: var(--border) solid var(--line);
+  color: var(--muted);
+  padding: var(--space-1) var(--space-4) var(--space-3);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.site-nav .site-nav-menu-panel a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-s);
+  white-space: nowrap;
+}
+
+.site-nav .site-nav-menu-panel a:hover,
+.site-nav .site-nav-menu-panel a:focus-visible {
+  background: var(--soft);
+  text-decoration: none;
+}
+
 main {
   min-height: 70vh;
 }
@@ -740,6 +818,29 @@ h3 {
   stroke: currentColor;
   stroke-linejoin: round;
   stroke-width: 1.8;
+}
+
+/* The class is the single source of truth for the filled state, so the
+   optimistic toggle in site.js never has to touch the path itself. */
+.heart-icon path {
+  fill: none;
+  transition: fill var(--dur-1) var(--ease-out);
+}
+
+.is-hearted .heart-icon path {
+  fill: currentColor;
+}
+
+/* A short beat of feedback for the optimistic toggle, so a heart that is still
+   in flight does not feel like nothing happened. */
+.heart-button.is-hearting .heart-icon {
+  animation: heart-pop var(--dur-3) var(--ease-out);
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.24); }
+  100% { transform: scale(1); }
 }
 
 .heart-count {
@@ -1196,9 +1297,8 @@ h3 {
   margin-bottom: 0;
 }
 
-.profile-stats > *:has(+ .profile-year-form)::after,
-.profile-stats > *:has(+ .profile-year-label)::after,
-.profile-stats:has(> .profile-year-form:last-child) > *:nth-last-child(2)::after {
+/* "1 night out in 2026" rather than "1 night out · in 2026". */
+.profile-stats > *:has(+ .profile-year-label)::after {
   content: none;
 }
 
@@ -1235,6 +1335,16 @@ body.profile-follow-modal-open {
 .profile-modal-backdrop {
   position: absolute;
   inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: var(--scrim);
+  padding: 0;
+  cursor: default;
+}
+
+.profile-modal-backdrop:hover,
+.profile-modal-backdrop:active {
   background: var(--scrim);
 }
 
@@ -1257,16 +1367,41 @@ body.profile-follow-modal-open {
 
 .profile-modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: var(--muted);
-  font-size: var(--text-3xl);
+  padding: 0;
   line-height: 1;
-  text-decoration: none;
+  cursor: pointer;
+}
+
+.profile-modal-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-width: 2;
+}
+
+.profile-modal-close:hover,
+.profile-modal-close:focus-visible {
+  background: none;
+  color: var(--ink);
+}
+
+.profile-modal-close-fallback {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: var(--text-2xs);
 }
 
 .profile-follow-form {
@@ -1306,34 +1441,59 @@ body.profile-follow-modal-open {
   overflow: hidden;
 }
 
-.profile-year-form {
+/* The year used to be a 12px select buried in the stats line. It is a primary
+   way through a profile, so it gets its own rail above the trips: an archive
+   index rather than a form control, and it works with JS switched off. */
+.profile-years {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  border-bottom: var(--border) solid var(--line);
+}
+
+.profile-years-label {
+  flex: 0 0 auto;
+  padding-bottom: var(--space-3);
+}
+
+.profile-years ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.profile-year {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  margin: 0;
-}
-
-.profile-year-select {
-  appearance: none;
-  max-width: 78px;
-  border: 0;
-  border-bottom: var(--border) solid transparent;
-  border-radius: 0;
-  background:
-    linear-gradient(45deg, transparent 50%, currentColor 50%) right 6px center / 5px 5px no-repeat,
-    linear-gradient(135deg, currentColor 50%, transparent 50%) right 1px center / 5px 5px no-repeat;
+  min-height: 40px;
+  border-bottom: var(--border-strong) solid transparent;
   color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: inherit;
-  padding: 0 16px 1px 0;
-  text-transform: uppercase;
+  padding-bottom: 2px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
 }
 
-.profile-year-select:hover,
-.profile-year-select:focus {
-  border-bottom-color: currentColor;
-  outline: 0;
+.profile-year:hover,
+.profile-year:focus-visible {
+  border-bottom-color: var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.profile-year.is-current {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+  font-weight: var(--weight-bold);
 }
 
 .profile-trips-section {
@@ -1499,6 +1659,37 @@ body.photo-lightbox-open {
   box-shadow: var(--shadow-photo);
 }
 
+/* A photo that will not load leaves a placeholder rather than a black hole, so
+   it reads as one bad file instead of a broken viewer. */
+.photo-lightbox-figure.is-failed .photo-lightbox-image {
+  display: none;
+}
+
+.photo-lightbox-failure {
+  display: grid;
+  place-items: center;
+  gap: var(--space-3);
+  width: min(360px, 100%);
+  min-height: 200px;
+  margin: 0;
+  border: var(--border) dashed var(--on-dark-dim);
+  color: var(--on-dark-muted);
+  padding: var(--space-7) var(--space-5);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.photo-lightbox-failure[hidden] {
+  display: none;
+}
+
+.photo-lightbox .photo-lightbox-failure svg {
+  width: 34px;
+  height: 34px;
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
 .photo-lightbox-caption {
   max-width: min(760px, 100%);
   color: var(--on-dark-muted);
@@ -1537,7 +1728,7 @@ body.photo-lightbox-open {
   opacity: 0.62;
 }
 
-.photo-lightbox-thumb[aria-selected="true"] {
+.photo-lightbox-thumb[aria-current="true"] {
   border-color: var(--on-dark);
   opacity: 1;
 }
@@ -2160,9 +2351,12 @@ form.rodauth {
     transform: translateY(-2px);
   }
 
-  /* Signed in there are more destinations than a 375px row can hold, so the
-     row scrolls rather than wrapping to a second line. */
+  /* Signed in there are five destinations and room for about two. Hikes and the
+     add button stay in the row; the rest move into the overflow disclosure, so
+     nothing has to scroll sideways or wrap to a second line. The scrolling row
+     survives underneath as the no-JS fallback. */
   .site-nav {
+    position: relative;
     flex-wrap: nowrap;
     gap: 0;
     min-width: 0;
@@ -2170,6 +2364,11 @@ form.rodauth {
     overscroll-behavior-x: contain;
     scrollbar-width: none;
     font-size: var(--text-2xs);
+  }
+
+  /* An open panel must not be clipped by the row it hangs off. */
+  .site-nav.site-nav-has-menu {
+    overflow-x: visible;
   }
 
   .site-nav::-webkit-scrollbar {
@@ -2189,6 +2388,16 @@ form.rodauth {
   /* The greeting is decorative; the row is short on space. */
   .site-nav .site-nav-greeting {
     display: none;
+  }
+
+  .site-nav-authenticated.site-nav-has-menu .site-nav-wide-link {
+    display: none;
+  }
+
+  .site-nav-authenticated.site-nav-has-menu .site-nav-menu {
+    display: block;
+    flex: 0 0 auto;
+    margin-left: var(--space-1);
   }
 
   .site-nav .site-nav-add {
@@ -2264,8 +2473,25 @@ form.rodauth {
     grid-template-columns: 1fr;
   }
 
-  .profile-year-form {
-    gap: 6px;
+  .profile-years {
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .profile-years ul {
+    gap: 0 var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .profile-years ul::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-year {
+    min-height: 44px;
+    font-size: var(--text-l);
   }
 
   .profile-trips-section {

@@ -21,12 +21,18 @@
     <link rel="icon" href="<%= h(static_asset_path("/favicon.ico")) %>" sizes="any">
     <link rel="preload" href="<%= h(static_asset_path("/fonts/InterVariable.woff2")) %>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<%= h(static_asset_path("/styles/site.css")) %>">
+    <% if @needs_editor %>
+      <link rel="stylesheet" href="<%= h(static_asset_path("/styles/editor.css")) %>">
+    <% end %>
     <% if map_required? %>
       <link rel="preconnect" href="https://basemap.nationalmap.gov" crossorigin>
       <link rel="stylesheet" href="<%= h(static_asset_path("/vendor/leaflet/leaflet.css")) %>">
       <script src="<%= h(static_asset_path("/vendor/leaflet/leaflet.js")) %>" defer></script>
     <% end %>
     <script src="<%= h(static_asset_path("/scripts/site.js")) %>" defer></script>
+    <% if @needs_editor %>
+      <script src="<%= h(static_asset_path("/scripts/editor.js")) %>" defer></script>
+    <% end %>
   </head>
   <body>
     <header class="site-header">
@@ -34,12 +40,12 @@
         <a class="wordmark" href="/">
           <%= wordmark_svg(id: "site-wordmark", class_name: "logo-svg wordmark-logo") %>
         </a>
-        <nav class="site-nav" aria-label="Main navigation">
-          <% account = current_account %>
+        <% account = current_account %>
+        <nav class="site-nav<%= " site-nav-authenticated" if account %>" aria-label="Main navigation">
           <a href="/hikes">Hikes</a>
-          <a href="/about">About</a>
+          <a class="site-nav-wide-link" href="/about">About</a>
           <% if account %>
-            <a href="<%= h(account.public_path) %>">Your profile</a>
+            <a class="site-nav-wide-link" href="<%= h(account.public_path) %>">Your profile</a>
             <span class="site-nav-greeting">Hi, <%= h(first_name(account)) %>.</span>
             <a class="site-nav-add" href="/hikes/new" aria-label="Add a new hike" title="Add a new hike">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -47,7 +53,25 @@
                 <path d="M5 12h14"></path>
               </svg>
             </a>
-            <a href="/account">Settings</a>
+            <a class="site-nav-wide-link" href="/account">Settings</a>
+            <%# Narrow screens cannot hold five destinations, so everything but
+                Hikes and the add button folds in here. Hidden above 760px. %>
+            <div class="site-nav-menu" data-nav-menu>
+              <button class="site-nav-menu-button" type="button" aria-expanded="false" aria-controls="site-nav-menu-panel" aria-label="More navigation" title="More" data-nav-menu-button>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <circle cx="5" cy="12" r="1.6"></circle>
+                  <circle cx="12" cy="12" r="1.6"></circle>
+                  <circle cx="19" cy="12" r="1.6"></circle>
+                </svg>
+              </button>
+              <div class="site-nav-menu-panel" id="site-nav-menu-panel" data-nav-menu-panel hidden>
+                <p class="site-nav-menu-greeting">Hi, <%= h(first_name(account)) %>.</p>
+                <a href="<%= h(account.public_path) %>">Your profile</a>
+                <a href="/account">Settings</a>
+                <a href="/about">About</a>
+                <a href="/logout">Log out</a>
+              </div>
+            </div>
           <% else %>
             <a href="/login">Log in</a>
           <% end %>

@@ -35,19 +35,7 @@
       <% if total_nights.positive? %>
         <span><%= h(format_number(total_nights)) %> <%= h(night_label) %></span>
       <% end %>
-      <% if profile_years.size > 1 %>
-        <form class="profile-year-form" action="<%= h(@account.public_path) %>" method="get">
-          <label class="visually-hidden" for="profile-year">Trip year</label>
-          <span>in</span>
-          <select id="profile-year" class="profile-year-select" name="year" data-year-switcher>
-            <% profile_years.each do |year| %>
-              <option value="<%= h(year) %>" <%= "selected" if year == @year %>><%= h(year) %></option>
-            <% end %>
-          </select>
-        </form>
-      <% else %>
-        <span class="profile-year-label">in <%= h(@year) %></span>
-      <% end %>
+      <span class="profile-year-label">in <%= h(@year) %></span>
       <span><a class="profile-subscribe-link" href="#profile-follow-modal" data-profile-modal-open="profile-follow-modal">Subscribe to updates</a></span>
     </div>
     <% if @follow_notice %>
@@ -57,9 +45,21 @@
 </section>
 
 <div id="profile-follow-modal" class="profile-follow-modal<%= " is-open" if follow_modal_open %>" role="dialog" aria-modal="true" aria-labelledby="profile-follow-title" data-profile-follow-modal>
-  <a class="profile-modal-backdrop" href="#" aria-label="Close subscribe form" data-profile-modal-close></a>
+  <%# The backdrop is a click target, not a destination: the × button carries the
+      accessible close, so the backdrop stays out of the tab order entirely. %>
+  <button class="profile-modal-backdrop" type="button" tabindex="-1" aria-hidden="true" data-profile-modal-close></button>
   <section class="profile-modal-panel" tabindex="-1">
-    <a class="profile-modal-close" href="#" aria-label="Close subscribe form" data-profile-modal-close>&times;</a>
+    <button class="profile-modal-close" type="button" aria-label="Close subscribe form" data-profile-modal-close>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 6l12 12"></path>
+        <path d="M18 6L6 18"></path>
+      </svg>
+    </button>
+    <noscript>
+      <%# Without JS the modal is opened by :target, so leaving the hash is the
+          only way back out. %>
+      <a class="profile-modal-close-fallback" href="<%= h(@account.public_path) %>">Close</a>
+    </noscript>
     <p class="kicker">Email updates</p>
     <h2 id="profile-follow-title">Subscribe to <%= h(first_name(@account)) %>'s hikes</h2>
     <form class="profile-follow-form" action="<%= h(@account.public_path) %>/follow" method="post">
@@ -87,5 +87,17 @@
 
 <section class="section profile-trips-section">
   <h2 class="visually-hidden">Hikes by <%= h(@account.name) %> in <%= h(@year) %></h2>
+  <% if profile_years.size > 1 %>
+    <nav class="profile-years" aria-label="Trips by year">
+      <span class="kicker profile-years-label" id="profile-years-label">Year</span>
+      <ul aria-labelledby="profile-years-label">
+        <% profile_years.each do |year| %>
+          <li>
+            <a class="profile-year<%= " is-current" if year == @year %>" href="<%= h(@account.public_path) %>?year=<%= h(year) %>"<%= ' aria-current="page"' if year == @year %>><%= h(year) %></a>
+          </li>
+        <% end %>
+      </ul>
+    </nav>
+  <% end %>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes logged for this year yet.", heading_level: "h3", show_author: false}) %>
 </section>

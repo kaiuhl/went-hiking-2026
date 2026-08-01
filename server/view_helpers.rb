@@ -247,14 +247,18 @@ module ViewHelpers
   def heart_button(trip, compact: false)
     heart_count = trip.hearts_dataset.count
     hearted = trip_hearted_by_current_account?(trip)
-    label = hearted ? "Remove heart from #{trip.name}" : "Heart #{trip.name}"
+    label_on = "Remove heart from #{trip.name}"
+    label_off = "Heart #{trip.name}"
+    label = hearted ? label_on : label_off
     button_class = ["heart-button", ("heart-button-compact" if compact), ("is-hearted" if hearted)].compact.join(" ")
-    count_label = "#{format_number(heart_count)} #{(heart_count == 1) ? "heart" : "hearts"}"
-    content = heart_icon_svg(filled: hearted) + %(<span class="heart-count">#{h(format_number(heart_count))}</span>)
+    count_label = heart_count_label(heart_count)
+    content = heart_icon_svg + %(<span class="heart-count" data-heart-count>#{h(format_number(heart_count))}</span>)
 
     if rodauth.logged_in?
+      # data-heart-form marks this up for the no-reload enhancement in site.js.
+      # Without JS the form still posts and the server redirects back.
       <<~HTML
-        <form class="heart-form" action="#{h(trip.public_path)}/hearts" method="post">
+        <form class="heart-form" action="#{h(trip.public_path)}/hearts" method="post" data-heart-form data-heart-label-on="#{h(label_on)}" data-heart-label-off="#{h(label_off)}" data-heart-count-value="#{h(heart_count)}">
           #{csrf_tag}
           <input type="hidden" name="return_to" value="#{h(return_to_path)}">
           <button class="#{h(button_class)}" type="submit" aria-label="#{h(label)}" aria-pressed="#{hearted ? "true" : "false"}" title="#{h(count_label)}">
@@ -269,6 +273,10 @@ module ViewHelpers
         </a>
       HTML
     end
+  end
+
+  def heart_count_label(count)
+    "#{format_number(count)} #{(count == 1) ? "heart" : "hearts"}"
   end
 
   def heart_summary(hearts)
@@ -373,12 +381,12 @@ module ViewHelpers
     query.empty? ? request.path_info : "#{request.path_info}?#{query}"
   end
 
-  def heart_icon_svg(filled:)
-    fill = filled ? "currentColor" : "none"
-
+  # The fill is driven by the .is-hearted class rather than a fill attribute so
+  # that the optimistic toggle in site.js only has to move one class.
+  def heart_icon_svg
     <<~SVG
       <svg class="heart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path fill="#{fill}" d="M12 20s-7-4.35-9.33-9.03C1.35 8.33 2.2 5.18 4.93 4.24 7.02 3.52 9.14 4.32 10.5 6.06L12 8l1.5-1.94c1.36-1.74 3.48-2.54 5.57-1.82 2.73.94 3.58 4.09 2.26 6.73C19 15.65 12 20 12 20Z"></path>
+        <path d="M12 20s-7-4.35-9.33-9.03C1.35 8.33 2.2 5.18 4.93 4.24 7.02 3.52 9.14 4.32 10.5 6.06L12 8l1.5-1.94c1.36-1.74 3.48-2.54 5.57-1.82 2.73.94 3.58 4.09 2.26 6.73C19 15.65 12 20 12 20Z"></path>
       </svg>
     SVG
   end
