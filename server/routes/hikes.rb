@@ -399,9 +399,12 @@ module HikeRoutes
     account
   end
 
+  # A path back to where the heart was clicked, and nowhere else. "//evil.com"
+  # and "/\evil.com" are both protocol-relative URLs once a browser gets hold of
+  # them, so the second character has to be checked as well as the first.
   def heart_return_path(value, trip)
     path = value.to_s
-    return path if path.start_with?("/") && !path.start_with?("//") && !path.match?(/[\r\n]/)
+    return path if path.start_with?("/") && !path.match?(%r{\A/[\\/]}) && !path.match?(/[\r\n]/)
 
     trip.public_path
   end

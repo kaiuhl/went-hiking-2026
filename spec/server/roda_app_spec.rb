@@ -336,6 +336,26 @@ RSpec.describe RodaApp do
     expect(WentHiking::Models::Heart.where(account_id: account_id, trip_id: trip_id).count).to eq(0)
   end
 
+  # return_to is attacker-controlled, and a browser reads both "//evil.com" and
+  # "/\evil.com" as somewhere else entirely.
+  it "refuses to bounce a heart anywhere but back into the site" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, hiked_at: Time.utc(2025, 7, 1), report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    login_as(account_id)
+
+    ["//evil.com", "/\\evil.com", "/\\\\evil.com", "https://evil.com", "javascript:alert(1)"].each do |target|
+      post "#{trip.public_path}/hearts", {"return_to" => target}
+
+      expect(last_response.status).to eq(302)
+      expect(last_response.location).to end_with(trip.public_path), "#{target} escaped the site"
+    end
+
+    post "#{trip.public_path}/hearts", {"return_to" => "/hikes?year=2025"}
+
+    expect(last_response.location).to end_with("/hikes?year=2025")
+  end
+
   it "searches imported trip names and reports" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, hiked_at: Time.utc(2025, 7, 1), report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
