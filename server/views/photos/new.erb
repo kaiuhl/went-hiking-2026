@@ -18,6 +18,7 @@
   </div>
 
   <form class="photo-form" action="<%= h(@trip.public_path) %>/photos" method="post" enctype="multipart/form-data" data-photo-upload-form <%= %(data-direct-upload-url="#{h(@trip.public_path)}/photos/direct-upload") if direct_photo_upload_available? %>>
+    <%= csrf_tag %>
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="photo-image">Image</label>

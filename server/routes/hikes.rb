@@ -5,8 +5,13 @@ require "went_hiking/direct_photo_upload"
 require "went_hiking/hike_notification_scheduler"
 require "went_hiking/photo_upload"
 require "went_hiking/slug"
+require "went_hiking/trip_deletion"
 
 module HikeRoutes
+  DRAFT_NAME = "Untitled Hike"
+  DRAFT_SLUG = "untitled-hike"
+  STALE_DRAFT_AGE = 7 * 24 * 60 * 60
+
   def route_hikes(r)
     r.on "hikes" do
       r.is do
@@ -30,6 +35,7 @@ module HikeRoutes
 
           if errors.empty?
             trip = WentHiking::Models::Trip.create(attributes.merge(account_id: account.id, status: "published", published_at: Time.now))
+            update_photo_captions(trip, request.POST["photo_captions"])
             WentHiking::HikeNotificationScheduler.schedule_trip(trip)
             redirect trip.public_path
           else
@@ -53,19 +59,8 @@ module HikeRoutes
 
       r.post "drafts" do
         account = authenticated_account
-        now = Time.now
-        trip = WentHiking::Models::Trip.create(
-          account_id: account.id,
-          name: "Untitled Hike",
-          slug: "untitled-hike",
-          hiked_at: Date.today.to_time,
-          nights: 0,
-          report_markdown: "",
-          status: "draft",
-          published_at: nil,
-          created_at: now,
-          updated_at: now
-        )
+        trip = reusable_draft(account) || create_draft(account)
+        sweep_stale_drafts(account, keep_id: trip.id)
 
         json_payload(
           {
@@ -222,6 +217,14 @@ module HikeRoutes
         view("hikes/form")
       end
 
+      r.post String, "delete" do |trip_slug|
+        account = authenticated_account
+        trip = owned_trip_from_slug(trip_slug, account)
+
+        WentHiking::TripDeletion.call(trip)
+        redirect account.public_path
+      end
+
       r.post String do |trip_slug|
         account = authenticated_account
         trip = owned_trip_from_slug(trip_slug, account)
@@ -291,6 +294,53 @@ module HikeRoutes
   end
 
   private
+
+  def create_draft(account)
+    now = Time.now
+    WentHiking::Models::Trip.create(
+      account_id: account.id,
+      name: DRAFT_NAME,
+      slug: DRAFT_SLUG,
+      hiked_at: Date.today.to_time,
+      nights: 0,
+      report_markdown: "",
+      status: "draft",
+      published_at: nil,
+      created_at: now,
+      updated_at: now
+    )
+  end
+
+  # One untouched scratch draft per account: the editor asks for a draft on every
+  # visit, and without this each visit stranded another invisible trip row.
+  def reusable_draft(account)
+    account.trips_dataset
+      .drafts
+      .where(name: DRAFT_NAME)
+      .reverse_order(:created_at, :id)
+      .all
+      .find { |trip| empty_draft?(trip) }
+  end
+
+  def sweep_stale_drafts(account, keep_id: nil)
+    cutoff = Time.now - STALE_DRAFT_AGE
+
+    account.trips_dataset
+      .drafts
+      .where(name: DRAFT_NAME)
+      .where { created_at < cutoff }
+      .all
+      .each do |trip|
+        next if trip.id == keep_id
+        next unless empty_draft?(trip)
+
+        WentHiking::TripDeletion.call(trip)
+      end
+  end
+
+  def empty_draft?(trip)
+    trip.report_markdown.to_s.strip.empty? && trip.photos_dataset.empty?
+  end
 
   def trip_from_slug(value, include_drafts: false)
     id = WentHiking::Slug.extract_id(value)

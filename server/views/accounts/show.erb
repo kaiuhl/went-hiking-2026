@@ -21,6 +21,7 @@
   <% end %>
 
   <form class="account-form" action="/account" method="post">
+    <%= csrf_tag %>
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="account-name">Name</label>

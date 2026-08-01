@@ -24,6 +24,18 @@ module WentHiking
       enqueue(photo_id)
     end
 
+    # Runs the job body on the current thread. Used by the local storage path,
+    # where there is no worker process and photos should appear immediately.
+    # Variant failures are never fatal: the original is already stored and the
+    # view helpers fall back to it.
+    def self.generate_photo_now(photo_id)
+      allocate.run(photo_id)
+      true
+    rescue => error
+      warn("[went-hiking] photo variant generation failed for photo #{photo_id}: #{error.class}: #{error.message}")
+      false
+    end
+
     def run(photo_id)
       photo = Models::Photo[photo_id]
       return unless photo

@@ -5,6 +5,7 @@ require "bcrypt"
 
 RSpec.describe RodaApp do
   include Rack::Test::Methods
+  include CsrfHelpers
 
   def app
     described_class.app
@@ -434,6 +435,7 @@ RSpec.describe RodaApp do
     storage = instance_double(
       WentHiking::Storage::S3,
       direct_upload?: true,
+      local?: false,
       direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
       object_exists?: true,
       read: "jpeg-bytes"
@@ -472,6 +474,7 @@ RSpec.describe RodaApp do
     storage = instance_double(
       WentHiking::Storage::S3,
       direct_upload?: true,
+      local?: false,
       direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
       object_exists?: true,
       read: "jpeg-bytes"

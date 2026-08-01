@@ -9,6 +9,7 @@ require_relative "routes/hikes"
 require_relative "routes/media"
 require_relative "routes/pages"
 require_relative "routes/people"
+require_relative "routes/uploads"
 
 require "roda"
 require "rodauth"
@@ -26,6 +27,7 @@ class RodaApp < Roda
   include MediaRoutes
   include PageRoutes
   include PeopleRoutes
+  include UploadRoutes
 
   opts[:root] = WentHiking.root
 
@@ -35,7 +37,19 @@ class RodaApp < Roda
   plugin :public
   plugin :render, engine: "erb", views: "server/views", layout: "layouts/application"
   plugin :sessions, secret: ENV.fetch("SESSION_SECRET", "development-session-secret-change-me-at-deploy-development-session-secret"), key: "went_hiking.session"
-  plugin :rodauth, csrf: false do
+
+  # Tokens are not request-specific because the editor discovers its POST targets
+  # at runtime (draft creation rewrites the form action and the upload URLs), so a
+  # single token from the layout meta tag has to work for every endpoint.
+  plugin :route_csrf, check_header: true, require_request_specific_tokens: false do |_r|
+    csrf_failure_response
+  end
+
+  plugin :error_handler do |error|
+    handle_uncaught_error(error)
+  end
+
+  plugin :rodauth do
     enable :login, :logout, :create_account, :verify_account, :reset_password, :reset_password_verifies_account, :change_password, :lockout
 
     db WentHiking.db
@@ -132,6 +146,12 @@ class RodaApp < Roda
 
   route do |r|
     r.public
+
+    # Authorized by its signed upload ticket rather than the session, so it is
+    # deliberately checked before (and exempt from) the CSRF gate.
+    route_uploads(r)
+
+    check_csrf!
     r.rodauth
 
     r.get "health" do
@@ -162,5 +182,65 @@ class RodaApp < Roda
   def not_found
     @title = "Not Found"
     request.halt [404, {"Content-Type" => "text/html"}, [view("pages/not_found")]]
+  end
+
+  # Never leak a stack trace in production; keep it in development where it helps.
+  def handle_uncaught_error(error)
+    log_uncaught_error(error)
+
+    @title = "Something Went Sideways"
+    @error_kicker = "500"
+    @error_heading = "Something slipped off the trail."
+    @error_body = "An unexpected error stopped this page from loading. Try again, or head back to the trailhead."
+    @error_details = WentHiking.production? ? nil : error_details(error)
+
+    response.status = 500
+    if json_request?
+      response["Content-Type"] = "application/json"
+      JSON.generate({errors: [@error_body]})
+    else
+      response["Content-Type"] = "text/html"
+      view("pages/error")
+    end
+  end
+
+  def csrf_failure_response
+    message = "Your session expired or the form went stale. Reload the page and try again."
+    response.status = 403
+
+    if json_request?
+      response["Content-Type"] = "application/json"
+      JSON.generate({errors: [message]})
+    else
+      @title = "Session Expired"
+      @error_kicker = "403"
+      @error_heading = "That request could not be verified."
+      @error_body = message
+      @error_details = nil
+      response["Content-Type"] = "text/html"
+      view("pages/error")
+    end
+  end
+
+  private
+
+  def json_request?
+    return true if request.path.start_with?("/api/")
+    return true if request.get_header("HTTP_ACCEPT").to_s.include?("application/json")
+
+    request.get_header("HTTP_SEC_FETCH_DEST") == "empty"
+  end
+
+  def error_details(error)
+    ["#{error.class}: #{error.message}", *Array(error.backtrace).first(25)].join("\n")
+  end
+
+  def log_uncaught_error(error)
+    io = request.env["rack.errors"] || $stderr
+    io.write("[went-hiking] #{request.request_method} #{request.path} raised #{error.class}: #{error.message}\n")
+    Array(error.backtrace).each { |line| io.write("  #{line}\n") }
+    io.flush if io.respond_to?(:flush)
+  rescue
+    nil
   end
 end

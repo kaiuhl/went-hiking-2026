@@ -3,6 +3,7 @@
 require "aws-sdk-s3"
 require "aws-sdk-s3/presigned_post"
 require "fileutils"
+require "went_hiking/local_upload_token"
 
 module WentHiking
   module Storage
@@ -17,12 +18,14 @@ module WentHiking
     end
 
     class Local
+      class InvalidKey < StandardError; end
+
       def initialize(root)
         @root = root
       end
 
       def put(key, io:, content_type:)
-        path = File.join(root, key)
+        path = path_for!(key)
         FileUtils.mkdir_p(File.dirname(path))
         io.rewind if io.respond_to?(:rewind)
         File.open(path, "wb") { |file| IO.copy_stream(io, file) }
@@ -30,24 +33,65 @@ module WentHiking
       end
 
       def read(key)
-        File.binread(File.join(root, key))
+        File.binread(path_for!(key))
       end
 
       def delete(key)
-        FileUtils.rm_f(File.join(root, key))
+        path = path_for(key)
+        FileUtils.rm_f(path) if path
       end
 
       def direct_upload?
-        false
+        true
+      end
+
+      def local?
+        true
+      end
+
+      # Mirrors Storage::S3#direct_upload_post. The signed token stands in for the
+      # S3 policy signature; POST /uploads/direct verifies it before writing.
+      def direct_upload_post(key:, content_type:, min_bytes:, max_bytes:, expires_in: 900)
+        {
+          url: LocalUploadToken::UPLOAD_PATH,
+          fields: LocalUploadToken.fields(
+            key: key,
+            content_type: content_type,
+            min_bytes: min_bytes,
+            max_bytes: max_bytes,
+            expires_in: expires_in
+          )
+        }
       end
 
       def object_exists?(key)
-        File.file?(File.join(root, key))
+        path = path_for(key)
+        !path.nil? && File.file?(path)
+      end
+
+      # Absolute path for a key, or nil when the key would escape the upload root.
+      def path_for(key)
+        value = key.to_s
+        return nil if value.empty? || value.include?("\0") || value.start_with?("/")
+        return nil if value.split("/").include?("..")
+
+        path = File.expand_path(File.join(root, value))
+        return nil unless path.start_with?(root_prefix)
+
+        path
       end
 
       private
 
       attr_reader :root
+
+      def path_for!(key)
+        path_for(key) || raise(InvalidKey, "Storage key is outside the upload root: #{key.inspect}")
+      end
+
+      def root_prefix
+        @root_prefix ||= File.expand_path(root) + File::SEPARATOR
+      end
     end
 
     class S3
@@ -72,6 +116,10 @@ module WentHiking
 
       def direct_upload?
         true
+      end
+
+      def local?
+        false
       end
 
       def direct_upload_post(key:, content_type:, min_bytes:, max_bytes:, expires_in: 900)

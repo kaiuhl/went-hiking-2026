@@ -6,6 +6,7 @@ require "went_hiking/follow_tokens"
 
 RSpec.describe "follow routes" do
   include Rack::Test::Methods
+  include CsrfHelpers
 
   before do
     WentHiking::Email.clear_deliveries

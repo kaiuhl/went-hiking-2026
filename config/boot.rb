@@ -48,7 +48,14 @@ module WentHiking
   end
 
   def self.media_base_url
-    ENV.fetch("MEDIA_BASE_URL", public_base_url)
+    media_base_url_configured? ? ENV.fetch("MEDIA_BASE_URL") : public_base_url
+  end
+
+  # True when a dedicated media host (CDN/S3) is configured. When it is not, the
+  # app serves /system/* itself from local storage instead of redirecting to
+  # public_base_url, which would be an infinite loop.
+  def self.media_base_url_configured?
+    !ENV["MEDIA_BASE_URL"].to_s.strip.empty?
   end
 end
 

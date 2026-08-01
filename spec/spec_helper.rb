@@ -32,6 +32,31 @@ end
 
 TestDatabase.migrate!
 
+# CSRF protection is on for every non-GET route, so specs need a token. Include
+# this *after* Rack::Test::Methods so the override wins, and use
+# `post_without_csrf` to exercise the rejection path.
+module CsrfHelpers
+  CSRF_META_PATTERN = /<meta name="csrf-token" content="([^"]+)">/
+
+  def csrf_token
+    get "/about"
+    last_response.body[CSRF_META_PATTERN, 1]
+  end
+
+  def post(uri, params = {}, env = {}, &block)
+    skip_csrf = env.delete(:skip_csrf)
+    if !skip_csrf && params.is_a?(Hash) && !params.key?("_csrf")
+      params = params.merge("_csrf" => csrf_token)
+    end
+
+    super
+  end
+
+  def post_without_csrf(uri, params = {}, env = {}, &block)
+    post(uri, params, env.merge(skip_csrf: true), &block)
+  end
+end
+
 RSpec.configure do |config|
   config.disable_monkey_patching!
   config.expect_with :rspec do |expectations|

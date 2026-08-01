@@ -276,7 +276,7 @@
 
       fetch("/api/markdown-preview", {
         method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        headers: postHeaders({"Content-Type": "application/x-www-form-urlencoded"}),
         body: payload,
         signal: controller.signal
       })
@@ -403,6 +403,15 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const csrfToken = () => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+  };
+
+  // Same-origin POST headers. The direct upload XHR deliberately skips these:
+  // it may target S3, and its signed ticket is its own authorization.
+  const postHeaders = (extra) => Object.assign({"X-CSRF-Token": csrfToken()}, extra || {});
+
   const jsonPayload = (response) => response.text().then((text) => {
     try {
       return text ? JSON.parse(text) : {};
@@ -511,7 +520,7 @@
 
       fetch(form.dataset.directUploadUrl, {
         method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        headers: postHeaders({"Content-Type": "application/x-www-form-urlencoded"}),
         body: payload
       })
         .then((response) => jsonPayload(response).then((body) => {
@@ -525,7 +534,7 @@
         })
         .then((body) => {
           setProgress("Finishing photo", 1);
-          return fetch(body.finalize_url, {method: "POST"})
+          return fetch(body.finalize_url, {method: "POST", headers: postHeaders()})
             .then((response) => jsonPayload(response).then((finalizeBody) => {
               if (!response.ok) throw finalizeBody;
               return {...body, ...finalizeBody};
@@ -603,7 +612,7 @@
       if (!workbench.dataset.draftUrl) return Promise.reject(new Error("Save this hike before uploading photos."));
       if (draftPromise) return draftPromise;
 
-      draftPromise = fetch(workbench.dataset.draftUrl, {method: "POST"})
+      draftPromise = fetch(workbench.dataset.draftUrl, {method: "POST", headers: postHeaders()})
         .then((response) => jsonPayload(response).then((body) => {
           if (!response.ok) throw body;
           applyTripDraft(body);
@@ -685,7 +694,7 @@
 
           return fetch(uploadUrl, {
             method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            headers: postHeaders({"Content-Type": "application/x-www-form-urlencoded"}),
             body: payload
           });
         })
@@ -698,7 +707,7 @@
         }))
         .then((body) => {
           setPhotoStatus(card, "Finishing");
-          return fetch(body.finalize_url, {method: "POST"})
+          return fetch(body.finalize_url, {method: "POST", headers: postHeaders()})
             .then((response) => jsonPayload(response).then((finalizeBody) => {
               if (!response.ok) throw finalizeBody;
               return {...body, ...finalizeBody};
@@ -748,7 +757,7 @@
       captionTimers.set(caption, window.setTimeout(() => {
         fetch(card.dataset.captionUrl, {
           method: "POST",
-          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          headers: postHeaders({"Content-Type": "application/x-www-form-urlencoded"}),
           body: new URLSearchParams({caption: caption.value})
         })
           .then((response) => jsonPayload(response).then((body) => {

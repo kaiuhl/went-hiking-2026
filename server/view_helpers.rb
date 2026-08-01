@@ -12,7 +12,6 @@ module ViewHelpers
   LEAFLET_TILE_URL = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"
   DEFAULT_DESCRIPTION = "Plan hikes, share trip reports, map routes, and browse photos from the trail."
 
-
   def h(value)
     CGI.escape_html(value.to_s)
   end
@@ -256,6 +255,7 @@ module ViewHelpers
     if rodauth.logged_in?
       <<~HTML
         <form class="heart-form" action="#{h(trip.public_path)}/hearts" method="post">
+          #{csrf_tag}
           <input type="hidden" name="return_to" value="#{h(return_to_path)}">
           <button class="#{h(button_class)}" type="submit" aria-label="#{h(label)}" aria-pressed="#{hearted ? "true" : "false"}" title="#{h(count_label)}">
             #{content}

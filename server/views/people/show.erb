@@ -63,6 +63,7 @@
     <p class="kicker">Email updates</p>
     <h2 id="profile-follow-title">Subscribe to <%= h(first_name(@account)) %>'s hikes</h2>
     <form class="profile-follow-form" action="<%= h(@account.public_path) %>/follow" method="post">
+      <%= csrf_tag %>
       <% if @follow_errors && !@follow_errors.empty? %>
         <div class="profile-follow-errors" role="alert">
           <% @follow_errors.each do |error| %>

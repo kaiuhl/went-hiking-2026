@@ -76,13 +76,25 @@ module WentHiking
       metadata = metadata_for(storage, original.s3_key)
       photo.update(metadata) unless metadata.empty?
 
-      PhotoVariantJob.enqueue_photo(photo.id)
-      FinalizeResult.new(photo: photo, errors: [])
+      build_variants(storage, photo)
+      FinalizeResult.new(photo: photo.refresh, errors: [])
     rescue
       storage&.delete(original.s3_key) if original&.s3_key
       photo&.destroy
       FinalizeResult.new(errors: ["Image file could not be read."])
     end
+
+    # Local storage has no worker process, so variants are produced inline and the
+    # photo is complete by the time finalize responds. S3 keeps the queued path.
+    def self.build_variants(storage, photo)
+      if storage.local?
+        PhotoVariantJob.generate_photo_now(photo.id)
+      else
+        PhotoVariantJob.enqueue_photo(photo.id)
+      end
+    end
+
+    private_class_method :build_variants
 
     def self.metadata_for(storage, key)
       Tempfile.create(["went-hiking-direct-upload", File.extname(key)]) do |file|

@@ -22,6 +22,7 @@
   <% end %>
 
   <form class="trip-form" action="<%= h(@form_action) %>" method="post" data-trip-editor data-trip-id="<%= h(form_trip&.id) %>">
+    <%= csrf_tag %>
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="trip-name">Name</label>
