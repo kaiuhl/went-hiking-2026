@@ -319,7 +319,7 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Showing 2")
   end
 
-  it "renders the authenticated new hike form" do
+  it "renders the compose page for a new hike" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     login_as(account_id)
 
@@ -333,12 +333,68 @@ RSpec.describe RodaApp do
     get "/hikes/new"
 
     expect(last_response).to be_ok
-    expect(last_response.body).to include("New Hike")
-    expect(last_response.body).to include("data-markdown-editor")
-    expect(last_response.body).to include("data-trip-photo-workbench")
+    expect(last_response.body).to include('data-mode="new"')
     expect(last_response.body).to include('data-draft-url="/hikes/drafts"')
-    expect(last_response.body).to include("data-trip-location-picker")
-    expect(last_response.body).to include("Click the map to drop a pin.")
+    expect(last_response.body).to include("data-compose-canvas")
+    expect(last_response.body).to include("data-compose-byline")
+    expect(last_response.body).to include("data-compose-tray")
+    expect(last_response.body).to include('placeholder="Name this hike"')
+    expect(last_response.body).to match(/data-compose-submit>\s*Publish\s*</)
+    # The editor's assets are gated to the pages that need them.
+    expect(last_response.body).to match(%r{<link rel="stylesheet" href="/styles/editor\.css\?v=\d+">})
+    expect(last_response.body).to match(%r{<script src="/scripts/editor\.js\?v=\d+" defer></script>})
+    # A new hike has nothing to delete or view yet, and nothing to autosave to.
+    expect(last_response.body).to include('data-autosave-url=""')
+    expect(last_response.body).not_to include("Untitled Hike")
+  end
+
+  it "renders the compose page for an existing hike with its photos and urls" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 1, mileage: 8.5, elevation: 1700, hiked_at: Time.utc(2026, 7, 1), lat: 45.4, lng: -121.7, report_markdown: "Lovely day.", created_at: Time.now, updated_at: Time.now)
+    photo_id = WentHiking.db[:photos].insert(account_id: account_id, trip_id: trip_id, legacy_photo_id: 321, legacy_image_file_name: "lake.jpg", caption: "Lake light", taken_at: Time.utc(2026, 7, 1), created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: photo_id, style: "large", filename: "lake.jpg", s3_key: "system/images/321/large/lake.jpg", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    login_as(account_id)
+
+    get "#{trip.public_path}/edit"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include('data-mode="published"')
+    expect(last_response.body).to include(%(data-autosave-url="#{trip.public_path}/autosave"))
+    expect(last_response.body).to include(%(data-upload-url="#{trip.public_path}/photos/direct-upload"))
+    expect(last_response.body).to match(/data-compose-submit>\s*Save changes\s*</)
+    expect(last_response.body).to include("Delete hike")
+    # The story arrives as markdown and the photos as JSON; the editor builds
+    # the canvas and the gallery tray from exactly these two.
+    expect(last_response.body).to include("Lovely day.")
+    expect(last_response.body).to include("data-compose-photos")
+    expect(last_response.body).to include("Lake light")
+    expect(last_response.body).to include(%(value="45.4"))
+    expect(last_response.body).to include(%(value="-121.7"))
+  end
+
+  it "pins compose errors to the control that caused them" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/hikes", {"name" => "", "hiked_at" => "not-a-date", "mileage" => "eight"}
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.body).to include('data-compose-error="name"')
+    expect(last_response.body).to include('data-compose-error="hiked_at"')
+    expect(last_response.body).to include('data-compose-error="mileage"')
+  end
+
+  it "sends the old photo upload page into the editor" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 7, 1), created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    login_as(account_id)
+
+    get "#{trip.public_path}/photos/new"
+
+    expect(last_response.status).to eq(302)
+    expect(last_response.location).to eq("#{trip.public_path}/edit")
   end
 
   it "creates private draft hikes for editor uploads" do
@@ -417,6 +473,128 @@ RSpec.describe RodaApp do
     expect(last_response.status).to eq(422)
     expect(last_response.body).to include("Drop a map pin with both latitude and longitude")
     expect(WentHiking::Models::Trip.first(name: "Half Pin Ridge")).to be_nil
+  end
+
+  it "autosaves draft fields without publishing them" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    post "/hikes/drafts"
+    trip = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    post "#{trip.public_path}/autosave", {
+      "name" => "Cooper Spur",
+      "hiked_at" => "2026-05-17",
+      "nights" => "2",
+      "mileage" => "9.25",
+      "elevation" => "2600",
+      "source_url" => "https://example.com/cooper",
+      "lat" => "45.4",
+      "lng" => "-121.7",
+      "report_markdown" => "Windy up high.\n\n{{ photo:1 }}"
+    }
+
+    expect(last_response.status).to eq(200)
+    expect(JSON.parse(last_response.body)).to include("saved_at")
+
+    trip.refresh
+    expect(trip.name).to eq("Cooper Spur")
+    expect(trip.nights).to eq(2)
+    expect(trip.mileage).to eq(9.25)
+    expect(trip.elevation).to eq(2600)
+    expect(trip.source_url).to eq("https://example.com/cooper")
+    expect(trip.lat).to eq(45.4)
+    expect(trip.report_markdown).to eq("Windy up high.\n\n{{ photo:1 }}")
+    # The whole point: still a draft, still on its placeholder slug, still unpublished.
+    expect(trip.status).to eq("draft")
+    expect(trip.slug).to eq("untitled-hike")
+    expect(trip.published_at).to be_nil
+
+    get "/hikes"
+    expect(last_response.body).not_to include("Cooper Spur")
+  end
+
+  it "keeps autosave partial and forgiving" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    post "/hikes/drafts"
+    trip = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    post "#{trip.public_path}/autosave", {"name" => "Half Typed", "mileage" => "8.", "nights" => "one", "lat" => "45.4", "lng" => ""}
+
+    expect(last_response.status).to eq(422)
+    errors = JSON.parse(last_response.body).fetch("errors")
+    expect(errors).to include("nights", "location")
+    expect(errors["location"]).to include("both latitude and longitude")
+
+    # The fields that parsed are saved anyway; a half-typed number never costs
+    # the writer the sentence they were in the middle of.
+    trip.refresh
+    expect(trip.name).to eq("Half Typed")
+    expect(trip.nights).to eq(0)
+    expect(trip.lat).to be_nil
+    expect(trip.lng).to be_nil
+  end
+
+  it "blanks a draft name back to the placeholder rather than storing nothing" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    post "/hikes/drafts"
+    trip = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    post "#{trip.public_path}/autosave", {"name" => "   "}
+
+    expect(last_response.status).to eq(200)
+    expect(trip.refresh.name).to eq("Untitled Hike")
+  end
+
+  it "refuses to autosave a published hike" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 7, 1), report_markdown: "Original.", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    login_as(account_id)
+
+    post "#{trip.public_path}/autosave", {"name" => "Renamed", "report_markdown" => "Overwritten."}
+
+    expect(last_response.status).to eq(422)
+    expect(trip.refresh.name).to eq("Burnt Lake")
+    expect(trip.report_markdown).to eq("Original.")
+  end
+
+  it "only lets the owner autosave" do
+    owner_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    intruder_id = WentHiking.db[:accounts].insert(email: "nope@example.com", name: "Nope", slug: "nope", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: owner_id, name: "Untitled Hike", slug: "untitled-hike", nights: 0, status: "draft", hiked_at: Time.utc(2026, 7, 1), report_markdown: "", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+
+    post "#{trip.public_path}/autosave", {"name" => "Anonymous edit"}
+    expect(last_response.status).to eq(302)
+    expect(trip.refresh.name).to eq("Untitled Hike")
+
+    login_as(intruder_id)
+    post "#{trip.public_path}/autosave", {"name" => "Someone else's edit"}
+    expect(last_response.status).to eq(404)
+    expect(trip.refresh.name).to eq("Untitled Hike")
+  end
+
+  it "deletes a single photo for the owner" do
+    owner_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    intruder_id = WentHiking.db[:accounts].insert(email: "nope@example.com", name: "Nope", slug: "nope", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: owner_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 7, 1), created_at: Time.now, updated_at: Time.now)
+    photo_id = WentHiking.db[:photos].insert(account_id: owner_id, trip_id: trip_id, legacy_photo_id: 321, legacy_image_file_name: "lake.jpg", caption: "Lake light", created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:photo_variants].insert(photo_id: photo_id, style: "large", filename: "lake.jpg", s3_key: "system/images/321/large/lake.jpg", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+
+    login_as(intruder_id)
+    post "#{trip.public_path}/photos/#{photo_id}/delete"
+    expect(last_response.status).to eq(404)
+    expect(WentHiking::Models::Photo[photo_id]).not_to be_nil
+
+    login_as(owner_id)
+    post "#{trip.public_path}/photos/#{photo_id}/delete"
+
+    expect(last_response.status).to eq(200)
+    expect(WentHiking::Models::Photo[photo_id]).to be_nil
+    expect(WentHiking.db[:photo_variants].where(photo_id: photo_id).count).to eq(0)
   end
 
   it "updates trips owned by the authenticated account" do
