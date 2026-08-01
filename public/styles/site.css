@@ -2710,6 +2710,24 @@ form.rodauth {
     padding: var(--space-6) 0 30px;
   }
 
+  /* Hearting is a one-tap interaction now, so the finger gets the full 44px
+     even though the chip itself stays small enough to sit beside a headline.
+     The extra height falls inside the row's own gap, so it cannot steal a tap
+     from the trip title. */
+  .heart-button {
+    position: relative;
+  }
+
+  .heart-button::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
   .trip-row-stats {
     font-size: var(--text-xs);
     line-height: 1.35;
