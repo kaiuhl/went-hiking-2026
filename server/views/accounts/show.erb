@@ -6,7 +6,7 @@
   </header>
 
   <% if @account_notice %>
-    <p class="form-notice"><%= h(@account_notice) %></p>
+    <p class="form-notice form-notice-success" role="status"><%= h(@account_notice) %></p>
   <% end %>
 
   <% unless @account_errors.empty? %>
@@ -36,9 +36,14 @@
 
     <div class="form-actions">
       <button type="submit">Save profile</button>
-      <a href="<%= h(@account.public_path) %>">View profile</a>
-      <a href="/change-password">Change password</a>
-      <a href="/logout">Log out</a>
     </div>
   </form>
+
+  <%# These are destinations, not things this form does — sitting in the same row
+      as Save made three of them look like alternative submits. %>
+  <nav class="account-links" aria-label="Account">
+    <a href="<%= h(@account.public_path) %>">View profile</a>
+    <a href="/change-password">Change password</a>
+    <a href="/logout">Log out</a>
+  </nav>
 </section>

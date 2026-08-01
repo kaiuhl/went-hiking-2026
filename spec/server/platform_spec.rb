@@ -389,7 +389,8 @@ RSpec.describe "platform behaviour" do
       header "X-CSRF-Token", token
       post_without_csrf "/account", {"name" => "Kai Updated"}
 
-      expect(last_response.status).to eq(200)
+      # A successful save redirects, so getting past the CSRF gate is a 302.
+      expect(last_response.status).to eq(302)
       expect(WentHiking::Models::Account[account_id].name).to eq("Kai Updated")
     end
 

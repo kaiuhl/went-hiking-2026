@@ -1518,29 +1518,37 @@ body.profile-follow-modal-open {
   padding: 30px 0 36px;
 }
 
+/* Row-major, so the reading order matches the shooting order, and every tile
+   reserves its box up front so nothing reflows as the photos arrive. */
 .photo-gallery {
-  columns: 3 260px;
-  column-gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-5) var(--space-3);
 }
 
 .photo-gallery a {
-  display: inline-block;
-  width: 100%;
-  margin: 0 0 12px;
-  break-inside: avoid;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
   text-decoration: none;
 }
 
 .photo-gallery img {
   width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
   background: var(--soft);
 }
 
 .photo-gallery span {
-  display: block;
-  padding-top: 6px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--muted);
   font-size: var(--text-2xs);
+  line-height: 1.4;
 }
 
 .photo-page figure {
@@ -1557,6 +1565,55 @@ body.profile-follow-modal-open {
 .photo-page figcaption {
   max-width: var(--measure);
   margin-top: 18px;
+}
+
+/* A photo used to be a cul-de-sac: one link back and no way through the roll. */
+.photo-pager {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-7);
+  border-top: var(--border) solid var(--line);
+  border-bottom: var(--border) solid var(--line);
+  padding: var(--space-3) 0;
+  font-size: var(--text-xs);
+}
+
+.photo-pager-step {
+  text-decoration: none;
+}
+
+.photo-pager-step:hover,
+.photo-pager-step:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-strong);
+}
+
+.photo-pager-step:last-child {
+  text-align: right;
+}
+
+.photo-pager-step.is-disabled {
+  color: var(--faint);
+  pointer-events: none;
+}
+
+.photo-pager-position {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.photo-page-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-5);
+  font-size: var(--text-xs);
 }
 
 body.photo-lightbox-open {
@@ -1775,6 +1832,25 @@ body.photo-lightbox-open {
   border-top: var(--border) solid var(--line);
   border-bottom: var(--border) solid var(--line);
   padding: 14px 0;
+}
+
+.form-notice-success {
+  border-top-color: var(--success);
+  border-top-width: var(--border-strong);
+  color: var(--success);
+  font-weight: var(--weight-medium);
+}
+
+/* Account navigation, kept clear of the form's own actions. */
+.account-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  max-width: var(--measure);
+  margin-top: var(--space-8);
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-4);
+  font-size: var(--text-xs);
 }
 
 .trip-form,
@@ -2013,6 +2089,35 @@ input[type="file"]:hover::file-selector-button {
   margin-bottom: 36px;
 }
 
+input[type="search"]::placeholder {
+  color: var(--faint);
+}
+
+/* --------------------------------------------------------------------------
+   Dead ends. 404, 410, and 500 all used to stop the reader cold, so they now
+   end with the same way out.
+   -------------------------------------------------------------------------- */
+
+.dead-end {
+  padding-bottom: var(--space-11);
+}
+
+.dead-end-search {
+  margin-top: var(--space-7);
+  margin-bottom: 0;
+}
+
+.way-back {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  max-width: var(--measure-narrow);
+  margin-top: var(--space-6);
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-4);
+  font-size: var(--text-xs);
+}
+
 .search-row {
   display: flex;
   gap: 10px;
@@ -2022,21 +2127,46 @@ input[type="file"]:hover::file-selector-button {
   flex: 1;
 }
 
+/* --------------------------------------------------------------------------
+   Auth. One column, one job per page. rodauth ships Bootstrap class names, so
+   the .form-group / .form-control / .is-invalid hooks below are its vocabulary
+   rather than ours.
+   -------------------------------------------------------------------------- */
+
+.auth-page {
+  width: min(520px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 72px 0 var(--space-11);
+}
+
+.auth-page form.rodauth {
+  margin: 0;
+}
+
+/* Reset-password and verify-account still come straight from rodauth without a
+   wrapper of their own. */
 form.rodauth,
 .rodauth-login-form-footer-links-heading,
-.rodauth-links,
-.auth-migration-notice {
+.rodauth-links {
   width: min(520px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
+}
+
+.auth-page form.rodauth,
+.auth-page .rodauth-links {
+  width: 100%;
 }
 
 form.rodauth {
   padding-top: var(--space-11);
 }
 
+.auth-page form.rodauth {
+  padding-top: 0;
+}
+
 .auth-migration-notice {
-  margin-top: 72px;
   margin-bottom: var(--space-6);
   border-top: var(--border) solid var(--line);
   border-bottom: var(--border) solid var(--line);
@@ -2055,11 +2185,6 @@ form.rodauth {
   color: var(--muted);
 }
 
-.auth-migration-notice + form.rodauth,
-.auth-migration-notice + .rodauth + form.rodauth {
-  padding-top: 0;
-}
-
 .rodauth .form-group {
   display: grid;
   gap: 6px;
@@ -2068,6 +2193,89 @@ form.rodauth {
 
 .rodauth .form-control {
   width: 100%;
+}
+
+.rodauth button[type="submit"],
+.rodauth input[type="submit"] {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: 13px 14px;
+}
+
+/* rodauth already emits aria-invalid and aria-describedby on the field and
+   wires the message to it; all that was missing was any sign of trouble. */
+.rodauth .form-control.error,
+.rodauth .form-control.is-invalid,
+.rodauth [aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.rodauth .error_message,
+.rodauth .invalid-feedback {
+  display: block;
+  color: var(--danger-strong);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+}
+
+.rodauth .error_message::before {
+  content: "↑ ";
+  opacity: 0.8;
+}
+
+.auth-optional-heading {
+  margin: var(--space-6) 0 var(--space-4);
+  border-top: var(--border) solid var(--line);
+  color: var(--muted);
+  padding-top: var(--space-3);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.auth-aside {
+  margin: var(--space-4) 0 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.auth-links {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-6) 0 0;
+  border-top: var(--border) solid var(--line);
+  padding: var(--space-4) 0 0;
+  list-style: none;
+  font-size: var(--text-xs);
+}
+
+.auth-card {
+  border: var(--border) solid var(--line);
+  background: var(--paper);
+  padding: var(--space-7);
+}
+
+.auth-card h1 {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+}
+
+.auth-card p {
+  max-width: none;
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
+.auth-card .form-actions {
+  margin-top: var(--space-6);
+}
+
+.auth-card .rodauth button[type="submit"] {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 14px;
 }
 
 .rodauth-login-form-footer-links-heading {

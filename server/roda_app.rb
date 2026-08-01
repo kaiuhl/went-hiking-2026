@@ -57,27 +57,13 @@ class RodaApp < Roda
     hmac_secret ENV.fetch("RODAUTH_HMAC_SECRET", ENV.fetch("SESSION_SECRET", "development-session-secret-change-me-at-deploy-development-session-secret"))
     login_param "email"
     login_label "Email"
-    create_account_additional_form_tags <<~HTML
-      <div class="form-row">
-        <label for="name">Name</label>
-        <input id="name" name="name" autocomplete="name" required>
-        <p class="inline-hints">This can be real or fake, but real is preferable. Let's be friends, not strangers.</p>
-      </div>
-      <div class="form-row">
-        <label for="location">Locale</label>
-        <input id="location" name="location" autocomplete="address-level2">
-        <p class="inline-hints">This helps us show relevant nearby trips.</p>
-      </div>
-      <div class="form-row">
-        <label for="avatar">A photo of you</label>
-        <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif">
-        <p class="inline-hints">Upload a photo to represent yourself. This will be cropped into a square later.</p>
-      </div>
-      <div class="honey-field" aria-hidden="true">
-        <label for="website">Website</label>
-        <input id="website" name="website" tabindex="-1" autocomplete="off">
-      </div>
-    HTML
+    logout_button "Log out"
+    # Auth pages are rendered through the site layout, which titles itself from
+    # @title; without this they all read "Went Hiking".
+    title_instance_variable :@title
+    # The signup fields live in create-account.erb instead of here so the view
+    # can order them Name, Email, Password, extras rather than being forced to
+    # put every additional tag above the login field.
     require_mail? false
     email_from ENV.fetch("SES_FROM_EMAIL", "Went Hiking <hello@wenthiking.com>")
     use_database_authentication_functions? false
@@ -86,6 +72,12 @@ class RodaApp < Roda
     verify_account_autologin? true
     reset_password_autologin? false
     set_deadline_values? true
+
+    # Only the login page: the same field also appears on signup, where Name
+    # comes first and stealing focus past it would be wrong.
+    field_attributes do |field|
+      (field == login_param && current_route == :login) ? 'autofocus="autofocus"' : ""
+    end
 
     new_account do |login|
       name = param_or_nil("name").to_s.strip

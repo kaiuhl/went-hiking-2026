@@ -83,9 +83,61 @@ module ViewHelpers
     [integer, decimal].compact.join(".")
   end
 
+  # ImageMagick geometry for the fit-style variants, from PhotoVariantJob::STYLES.
+  # The `>` geometries only ever shrink, and they preserve aspect ratio, so a
+  # photo's own dimensions are enough to work out what came out the other side.
+  PHOTO_VARIANT_BOUNDS = {
+    "bpl" => [550, 900],
+    "large" => [900, 1200],
+    "medium" => [300, 300]
+  }.freeze
+
   def image_url(photo, style = "large")
-    variant = photo.variant(style) || photo.variant("large") || photo.variant("original")
-    variant&.public_url || "/images/photo-placeholder.svg"
+    resolved_photo_variant(photo, style)&.public_url || "/images/photo-placeholder.svg"
+  end
+
+  # The style asked for is not always the style served, and the dimensions have
+  # to describe what actually goes down the wire.
+  def resolved_photo_variant(photo, style)
+    photo_variant(photo, style) || photo_variant(photo, "large") || photo_variant(photo, "original")
+  end
+
+  # Every view asks for a variant twice over — its URL, then its dimensions — so
+  # the lookups are memoised for the life of the request.
+  def photo_variant(photo, style)
+    key = [photo.id, style.to_s]
+    @photo_variants ||= {}
+    return @photo_variants[key] if @photo_variants.key?(key)
+
+    @photo_variants[key] = photo.variant(style)
+  end
+
+  def photo_dimensions(photo, style = "large")
+    variant = resolved_photo_variant(photo, style)
+    return nil unless variant
+    return [variant.width, variant.height] if variant.width.to_i.positive? && variant.height.to_i.positive?
+
+    width = photo.width.to_i
+    height = photo.height.to_i
+    return nil unless width.positive? && height.positive?
+    return [width, height] if variant.style.to_s == "original"
+
+    bounds = PHOTO_VARIANT_BOUNDS[variant.style.to_s]
+    return nil unless bounds
+
+    scale = [1.0, bounds[0] / width.to_f, bounds[1] / height.to_f].min
+    [(width * scale).round, (height * scale).round]
+  end
+
+  # Reserving the box before the bytes land is what stops a gallery from
+  # reflowing as it loads. Legacy rows carry no dimensions at all, so the grids
+  # also reserve space with aspect-ratio and this stays an upgrade, not a
+  # requirement.
+  def photo_size_attributes(photo, style = "large")
+    dimensions = photo_dimensions(photo, style)
+    return "" unless dimensions
+
+    %( width="#{dimensions[0]}" height="#{dimensions[1]}")
   end
 
   def photo_metadata_label(photo)
@@ -203,7 +255,7 @@ module ViewHelpers
     <<~HTML
       <figure class="trip-inline-photo">
         <a href="#{h(image_url(photo, "original"))}"#{lightbox_attrs}>
-          <img src="#{h(image_url(photo, "large"))}" alt="#{h(caption)}" loading="lazy">
+          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(caption)}" loading="lazy">
         </a>
         #{figcaption}
       </figure>
@@ -219,7 +271,7 @@ module ViewHelpers
       index = photo_indexes[photo.id] || 0
       <<~HTML
         <a href="#{h(photo.public_path)}" data-photo-lightbox-trigger data-photo-index="#{h(index)}">
-          <img src="#{h(image_url(photo, "large"))}" alt="#{h(photo.caption)}" loading="lazy">
+          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(photo.caption)}" loading="lazy">
         </a>
       HTML
     end

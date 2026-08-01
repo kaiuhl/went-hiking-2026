@@ -79,13 +79,49 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Welcome back!")
     expect(last_response.body).to include("reset your password")
     expect(last_response.body).to include("Went Hiking recently moved to new infrastructure")
+    expect(last_response.body).to include('autofocus="autofocus"')
 
     get "/create-account"
     expect(last_response).to be_ok
     expect(last_response.body).to include("Create")
-    expect(last_response.body).to include("Locale")
+    # The field stores accounts.location and /account has always called it
+    # Location; "Locale" was the odd one out.
+    expect(last_response.body).to include("Location")
+    expect(last_response.body).not_to include("Locale")
     expect(last_response.body).to include("A photo of you")
     expect(last_response.body).to include("Password")
+    expect(last_response.body).not_to include('autofocus="autofocus"')
+    # Name, then credentials, then the optional extras.
+    expect(last_response.body.index('id="name"')).to be < last_response.body.index('id="login"')
+    expect(last_response.body.index('id="password"')).to be < last_response.body.index('id="location"')
+    expect(last_response.body.index('id="location"')).to be < last_response.body.index('id="avatar"')
+  end
+
+  it "renders a logout confirmation rather than a bare button" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    get "/logout"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Log out?")
+    expect(last_response.body).to include(">Log out</button>")
+    expect(last_response.body).to include("Never mind")
+  end
+
+  it "keeps login primary when the password is wrong" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:account_password_hashes].insert(id: account_id, password_hash: BCrypt::Password.create("long-enough-password").to_s)
+
+    post "/login", {"email" => "kai@example.com", "password" => "wrong-password-entirely"}
+
+    expect(last_response.status).to eq(401)
+    # rodauth injects a whole reset-password form above the login form on
+    # failure; the login view drops it in favour of the quiet link.
+    expect(last_response.body).not_to include("reset-password-request-form")
+    expect(last_response.body).to include('aria-invalid="true"')
+    expect(last_response.body).to include('id="password_error_message"')
+    expect(last_response.body).to include("Forgot your password?")
   end
 
   it "creates public signup accounts pending verification and sends email" do
@@ -641,9 +677,27 @@ RSpec.describe RodaApp do
 
     post "/account", {"name" => "Kai Updated", "location" => "Portland, OR"}
 
-    expect(last_response).to be_ok
+    # Post/redirect/get, so a reload of the confirmation is not a resubmission.
+    expect(last_response.status).to eq(302)
+    expect(last_response.location).to eq("/account?saved=1")
     expect(WentHiking::Models::Account[account_id].name).to eq("Kai Updated")
     expect(WentHiking::Models::Account[account_id].location).to eq("Portland, OR")
+
+    follow_redirect!
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include("Profile saved.")
+  end
+
+  it "re-renders the account form in place when it is invalid" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/account", {"name" => "  ", "location" => "Portland, OR"}
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.body).to include("Name is required.")
+    expect(WentHiking::Models::Account[account_id].name).to eq("Kai")
   end
 
   it "redirects old hike ids to canonical paths" do

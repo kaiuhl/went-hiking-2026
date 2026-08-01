@@ -5,10 +5,12 @@
       <span class="meta">Showing <%= h(format_number(@trips.size)) %></span>
     <% end %>
   </div>
+  <%# The placeholder carries the label's job here; the field is the only one on
+      the page and the heading above already says what is being searched. %>
   <form class="search-form" action="/search" method="get">
-    <label for="hike-search">Search hikes</label>
+    <label class="visually-hidden" for="hike-search">Search hikes</label>
     <div class="search-row">
-      <input id="hike-search" name="q" value="<%= h(@query) %>">
+      <input id="hike-search" name="q" type="search" placeholder="Search hikes&hellip;" value="<%= h(@query) %>">
       <button type="submit">Search</button>
     </div>
   </form>

@@ -1,13 +1,46 @@
-<form method="post" enctype="multipart/form-data" class="rodauth" role="form" id="create-account-form">
-  <header class="form-header">
-    <p class="kicker">Join Went Hiking</p>
-    <h1>Create Account</h1>
-  </header>
-  <%= rodauth.create_account_additional_form_tags %>
-  <%= rodauth.csrf_tag %>
-  <%= rodauth.render("login-field") %>
-  <%= rodauth.render("login-confirm-field") if rodauth.require_login_confirmation? %>
-  <%= rodauth.render("password-field") if rodauth.create_account_set_password? %>
-  <%= rodauth.render("password-confirm-field") if rodauth.create_account_set_password? && rodauth.require_password_confirmation? %>
-  <%= rodauth.button(rodauth.create_account_button) %>
-</form>
+<div class="auth-page">
+  <form method="post" enctype="multipart/form-data" class="rodauth" role="form" id="create-account-form">
+    <header class="form-header">
+      <p class="kicker">Join Went Hiking</p>
+      <h1>Create Account</h1>
+    </header>
+    <%= rodauth.csrf_tag %>
+
+    <%# Identity first, then credentials, then the things nobody has to fill in.
+        These fields live here rather than in create_account_additional_form_tags
+        because that hook can only render above the login field. %>
+    <div class="form-group">
+      <label for="name">Name</label>
+      <input id="name" name="name" class="form-control" autocomplete="name" value="<%= h(request.POST["name"]) %>" required>
+      <p class="inline-hints">This can be real or fake, but real is preferable. Let's be friends, not strangers.</p>
+    </div>
+
+    <%= rodauth.render("login-field") %>
+    <%= rodauth.render("login-confirm-field") if rodauth.require_login_confirmation? %>
+    <%= rodauth.render("password-field") if rodauth.create_account_set_password? %>
+    <%= rodauth.render("password-confirm-field") if rodauth.create_account_set_password? && rodauth.require_password_confirmation? %>
+
+    <p class="auth-optional-heading">Optional</p>
+
+    <div class="form-group">
+      <label for="location">Location</label>
+      <input id="location" name="location" class="form-control" autocomplete="address-level2" value="<%= h(request.POST["location"]) %>">
+      <p class="inline-hints">This helps us show relevant nearby trips.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="avatar">A photo of you</label>
+      <input id="avatar" name="avatar" class="form-control" type="file" accept="image/jpeg,image/png,image/gif">
+      <p class="inline-hints">Upload a photo to represent yourself. This will be cropped into a square later.</p>
+    </div>
+
+    <div class="honey-field" aria-hidden="true">
+      <label for="website">Website</label>
+      <input id="website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    <%= rodauth.button(rodauth.create_account_button) %>
+  </form>
+
+  <p class="auth-aside">Already have an account? <a href="<%= h(rodauth.login_path) %>">Log in</a>.</p>
+</div>

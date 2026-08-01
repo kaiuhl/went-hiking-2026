@@ -1,5 +1,15 @@
-<section class="narrow">
+<section class="narrow dead-end">
   <p class="kicker">404</p>
   <h1>No trail here.</h1>
   <p>This page may have wandered off, but there are plenty of hikes still on the map.</p>
+
+  <form class="search-form dead-end-search" action="/search" method="get">
+    <label class="visually-hidden" for="not-found-search">Search hikes</label>
+    <div class="search-row">
+      <input id="not-found-search" name="q" type="search" placeholder="Search hikes&hellip;">
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  <%= render("pages/way_back") %>
 </section>

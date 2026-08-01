@@ -1,5 +1,7 @@
-<section class="narrow">
+<section class="narrow dead-end">
   <p class="kicker">Trail closed</p>
   <h1><%= h(@retired_feature_title || "This trail is closed for now.") %></h1>
   <p><%= h(@retired_feature_body || "We simplified this corner of Went Hiking so hikes, photos, maps, and stories can move faster.") %></p>
+
+  <%= render("pages/way_back") %>
 </section>

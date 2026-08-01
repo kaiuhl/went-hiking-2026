@@ -1,12 +1,32 @@
-<section class="auth-migration-notice" aria-labelledby="auth-migration-title">
-  <h1 id="auth-migration-title">Welcome back!</h1>
-  <p>
-    If you signed up on the old version of Went Hiking, you'll need to
-    <a href="/reset-password-request">reset your password</a> to get back into your account.
-    We hope you like the new version. <span aria-hidden="true">&#10084;&#65039;</span>
-  </p>
-</section>
+<%# rodauth.login_form_header is deliberately not rendered. On a failed login it
+    becomes an entire reset-password form stacked above this one, which turned
+    the first black button on the page into "Request Password Reset" and buried
+    the thing the hiker was actually trying to do. The quiet link under the form
+    is the right weight for that offer, so the reset link is also dropped from
+    the footer rather than said twice. %>
+<% footer_links = rodauth.login_form_footer_links.reject { |(_, path, _)| path == rodauth.reset_password_request_path } %>
 
-<%= rodauth.login_form_header %>
-<%= rodauth.render("login-form") %>
-<%= rodauth.login_form_footer %>
+<div class="auth-page">
+  <section class="auth-migration-notice" aria-labelledby="auth-migration-title">
+    <h1 id="auth-migration-title">Welcome back!</h1>
+    <p>
+      If you signed up on the old version of Went Hiking, you'll need to
+      <a href="<%= h(rodauth.reset_password_request_path) %>">reset your password</a> to get back into your account.
+      We hope you like the new version. <span aria-hidden="true">&#10084;&#65039;</span>
+    </p>
+  </section>
+
+  <%= rodauth.render("login-form") %>
+
+  <p class="auth-aside">
+    <a href="<%= h(rodauth.reset_password_request_path) %>">Forgot your password?</a>
+  </p>
+
+  <% unless footer_links.empty? %>
+    <ul class="auth-links">
+      <% footer_links.sort.each do |(_, path, text)| %>
+        <li><a href="<%= h(path) %>"><%= h(text) %></a></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>
