@@ -59,4 +59,21 @@ RSpec.describe ViewHelpers do
       expect(helpers.static_asset_path("/missing.css")).to eq("/missing.css")
     end
   end
+
+  describe "#trip_report_render" do
+    let(:trip_class) { Struct.new(:report_markdown, keyword_init: true) }
+
+    # The handles cut the report into separately rendered pieces, so the two
+    # headings below are never seen by the same render call. Deciding the
+    # demotion per piece would put both of them at h2.
+    it "keeps heading levels apart across a report split by photo handles" do
+      trip = trip_class.new(report_markdown: "# Trip\n\n{{ photo:9 }}\n\n## Day one\n")
+
+      html = helpers.trip_report_render(trip, []).html
+
+      expect(html).to include("<h2>Trip</h2>")
+      expect(html).to include("<h3>Day one</h3>")
+      expect(html).not_to include("<h1")
+    end
+  end
 end

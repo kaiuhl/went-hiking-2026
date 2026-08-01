@@ -16,9 +16,9 @@ module ViewHelpers
     CGI.escape_html(value.to_s)
   end
 
-  def markdown(value)
+  def markdown(value, demote_below: nil)
     @markdown ||= WentHiking::Markdown.new
-    @markdown.render(value)
+    @markdown.render(value, demote_below: demote_below)
   end
 
   def json(value)
@@ -221,6 +221,11 @@ module ViewHelpers
 
   def trip_report_render(trip, photos, body: nil)
     report = body.nil? ? trip.report_markdown.to_s : body.to_s
+    # The photo handles below cut the report into pieces that are rendered one
+    # at a time, so how far headings are demoted has to be settled across the
+    # whole report first. Left to the pieces, a "# Trip" before a photo and a
+    # "## Day one" after it would land on the same level.
+    demote_below = WentHiking::Markdown.demote_below(report)
     photos_by_id = photos.each_with_object({}) { |photo, memo| memo[photo.id] = photo }
     photo_indexes = photos.each_with_index.each_with_object({}) { |(photo, index), memo| memo[photo.id] = index }
     inline_photo_ids = []
@@ -229,7 +234,7 @@ module ViewHelpers
 
     report.to_enum(:scan, PHOTO_HANDLE_PATTERN).each do
       match = Regexp.last_match
-      html << markdown(report[cursor...match.begin(0)])
+      html << markdown(report[cursor...match.begin(0)], demote_below: demote_below)
 
       photo_id = match[1].to_i
       photo = photos_by_id[photo_id]
@@ -243,7 +248,7 @@ module ViewHelpers
       cursor = match.end(0)
     end
 
-    html << markdown(report[cursor..])
+    html << markdown(report[cursor..], demote_below: demote_below)
     TripReportRender.new(html: html, inline_photo_ids: inline_photo_ids)
   end
 
