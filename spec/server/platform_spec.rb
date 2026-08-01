@@ -176,6 +176,72 @@ RSpec.describe "platform behaviour" do
       expect(last_response.status).to eq(422)
       expect(JSON.parse(last_response.body)["errors"]).to eq(["Image file is too large."])
     end
+
+    # The whole attack in one test: an ordinary session asks for a ticket under
+    # a .svg name, then posts SVG bytes labelled image/jpeg. Both halves have to
+    # fail on their own.
+    it "refuses to store an SVG behind an image/jpeg upload ticket" do
+      account_id = create_account
+      trip = create_trip(account_id)
+      login_as(account_id)
+
+      post "#{trip.public_path}/photos/direct-upload", {
+        "filename" => "payload.svg",
+        "content_type" => "image/jpeg",
+        "file_size" => "2048",
+        "caption" => ""
+      }
+
+      expect(last_response.status).to eq(201)
+      payload = JSON.parse(last_response.body)
+      key = payload.fetch("upload").fetch("fields").fetch("key")
+
+      # The name the client chose never reaches storage.
+      expect(key).to end_with("/payload.jpg")
+      expect(key).not_to include(".svg")
+
+      svg = File.join(WentHiking.root, "tmp/payload-spec.svg")
+      FileUtils.mkdir_p(File.dirname(svg))
+      File.binwrite(svg, %(<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>#{" " * 1200}))
+
+      post_without_csrf "/uploads/direct", payload.fetch("upload").fetch("fields").merge(
+        "file" => Rack::Test::UploadedFile.new(svg, "image/jpeg", true)
+      )
+
+      expect(last_response.status).to eq(422)
+      expect(JSON.parse(last_response.body)["errors"]).to eq(["Image file is not a JPEG, PNG, or GIF."])
+      expect(File.exist?(File.join(upload_root, key))).to be(false)
+    ensure
+      FileUtils.rm_f(File.join(WentHiking.root, "tmp/payload-spec.svg"))
+    end
+
+    it "discards a photo whose stored bytes are not the type it promised" do
+      account_id = create_account
+      trip = create_trip(account_id)
+      login_as(account_id)
+
+      post "#{trip.public_path}/photos/direct-upload", {
+        "filename" => "lake.jpg",
+        "content_type" => "image/jpeg",
+        "file_size" => "2048",
+        "caption" => ""
+      }
+
+      payload = JSON.parse(last_response.body)
+      photo_id = payload.fetch("photo_id")
+      key = payload.fetch("upload").fetch("fields").fetch("key")
+
+      # Bypass the route entirely: this is the S3 case, where bytes reach the
+      # bucket without ever passing through the app.
+      WentHiking::Storage.current.put(key, io: StringIO.new("<svg><script>alert(1)</script></svg>"), content_type: "image/jpeg")
+
+      post payload.fetch("finalize_url")
+
+      expect(last_response.status).to eq(422)
+      expect(JSON.parse(last_response.body)["errors"]).to eq(["Image file is not a JPEG, PNG, or GIF."])
+      expect(WentHiking::Models::Photo[photo_id]).to be_nil
+      expect(File.exist?(File.join(upload_root, key))).to be(false)
+    end
   end
 
   describe "local media serving" do
@@ -234,6 +300,62 @@ RSpec.describe "platform behaviour" do
 
       expect(last_response).to be_ok
       expect(last_response.body).to include("<svg")
+    end
+
+    # A stored object's extension is what decides its Content-Type, so an SVG
+    # that somehow reached storage must not come back out as one.
+    it "never serves stored media as a script-capable type" do
+      serve_media_locally!
+      WentHiking::Storage.current.put("system/images/7/original/payload.svg", io: StringIO.new("<svg><script>alert(1)</script></svg>"), content_type: "image/jpeg")
+
+      get "/system/images/7/original/payload.svg"
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.headers["Content-Type"]).to eq("application/octet-stream")
+      expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
+      expect(last_response.headers["Content-Security-Policy"]).to eq("default-src 'none'; sandbox")
+      expect(MediaRoutes::CONTENT_TYPES.values).not_to include(a_string_matching(/svg|html|xml/))
+    end
+  end
+
+  describe "response headers" do
+    it "sends the security headers on every kind of response" do
+      %w[/about /images/photo-placeholder.svg /nope].each do |path|
+        get path
+
+        expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff"), "missing on #{path}"
+        expect(last_response.headers["Referrer-Policy"]).to eq("strict-origin-when-cross-origin"), "missing on #{path}"
+        expect(last_response.headers["X-Frame-Options"]).to eq("DENY"), "missing on #{path}"
+      end
+    end
+
+    it "caches a versioned static asset forever and an unversioned one briefly" do
+      get "/styles/site.css?v=123"
+      versioned = last_response
+
+      expect(versioned.headers["Cache-Control"]).to eq("public, max-age=31536000, immutable")
+      expect(versioned.headers["ETag"]).to match(/\A"[0-9a-f]+-[0-9a-f]+"\z/)
+
+      get "/styles/site.css"
+
+      expect(last_response.headers["Cache-Control"]).to eq("public, max-age=604800")
+      expect(last_response.headers["ETag"]).to eq(versioned.headers["ETag"])
+    end
+
+    it "answers a conditional request for a static asset with 304" do
+      get "/styles/site.css?v=123"
+
+      header "If-None-Match", last_response.headers["ETag"]
+      get "/styles/site.css?v=123"
+
+      expect(last_response.status).to eq(304)
+    end
+
+    it "leaves rendered pages uncached" do
+      get "/about"
+
+      expect(last_response.headers["Cache-Control"]).to be_nil
+      expect(last_response.headers["ETag"]).to be_nil
     end
   end
 

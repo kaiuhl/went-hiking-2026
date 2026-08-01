@@ -88,7 +88,7 @@ module WentHiking
     end
 
     def clean_filename
-      @clean_filename ||= PhotoFile.clean_filename(filename)
+      @clean_filename ||= PhotoFile.stored_filename(filename, content_type)
     end
 
     def content_type

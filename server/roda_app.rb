@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../config/boot"
+require_relative "response_headers"
 require_relative "view_helpers"
 require_relative "routes/accounts"
 require_relative "routes/api"
@@ -11,6 +12,7 @@ require_relative "routes/pages"
 require_relative "routes/people"
 require_relative "routes/uploads"
 
+require "rack/conditional_get"
 require "roda"
 require "rodauth"
 require "sequel"
@@ -19,6 +21,7 @@ require "went_hiking/email"
 require "went_hiking/models"
 
 class RodaApp < Roda
+  include ResponseHeaders
   include ViewHelpers
   include AccountRoutes
   include ApiRoutes
@@ -31,8 +34,13 @@ class RodaApp < Roda
 
   opts[:root] = WentHiking.root
 
+  # An ETag or Last-Modified is only worth sending if something answers the
+  # conditional request that comes back with it.
+  use Rack::ConditionalGet
+
   plugin :common_logger
   plugin :head
+  plugin :hooks
   plugin :json
   plugin :public
   plugin :render, engine: "erb", views: "server/views", layout: "layouts/application"
@@ -47,6 +55,10 @@ class RodaApp < Roda
 
   plugin :error_handler do |error|
     handle_uncaught_error(error)
+  end
+
+  after do |res|
+    apply_response_headers(res)
   end
 
   plugin :rodauth do
@@ -137,7 +149,7 @@ class RodaApp < Roda
   end
 
   route do |r|
-    r.public
+    serve_static_assets(r)
 
     # Authorized by its signed upload ticket rather than the session, so it is
     # deliberately checked before (and exempt from) the CSRF gate.

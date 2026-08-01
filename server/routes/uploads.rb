@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "went_hiking/image_format"
 require "went_hiking/local_upload_token"
 require "went_hiking/storage"
 
@@ -29,6 +30,12 @@ module UploadRoutes
       declared_type = file[:type].to_s
       unless declared_type.empty? || declared_type == ticket.content_type
         halt_upload_error("Image type does not match the upload ticket.", 422)
+      end
+
+      # Everything up to here is the client describing itself. The bytes are the
+      # only part of this request the client cannot lie about, so they decide.
+      unless WentHiking::ImageFormat.io_matches?(content_type: ticket.content_type, io: tempfile)
+        halt_upload_error("Image file is not a JPEG, PNG, or GIF.", 422)
       end
 
       storage.put(ticket.key, io: tempfile, content_type: ticket.content_type)

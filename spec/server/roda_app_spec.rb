@@ -656,7 +656,7 @@ RSpec.describe RodaApp do
       local?: false,
       direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
       object_exists?: true,
-      read: "jpeg-bytes"
+      read: "\xFF\xD8\xFFjpeg-bytes".b
     )
     allow(WentHiking::Storage).to receive(:current).and_return(storage)
     allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200, camera_model: "Trail Camera")
@@ -695,7 +695,7 @@ RSpec.describe RodaApp do
       local?: false,
       direct_upload_post: {url: "https://s3.example.test/upload", fields: {"key" => "system/images/1/original/lake.jpg"}},
       object_exists?: true,
-      read: "jpeg-bytes"
+      read: "\xFF\xD8\xFFjpeg-bytes".b
     )
     allow(WentHiking::Storage).to receive(:current).and_return(storage)
     allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200)

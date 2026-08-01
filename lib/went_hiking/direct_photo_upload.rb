@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "went_hiking/image_format"
 require "went_hiking/models"
 require "went_hiking/photo_file"
 require "went_hiking/photo_metadata"
@@ -10,6 +11,9 @@ require "tempfile"
 
 module WentHiking
   class DirectPhotoUpload
+    # The bytes did not match the type the upload ticket was issued for.
+    class UnsupportedImageError < StandardError; end
+
     Result = Struct.new(:photo, :upload, :errors, keyword_init: true) do
       def success?
         errors.empty?
@@ -73,7 +77,10 @@ module WentHiking
       storage = Storage.current
       return FinalizeResult.new(errors: ["Photo upload has not reached storage yet."]) unless storage.object_exists?(original.s3_key)
 
-      metadata = metadata_for(storage, original.s3_key)
+      # The bytes reached storage without passing through this process, so this
+      # is the first moment anything here can look at them. A presigned POST
+      # constrains size and declared type, never content.
+      metadata = metadata_for(storage, original.s3_key, expected_type: photo.content_type)
       photo.update(metadata) unless metadata.empty?
 
       # The original's row was written before the browser had sent a single
@@ -87,11 +94,22 @@ module WentHiking
 
       build_variants(storage, photo)
       FinalizeResult.new(photo: photo.refresh, errors: [])
+    rescue UnsupportedImageError
+      discard(storage, photo, original)
+      FinalizeResult.new(errors: ["Image file is not a JPEG, PNG, or GIF."])
     rescue
-      storage&.delete(original.s3_key) if original&.s3_key
-      photo&.destroy
+      discard(storage, photo, original)
       FinalizeResult.new(errors: ["Image file could not be read."])
     end
+
+    # A half-finished upload is worse than none: the row would keep pointing at
+    # bytes nothing will ever serve.
+    def self.discard(storage, photo, original)
+      storage&.delete(original.s3_key) if original&.s3_key
+      photo&.destroy
+    end
+
+    private_class_method :discard
 
     # Local storage has no worker process, so variants are produced inline and the
     # photo is complete by the time finalize responds. S3 keeps the queued path.
@@ -105,11 +123,13 @@ module WentHiking
 
     private_class_method :build_variants
 
-    def self.metadata_for(storage, key)
+    def self.metadata_for(storage, key, expected_type:)
       Tempfile.create(["went-hiking-direct-upload", File.extname(key)]) do |file|
         file.binmode
         file.write(storage.read(key))
         file.flush
+        raise UnsupportedImageError unless ImageFormat.io_matches?(content_type: expected_type, io: file)
+
         PhotoMetadata.extract(file.path)
       end
     end
@@ -141,7 +161,7 @@ module WentHiking
     end
 
     def clean_filename
-      @clean_filename ||= PhotoFile.clean_filename(filename)
+      @clean_filename ||= PhotoFile.stored_filename(filename, content_type)
     end
 
     def parse_file_size(value)

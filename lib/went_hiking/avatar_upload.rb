@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "went_hiking/photo_file"
 require "went_hiking/s3_keys"
 require "went_hiking/storage"
 
@@ -70,7 +71,7 @@ module WentHiking
     end
 
     def clean_filename
-      @clean_filename ||= filename.gsub(%r{[^A-Za-z0-9._-]+}, "-")
+      @clean_filename ||= PhotoFile.stored_filename(filename, content_type)
     end
 
     def content_type

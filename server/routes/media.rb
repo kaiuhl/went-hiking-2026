@@ -5,6 +5,10 @@ require "time"
 require "went_hiking/storage"
 
 module MediaRoutes
+  # Raster formats only, and deliberately so: this table turns a stored object's
+  # extension into the Content-Type it is served with, which makes any
+  # script-capable type here (SVG, HTML, XML) a way to run code on our own
+  # origin. Anything not listed goes out as application/octet-stream.
   CONTENT_TYPES = {
     ".avif" => "image/avif",
     ".gif" => "image/gif",
@@ -12,11 +16,14 @@ module MediaRoutes
     ".jpeg" => "image/jpeg",
     ".jpg" => "image/jpeg",
     ".png" => "image/png",
-    ".svg" => "image/svg+xml",
     ".webp" => "image/webp"
   }.freeze
   MEDIA_CACHE_CONTROL = "public, max-age=86400"
   MEDIA_CHUNK_SIZE = 64 * 1024
+  # Belt and braces for objects that predate the checks on the way in: even if
+  # something active is already sitting in storage, it loads as a document with
+  # no privileges at all. Images fetched as subresources are unaffected.
+  MEDIA_CSP = "default-src 'none'; sandbox"
 
   # Streams a file without slurping it into memory.
   class FileBody
@@ -68,6 +75,7 @@ module MediaRoutes
     headers = {
       "Content-Type" => media_content_type(path),
       "Cache-Control" => MEDIA_CACHE_CONTROL,
+      "Content-Security-Policy" => MEDIA_CSP,
       "Last-Modified" => stat.mtime.httpdate,
       "ETag" => etag
     }
