@@ -14,12 +14,17 @@ require "sequel"
 module WentHiking
   class ConfigurationError < StandardError; end
 
-  # Settings production cannot start without. SES_FROM_EMAIL is here because
-  # its absence is silent by design everywhere else: delivery falls back to a
-  # .eml in a container-local outbox, so signups and password resets would look
-  # like they worked and simply never arrive. Better to refuse to boot.
+  # Settings production cannot start without, all of them for the same reason:
+  # their absence is silent everywhere else.
+  #
+  # SES_FROM_EMAIL falls back to writing a .eml into a container-local outbox,
+  # so signups and password resets would look like they worked and simply never
+  # arrive. SESSION_SECRET falls back to a constant committed to this repository,
+  # which anyone who can read the source can use to forge a session cookie, a
+  # password reset token, or an upload ticket. Better to refuse to boot.
   REQUIRED_PRODUCTION_ENV = {
-    "SES_FROM_EMAIL" => "the From address for account email (verification, password resets, hike follows)"
+    "SES_FROM_EMAIL" => "the From address for account email (verification, password resets, hike follows)",
+    "SESSION_SECRET" => "the secret behind session cookies, password reset tokens, and upload tickets"
   }.freeze
 
   def self.root

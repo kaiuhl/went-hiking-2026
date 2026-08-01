@@ -17,11 +17,26 @@ RSpec.describe "production configuration" do
         .to raise_error(WentHiking::ConfigurationError, /verification, password resets/)
     end
 
+    # Every one of these falls back to a constant committed to this repository:
+    # session cookies, password reset tokens and upload tickets are all signed
+    # with it, so a production process running on the fallback is one anyone
+    # reading the source can forge against.
+    it "refuses to boot production without SESSION_SECRET" do
+      allow(WentHiking).to receive(:production?).and_return(true)
+
+      expect { WentHiking.validate_production_env!({"SES_FROM_EMAIL" => "hello@wenthiking.com"}) }
+        .to raise_error(WentHiking::ConfigurationError, /SESSION_SECRET/)
+    end
+
     it "boots production when everything required is set" do
       allow(WentHiking).to receive(:production?).and_return(true)
 
-      expect { WentHiking.validate_production_env!({"SES_FROM_EMAIL" => "Went Hiking <hello@wenthiking.com>"}) }
-        .not_to raise_error
+      expect {
+        WentHiking.validate_production_env!(
+          "SES_FROM_EMAIL" => "Went Hiking <hello@wenthiking.com>",
+          "SESSION_SECRET" => "a-real-secret-from-the-deploy-environment"
+        )
+      }.not_to raise_error
     end
 
     it "leaves development and test alone" do
