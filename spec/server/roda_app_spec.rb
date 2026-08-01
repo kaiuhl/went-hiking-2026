@@ -124,6 +124,13 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Forgot your password?")
   end
 
+  it "opens every page with a skip link to the main landmark" do
+    get "/about"
+
+    expect(last_response.body).to include(%(<a class="skip-link" href="#main">Skip to content</a>))
+    expect(last_response.body).to include(%(<main id="main" tabindex="-1">))
+  end
+
   it "creates public signup accounts pending verification and sends email" do
     WentHiking::Email.clear_deliveries
     fixture_path = File.join(WentHiking.root, "tmp/signup-avatar.jpg")

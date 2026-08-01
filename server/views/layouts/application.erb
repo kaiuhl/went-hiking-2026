@@ -38,6 +38,9 @@
     <% end %>
   </head>
   <body>
+    <%# The home page opens with about twenty consecutive Leaflet marker stops,
+        which is a long way to tab before reaching anything readable. %>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="site-header-inner">
         <a class="wordmark" href="/">
@@ -81,8 +84,7 @@
         </nav>
       </div>
     </header>
-    <main>
-      <%= yield %>
+    <main id="main" tabindex="-1">      <%= yield %>
     </main>
     <footer class="site-footer">
       <div class="site-footer-inner">
