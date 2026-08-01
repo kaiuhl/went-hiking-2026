@@ -499,6 +499,40 @@ main:focus-visible {
   outline: 0;
 }
 
+/* --- Flash --------------------------------------------------------------
+   Rules and a coloured edge rather than a tinted box, because the rest of the
+   site separates things with lines and not with fills.
+   ------------------------------------------------------------------------ */
+
+.flash-region {
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding-top: var(--space-7);
+}
+
+.flash {
+  max-width: var(--measure);
+  margin-bottom: var(--space-3);
+  border-left: var(--border-strong) solid var(--line);
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: var(--text-s);
+}
+
+.flash:last-child {
+  margin-bottom: 0;
+}
+
+.flash-notice {
+  border-left-color: var(--success);
+}
+
+.flash-error {
+  border-left-color: var(--danger);
+  color: var(--danger-strong);
+}
+
 .home-hero,
 .section,
 .narrow,

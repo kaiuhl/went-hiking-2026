@@ -1,0 +1,34 @@
+<%# Where an unverified hiker lands when they try to log in: rodauth checks
+    verification before it ever looks at the password and renders this page in
+    place of the login form. So it has to explain, on its own, why a correct
+    password did not get them in. Rodauth's own template is one sentence and a
+    button, under no heading at all, with the address they typed hidden in the
+    form where they cannot see it. %>
+<% typed_login = rodauth.param_or_nil(rodauth.login_param) %>
+
+<div class="auth-page">
+  <section class="auth-card">
+    <p class="kicker">Account</p>
+    <h1>Verify your account</h1>
+    <% if typed_login %>
+      <p>
+        That account still needs to be verified before you can sign in. When it was
+        created we emailed a verification link to <strong><%= h(typed_login) %></strong>,
+        so it is worth a look in your spam folder.
+      </p>
+    <% else %>
+      <p>
+        An account has to be verified before it can be used. We email a verification
+        link when the account is created, so it is worth a look in your spam folder.
+      </p>
+    <% end %>
+    <p>If you cannot find that email, we will send you another one.</p>
+
+    <form action="<%= h(rodauth.verify_account_resend_path) %>" method="post" class="rodauth" role="form" id="verify-account-resend-form">
+      <%= rodauth.verify_account_resend_additional_form_tags %>
+      <%= rodauth.csrf_tag(rodauth.verify_account_resend_path) %>
+      <%= typed_login ? rodauth.login_hidden_field : rodauth.render("login-field") %>
+      <%= rodauth.button(rodauth.verify_account_resend_button) %>
+    </form>
+  </section>
+</div>

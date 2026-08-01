@@ -124,6 +124,80 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Forgot your password?")
   end
 
+  # Rodauth checks verification before it ever looks at the password, so this
+  # page stands in for the login form and has to explain itself on its own.
+  it "explains itself when an unverified account tries to log in" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 1, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:account_password_hashes].insert(id: account_id, password_hash: BCrypt::Password.create("long-enough-password").to_s)
+
+    post "/login", {"email" => "kai@example.com", "password" => "long-enough-password"}
+
+    expect(last_response.body).to include("<h1>Verify your account</h1>")
+    expect(last_response.body).to include("still needs to be verified")
+    expect(last_response.body).to include("kai@example.com")
+    expect(last_response.body).to include("verify-account-resend-form")
+    # The generic rodauth flash would only be the same sentence twice, and it is
+    # set for a request this page never gets to.
+    expect(last_response.body).not_to include("awaiting verification")
+  end
+
+  it "renders rodauth's flash messages rather than dropping them on the floor" do
+    post "/create-account", {
+      "email" => "flash@example.com",
+      "name" => "Flash Hiker",
+      "password" => "long-enough-password",
+      "password-confirm" => "long-enough-password",
+      "website" => ""
+    }
+
+    expect(last_response.status).to eq(302)
+    follow_redirect!
+
+    expect(last_response.body).to include('class="flash flash-notice" role="status"')
+    expect(last_response.body).to include("verify your account")
+  end
+
+  it "renders a flash error with an alert role" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    WentHiking.db[:account_password_hashes].insert(id: account_id, password_hash: BCrypt::Password.create("long-enough-password").to_s)
+
+    post "/login", {"email" => "kai@example.com", "password" => "wrong-password-entirely"}
+
+    expect(last_response.body).to include('class="flash flash-error" role="alert"')
+  end
+
+  it "renders no flash region when there is nothing to say" do
+    get "/about"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).not_to include("flash-region")
+  end
+
+  it "answers a honeypot signup with a branded page rather than bare text" do
+    post "/create-account", {
+      "email" => "bot@example.com",
+      "name" => "Bot",
+      "password" => "long-enough-password",
+      "password-confirm" => "long-enough-password",
+      "website" => "http://spam.example"
+    }
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.headers["Content-Type"]).to include("text/html")
+    expect(last_response.body).to include("That account could not be created.")
+    expect(WentHiking.db[:accounts].where(email: "bot@example.com").count).to eq(0)
+    expect(WentHiking.db[:signup_attempts].where(honeypot_filled: true).count).to eq(1)
+  end
+
+  it "gives every rodauth page a heading and a title" do
+    %w[/login /create-account /reset-password-request /verify-account-resend].each do |path|
+      get path
+
+      expect(last_response.body).to match(/<h1[ >]/), "#{path} renders with no h1"
+      expect(last_response.body).to match(%r{<title>.+</title>}), "#{path} renders with no title"
+    end
+  end
+
   it "opens every page with a skip link to the main landmark" do
     get "/about"
 

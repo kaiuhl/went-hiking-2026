@@ -33,6 +33,16 @@ module ViewHelpers
     "#{path}#{separator}v=#{File.mtime(public_path).to_i}"
   end
 
+  # Rodauth sets its flash under a symbol key, but the session round-trips
+  # through JSON, so by the time the message is read back the key is a string.
+  # Both spellings, and a blank message is no message.
+  def flash_message(key)
+    return nil unless respond_to?(:flash)
+
+    message = (flash[key] || flash[key.to_s]).to_s.strip
+    message.empty? ? nil : message
+  end
+
   def current_account
     return nil unless rodauth.logged_in?
 

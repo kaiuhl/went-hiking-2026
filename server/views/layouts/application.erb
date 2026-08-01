@@ -84,7 +84,23 @@
         </nav>
       </div>
     </header>
-    <main id="main" tabindex="-1">      <%= yield %>
+    <main id="main" tabindex="-1">
+      <%# Rodauth says "check your email to verify your account" and "we sent you
+          a reset link" through the flash, and until this existed every one of
+          those sentences was dropped on the floor. %>
+      <% notice = flash_message(:notice) %>
+      <% error = flash_message(:error) %>
+      <% if notice || error %>
+        <div class="flash-region">
+          <% if error %>
+            <p class="flash flash-error" role="alert"><%= h(error) %></p>
+          <% end %>
+          <% if notice %>
+            <p class="flash flash-notice" role="status"><%= h(notice) %></p>
+          <% end %>
+        </div>
+      <% end %>
+      <%= yield %>
     </main>
     <footer class="site-footer">
       <div class="site-footer-inner">

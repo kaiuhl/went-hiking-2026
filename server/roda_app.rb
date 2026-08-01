@@ -85,6 +85,12 @@ class RodaApp < Roda
     reset_password_autologin? false
     set_deadline_values? true
 
+    # Rodauth renders the resend page in place of the login form on this attempt
+    # rather than redirecting, so this flash would not appear on the page it
+    # describes — it would surface a request later, on something unrelated. The
+    # resend page says it in its own words instead.
+    attempt_to_login_to_unverified_account_error_flash nil
+
     # Only the login page: the same field also appears on signup, where Name
     # comes first and stealing focus past it would be wrong.
     field_attributes do |field|
@@ -118,8 +124,7 @@ class RodaApp < Roda
         result: "honeypot_blocked",
         created_at: Time.now
       )
-      set_error_flash "There was an error creating your account"
-      request.halt [422, {}, ["There was an error creating your account"]]
+      scope.honeypot_rejection!
     end
 
     after_create_account do
@@ -206,6 +211,21 @@ class RodaApp < Roda
       response["Content-Type"] = "text/html"
       view("pages/error")
     end
+  end
+
+  # A human never fills the honeypot, but a human is who reads this if one ever
+  # does — so it gets the branded page every other refusal gets rather than a
+  # line of bare text/plain.
+  def honeypot_rejection!
+    @title = "Account Not Created"
+    @error_kicker = "422"
+    @error_heading = "That account could not be created."
+    @error_body = "Something in the form did not look right. If you are a person and not a script, please try again."
+    @error_details = nil
+
+    response.status = 422
+    response["Content-Type"] = "text/html"
+    request.halt [422, response.headers, [view("pages/error")]]
   end
 
   def csrf_failure_response
