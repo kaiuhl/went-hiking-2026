@@ -17,7 +17,8 @@ module HikeRoutes
     r.on "hikes" do
       r.is do
         r.get do
-          @trips = WentHiking::Models::Trip.published.reverse_order(:hiked_at).limit(50).all
+          @trips, @pagination = paginated_trip_list(WentHiking::Models::Trip.published, request.params["page"])
+          @pager = {path: "/hikes", params: {}, label: "Hike archive pages"}
           @title = "Recent Hikes"
           view("hikes/index")
         end
@@ -105,7 +106,7 @@ module HikeRoutes
         token_trip = WentHiking::UploadTokens.trip_from(@upload_token)
         not_found unless token_trip && token_trip.id == @trip.id
 
-        @photos = @trip.photos_dataset.order(:taken_at, :id).all
+        @photos = trip_photos(@trip)
         @title = "Add photos to #{@trip.name}"
         view("photos/mobile_upload")
       end
@@ -197,7 +198,7 @@ module HikeRoutes
 
       r.get String, "photos" do |trip_slug|
         @trip = trip_from_slug(trip_slug)
-        @photos = @trip.photos_dataset.order(:taken_at, :id).all
+        @photos = trip_photos(@trip)
         @title = "Photos from #{@trip.name}"
         view("photos/index")
       end
@@ -310,7 +311,7 @@ module HikeRoutes
       r.get String do |trip_slug|
         @trip = trip_from_slug(trip_slug)
         @account = @trip.account
-        @photos = @trip.photos_dataset.order(:taken_at, :id).all
+        @photos = trip_photos(@trip)
         @comments = @trip.comments_dataset.order(:created_at, :id).all
         @hearts = @trip.hearts_dataset.all
         @title = @trip.name
@@ -443,7 +444,7 @@ module HikeRoutes
     @form_values = values
     @form_errors = errors
     @form_trip = trip
-    @form_photos = trip ? trip.photos_dataset.order(:taken_at, :id).all : []
+    @form_photos = trip ? trip_photos(trip) : []
   end
 
   def default_trip_form_values(account)

@@ -14,12 +14,16 @@ module PageRoutes
 
   def route_pages(r)
     r.root do
-      @recent_trips = WentHiking::Models::Trip.published.reverse_order(:hiked_at).limit(12).all
+      @recent_trips = WentHiking::Models::Trip.published
+        .eager(:account, photos: :photo_variants)
+        .reverse_order(:hiked_at, :id)
+        .limit(12)
+        .all
       @map_points = WentHiking::Models::Trip
         .published
         .exclude(lat: nil)
         .exclude(lng: nil)
-        .reverse_order(:hiked_at)
+        .reverse_order(:hiked_at, :id)
         .limit(100)
         .all
       @archive_stats = archive_stats
@@ -58,7 +62,8 @@ module PageRoutes
 
     r.get "search" do
       @query = request.params["q"].to_s.strip
-      @trips = search_trips(@query)
+      @trips, @pagination = search_trips(@query, request.params["page"])
+      @pager = {path: "/search", params: {"q" => @query}, label: "Search results pages"}
       @title = @query.empty? ? "Search Hikes" : "Search: #{@query}"
       @kicker = "Search"
       @heading = @query.empty? ? "Search Hikes" : "Search Results"
@@ -88,25 +93,24 @@ module PageRoutes
 
   private
 
-  def search_trips(query)
-    dataset = WentHiking::Models::Trip.published.reverse_order(:hiked_at)
-    return dataset.limit(50).all if query.empty?
+  # Returns the page of matches and the pager that describes the whole result
+  # set, so the page can say how many hikes actually matched rather than
+  # implying that fifty is all there is.
+  def search_trips(query, page)
+    dataset = WentHiking::Models::Trip.published
+    unless query.empty?
+      pattern = "%#{query.downcase}%"
+      dataset = dataset.where(Sequel.lit("LOWER(name) LIKE ? OR LOWER(COALESCE(report_markdown, '')) LIKE ?", pattern, pattern))
+    end
 
-    pattern = "%#{query.downcase}%"
-    dataset
-      .where(Sequel.lit("LOWER(name) LIKE ? OR LOWER(COALESCE(report_markdown, '')) LIKE ?", pattern, pattern))
-      .limit(50)
-      .all
+    paginated_trip_list(dataset, page)
   end
 
   def archive_stats
-    trips = WentHiking::Models::Trip.published.all
-    {
-      trips: trips.size,
-      photos: WentHiking::Models::Photo.join(:trips, id: :trip_id).where(Sequel[:trips][:status] => "published").count,
-      miles: trips.sum { |trip| trip.mileage.to_f },
-      nights: trips.sum { |trip| trip.nights.to_i }
-    }
+    totals = WentHiking::Models::Trip.published.totals
+    totals.merge(
+      photos: WentHiking::Models::Photo.join(:trips, id: :trip_id).where(Sequel[:trips][:status] => "published").count
+    )
   end
 
   def leaderboards_for(year)
@@ -114,6 +118,7 @@ module PageRoutes
     end_at = Time.local(year + 1, 1, 1)
     trips = WentHiking::Models::Trip
       .published
+      .eager(:account)
       .where { hiked_at >= start_at }
       .where { hiked_at < end_at }
       .all
@@ -126,13 +131,17 @@ module PageRoutes
     }
   end
 
+  # Name breaks a tie, because something has to and nothing else was: the trips
+  # arrive in whatever order the planner hands them over, `sort_by` is not
+  # stable, and two hikers on the same nights count would swap places whenever
+  # that order shifted. Deterministic now, whatever the query plan does.
   def leaderboard(grouped_trips)
     grouped_trips.filter_map do |account, account_trips|
       value = yield(account_trips)
       next unless value.positive?
 
       {account: account, value: value}
-    end.sort_by { |entry| -entry[:value] }.first(8)
+    end.sort_by { |entry| [-entry[:value], entry[:account].name.to_s, entry[:account].id] }.first(8)
   end
 
   def retired_feature(feature, title: nil, body: nil)

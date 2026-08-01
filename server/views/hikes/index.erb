@@ -1,8 +1,13 @@
 <section class="section hike-index-section">
   <div class="section-heading">
     <h1><%= h(@heading || "Recent Hikes") %></h1>
-    <% unless @trips.empty? %>
-      <span class="meta">Showing <%= h(format_number(@trips.size)) %></span>
+    <%# The count is the size of the whole result set, not of this page. Before
+        pagination it read "Showing 50" whether fifty hikes matched or seven
+        thousand did. %>
+    <% if @pagination && @pagination.total.positive? %>
+      <% hike_word = (@pagination.total == 1) ? "hike" : "hikes" %>
+      <% match_word = @query.to_s.empty? ? nil : ((@pagination.total == 1) ? "matches" : "match") %>
+      <span class="meta"><%= h([format_number(@pagination.total), hike_word, match_word].compact.join(" ")) %></span>
     <% end %>
   </div>
   <%# The placeholder carries the label's job here; the field is the only one on
@@ -15,4 +20,7 @@
     </div>
   </form>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes match that search yet. Try another peak, lake, or trail name.", heading_level: "h2", show_author: true}) %>
+  <% if @pagination %>
+    <%= render("shared/pager", locals: {pagination: @pagination, path: @pager[:path], params: @pager[:params], label: @pager[:label], noun: "hike"}) %>
+  <% end %>
 </section>
