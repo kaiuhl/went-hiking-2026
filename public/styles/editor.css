@@ -293,9 +293,15 @@
   color: var(--ink);
 }
 
+/* A 1px underline is the resting state of every chip, so it cannot also be the
+   focus state. Keyboard focus doubles it. */
 .compose-chip-input:focus-visible {
   outline: 0;
+  border-bottom-width: var(--border-strong);
   border-bottom-color: var(--ink);
+  /* The extra pixel of border comes out of the padding, so the byline does not
+     jump by a pixel as focus moves along it. */
+  padding-bottom: 1px;
 }
 
 .compose-chip-number {
@@ -489,8 +495,22 @@
   outline: 0;
 }
 
+/* An empty block has no caret worth seeing and no ring, so focus was invisible.
+   A rule down the left margin rather than a box around the text: a focused
+   paragraph should still read as a paragraph, and the marker sits outside the
+   measure so nothing reflows when it appears. */
 .compose-block-text:focus-visible {
   outline: 0;
+}
+
+.compose-block-text:focus-visible::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--space-4));
+  width: var(--border-strong);
+  background: var(--ink);
 }
 
 .compose-block-text.is-empty::before {
