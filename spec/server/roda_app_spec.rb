@@ -417,7 +417,9 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include('data-photo-index="2"')
     expect(last_response.body).to include('data-photo-index="3"')
     expect(last_response.body).to include('data-photo-index="4"')
-    expect(last_response.body).to include("Showing 2")
+    # The count describes the whole archive now, not the slice on screen; it
+    # used to read "Showing 50" whether fifty hikes existed or eight thousand.
+    expect(last_response.body).to include("2 hikes")
   end
 
   it "renders the compose page for a new hike" do
