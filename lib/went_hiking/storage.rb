@@ -36,9 +36,15 @@ module WentHiking
         File.binread(path_for!(key))
       end
 
+      # S3 has no directories, so a key that goes away leaves nothing behind. On
+      # disk it leaves system/images/1234/original/ standing empty forever, and
+      # a deleted trip leaves a whole tree of them.
       def delete(key)
         path = path_for(key)
-        FileUtils.rm_f(path) if path
+        return unless path
+
+        FileUtils.rm_f(path)
+        prune_empty_dirs(File.dirname(path))
       end
 
       def direct_upload?
@@ -84,6 +90,17 @@ module WentHiking
       private
 
       attr_reader :root
+
+      # Walks up while the directory is empty and still strictly inside the
+      # upload root, so the root itself always survives even when it is emptied.
+      def prune_empty_dirs(dir)
+        while dir.start_with?(root_prefix) && Dir.empty?(dir)
+          Dir.rmdir(dir)
+          dir = File.dirname(dir)
+        end
+      rescue SystemCallError
+        nil
+      end
 
       def path_for!(key)
         path_for(key) || raise(InvalidKey, "Storage key is outside the upload root: #{key.inspect}")
