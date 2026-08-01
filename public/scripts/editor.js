@@ -1803,6 +1803,7 @@
       panel.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
       if (wasOpen && options && options.restoreFocus) toggle.focus();
+      return wasOpen;
     }
 
     toggle.addEventListener("click", function () {
@@ -1840,9 +1841,7 @@
       close();
     });
 
-    state.closeLocation = function () {
-      close({restoreFocus: true});
-    };
+    state.closeLocation = close;
     setSummary();
   }
 
@@ -2136,9 +2135,28 @@
 
   }
 
-  function closeFigureMenus() {
+  // Hiding the panel is only half of closing it: the toggle that opened it is
+  // still telling a screen reader it is expanded, and on the keyboard path the
+  // focus has to go back to that toggle rather than fall to the body. Returns
+  // whether anything was actually open, so Escape can tell which panel it just
+  // dismissed and hand the focus to that one.
+  function closeFigureMenus(options) {
     var menus = state.canvas.querySelectorAll("[data-figure-menu]");
-    for (var index = 0; index < menus.length; index += 1) menus[index].hidden = true;
+    var restoreFocus = options && options.restoreFocus;
+    var wasOpen = false;
+
+    for (var index = 0; index < menus.length; index += 1) {
+      var menu = menus[index];
+      if (menu.hidden) continue;
+
+      var toggle = menu.parentNode.querySelector("[data-figure-toggle]");
+      menu.hidden = true;
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
+      if (toggle && restoreFocus && !wasOpen) toggle.focus();
+      wasOpen = true;
+    }
+
+    return wasOpen;
   }
 
   function runFigureAction(figure, action) {
@@ -2244,17 +2262,32 @@
     var toggle = menu.querySelector("[data-compose-menu-toggle]");
     var panel = menu.querySelector("[data-compose-menu-panel]");
 
+    var setOpen = function (open) {
+      panel.hidden = !open;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+
+    // Same shape as the site nav's menu: the aria state travels with the panel,
+    // and a keyboard dismissal puts the focus back on the toggle. Clicking
+    // elsewhere is already a choice about where focus goes, so that path leaves
+    // it alone.
+    var close = function (options) {
+      if (panel.hidden) return false;
+      setOpen(false);
+      if (options && options.restoreFocus) toggle.focus();
+      return true;
+    };
+
     toggle.addEventListener("click", function () {
-      var openNow = panel.hidden;
-      panel.hidden = !openNow;
-      toggle.setAttribute("aria-expanded", openNow ? "true" : "false");
+      setOpen(panel.hidden);
     });
 
     document.addEventListener("click", function (event) {
-      if (panel.hidden || menu.contains(event.target)) return;
-      panel.hidden = true;
-      toggle.setAttribute("aria-expanded", "false");
+      if (menu.contains(event.target)) return;
+      close();
     });
+
+    state.closeMenu = close;
 
     var remove = menu.querySelector("[data-compose-delete]");
     if (remove) {
@@ -2269,15 +2302,28 @@
   }
 
   function bindGlobalKeys() {
+    // Escape closes every compose panel, but only one of them can have been the
+    // one the keyboard came from, so the first that was actually open takes the
+    // focus back and the rest simply close. Leaving focus on the body — which is
+    // what hiding the panels alone did — strands a keyboard user at the top of
+    // the document with no way back to the control they just used.
+    var dismissPanels = function () {
+      var closers = [closeFigureMenus, state.closeLocation, state.closeMenu];
+      var claimed = false;
+
+      for (var index = 0; index < closers.length; index += 1) {
+        if (!closers[index]) continue;
+        if (closers[index]({restoreFocus: !claimed})) claimed = true;
+      }
+
+      return claimed;
+    };
+
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
 
-      closeFigureMenus();
+      if (dismissPanels()) event.preventDefault();
       hideToolbar();
-      if (state.closeLocation) state.closeLocation();
-
-      var panel = state.root.querySelector("[data-compose-menu-panel]");
-      if (panel) panel.hidden = true;
     });
 
     // A stray Enter in a chip should not fire off a half-written hike.
