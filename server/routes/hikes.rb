@@ -6,6 +6,7 @@ require "went_hiking/hike_notification_scheduler"
 require "went_hiking/photo_upload"
 require "went_hiking/slug"
 require "went_hiking/trip_deletion"
+require "went_hiking/upload_tokens"
 
 module HikeRoutes
   DRAFT_NAME = "Untitled Hike"
@@ -96,9 +97,21 @@ module HikeRoutes
         redirect "#{trip.public_path}/edit"
       end
 
+      # Phone-friendly upload page reached via a signed link from the MCP
+      # connector -- no logged-in session required, just a valid token.
+      r.get String, "photos", "mobile-upload" do |trip_slug|
+        @trip = trip_from_slug(trip_slug, include_drafts: true)
+        @upload_token = request.params["token"].to_s
+        token_trip = WentHiking::UploadTokens.trip_from(@upload_token)
+        not_found unless token_trip && token_trip.id == @trip.id
+
+        @photos = @trip.photos_dataset.order(:taken_at, :id).all
+        @title = "Add photos to #{@trip.name}"
+        view("photos/mobile_upload")
+      end
+
       r.post String, "photos", "direct-upload" do |trip_slug|
-        account = authenticated_account
-        @trip = owned_trip_from_slug(trip_slug, account)
+        account, @trip = trip_upload_authorization(trip_slug)
 
         result = WentHiking::DirectPhotoUpload.new(
           account: account,
@@ -125,8 +138,7 @@ module HikeRoutes
       end
 
       r.post String, "photos", Integer, "caption" do |trip_slug, photo_id|
-        account = authenticated_account
-        @trip = owned_trip_from_slug(trip_slug, account)
+        account, @trip = trip_upload_authorization(trip_slug)
         photo = @trip.photos_dataset.where(id: photo_id, account_id: account.id).first
         not_found unless photo
 
@@ -150,8 +162,7 @@ module HikeRoutes
       end
 
       r.post String, "photos", Integer, "finalize" do |trip_slug, photo_id|
-        account = authenticated_account
-        @trip = owned_trip_from_slug(trip_slug, account)
+        account, @trip = trip_upload_authorization(trip_slug)
 
         result = WentHiking::DirectPhotoUpload.finalize(account: account, trip: @trip, photo_id: photo_id)
 
@@ -163,8 +174,7 @@ module HikeRoutes
       end
 
       r.post String, "photos" do |trip_slug|
-        account = authenticated_account
-        @trip = owned_trip_from_slug(trip_slug, account)
+        account, @trip = trip_upload_authorization(trip_slug)
 
         result = WentHiking::PhotoUpload.new(
           account: account,
@@ -174,7 +184,8 @@ module HikeRoutes
         ).call
 
         if result.success?
-          redirect @trip.public_path
+          upload_token = request.params["upload_token"].to_s
+          redirect(upload_token.empty? ? @trip.public_path : "#{@trip.public_path}/photos/mobile-upload?token=#{upload_token}")
         else
           @title = "Add Trail Photos"
           @photo_errors = result.errors
@@ -390,6 +401,22 @@ module HikeRoutes
     trip = trip_from_slug(value, include_drafts: true)
     not_found unless trip.account_id == account.id
     trip
+  end
+
+  # Photo upload endpoints accept either the owner's logged-in session or a
+  # signed upload token minted for the trip (the MCP mobile upload flow).
+  def trip_upload_authorization(trip_slug)
+    trip = trip_from_slug(trip_slug, include_drafts: true)
+    token = request.params["upload_token"].to_s
+
+    unless token.empty?
+      token_trip = WentHiking::UploadTokens.trip_from(token)
+      return [trip.account, trip] if token_trip && token_trip.id == trip.id
+    end
+
+    account = authenticated_account
+    not_found unless trip.account_id == account.id
+    [account, trip]
   end
 
   def authenticated_account

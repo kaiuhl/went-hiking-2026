@@ -1,5 +1,9 @@
 ENV["APP_ENV"] = "test"
 ENV["RACK_ENV"] = "test"
+# Assigned rather than defaulted: specs assert on absolute URLs, so the base has
+# to be the suite's own no matter what the surrounding container was started
+# with. A dev stack on a different port must not change what a spec expects.
+ENV["PUBLIC_BASE_URL"] = "http://localhost:9292"
 ENV["TEST_DATABASE_URL"] ||= "sqlite::memory:"
 ENV["SESSION_SECRET"] ||= "test-session-secret-test-session-secret-test-session-secret-test-session-secret"
 ENV["MEDIA_BASE_URL"] ||= "https://media.example.test"

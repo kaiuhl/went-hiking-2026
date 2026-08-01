@@ -1,0 +1,54 @@
+<% @title = "Authorize access" %>
+<% application = rodauth.oauth_application %>
+<% application_name = application[rodauth.oauth_applications_name_column].to_s %>
+<% scope_descriptions = {
+     "hikes:read" => "See your hikes, trip reports, and photos",
+     "hikes:write" => "Create drafts, edit reports, add photos, and publish hikes"
+   } %>
+
+<section class="form-page">
+  <header class="form-header">
+    <p class="kicker">Connected app</p>
+    <h1>Let <%= h(application_name) %> use your Went Hiking account?</h1>
+  </header>
+
+  <p>
+    <strong><%= h(application_name) %></strong> is asking to act as
+    <strong><%= h(current_account&.name.to_s) %></strong>. It will be able to:
+  </p>
+
+  <form method="post" action="<%= h(rodauth.authorize_path) %>">
+    <%# This is a browser form granting an outside app access to someone's
+        account, which is exactly the kind of POST a forged one wants to be. %>
+    <%= rodauth.csrf_tag %>
+    <div class="form-grid">
+      <% rodauth.authorize_scopes.each do |scope| %>
+        <div class="form-row form-row-full">
+          <label>
+            <input type="checkbox" name="scope[]" value="<%= h(scope) %>" checked>
+            <%= h(scope_descriptions.fetch(scope, scope)) %>
+          </label>
+        </div>
+      <% end %>
+    </div>
+
+    <input type="hidden" name="client_id" value="<%= h(rodauth.param("client_id")) %>">
+    <% %w[access_type response_type response_mode state code_challenge code_challenge_method].each do |field| %>
+      <% if rodauth.param_or_nil(field) %>
+        <input type="hidden" name="<%= h(field) %>" value="<%= h(rodauth.param(field)) %>">
+      <% end %>
+    <% end %>
+    <% if rodauth.param_or_nil("redirect_uri") %>
+      <input type="hidden" name="redirect_uri" value="<%= h(rodauth.redirect_uri) %>">
+    <% end %>
+
+    <div class="form-actions">
+      <button type="submit"><%= h(rodauth.oauth_authorize_button) %></button>
+      <a href="<%= h("#{rodauth.redirect_uri}?error=access_denied&error_description=The+resource+owner+or+authorization+server+denied+the+request#{"&state=#{rodauth.param("state")}" if rodauth.param_or_nil("state")}") %>">Cancel</a>
+    </div>
+  </form>
+
+  <p class="inline-hints">
+    You can revoke access at any time from your account settings.
+  </p>
+</section>

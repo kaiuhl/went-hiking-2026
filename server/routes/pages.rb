@@ -34,6 +34,11 @@ module PageRoutes
       view("pages/about")
     end
 
+    r.get "connect" do
+      @title = "Post from Claude or ChatGPT"
+      view("pages/connect")
+    end
+
     r.get "privacy_policy" do
       redirect "/privacy"
     end
