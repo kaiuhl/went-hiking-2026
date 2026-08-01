@@ -87,14 +87,13 @@ module HikeRoutes
         view("photos/show")
       end
 
+      # Photos are part of composing a hike now, so the standalone upload page
+      # hands off to the editor. The multipart POST below stays put as the
+      # no-JavaScript path.
       r.get String, "photos", "new" do |trip_slug|
         account = authenticated_account
-        @trip = owned_trip_from_slug(trip_slug, account)
-
-        @title = "Add Trail Photos"
-        @photo_errors = []
-        @photo_caption = ""
-        view("photos/new")
+        trip = owned_trip_from_slug(trip_slug, account)
+        redirect "#{trip.public_path}/edit"
       end
 
       r.post String, "photos", "direct-upload" do |trip_slug|
@@ -133,6 +132,21 @@ module HikeRoutes
 
         photo.update(caption: optional_string(request.POST["caption"].to_s.strip), updated_at: Time.now)
         json_payload(photo_editor_item(photo))
+      end
+
+      r.post String, "photos", Integer, "delete" do |trip_slug, photo_id|
+        account = authenticated_account
+        @trip = owned_trip_from_slug(trip_slug, account)
+        photo = @trip.photos_dataset.where(id: photo_id, account_id: account.id).first
+        not_found unless photo
+
+        WentHiking::TripDeletion.delete_photo_files(photo)
+        WentHiking.db.transaction do
+          photo.photo_variants_dataset.delete
+          photo.destroy
+        end
+
+        json_payload({deleted_photo_id: photo_id})
       end
 
       r.post String, "photos", Integer, "finalize" do |trip_slug, photo_id|
@@ -215,6 +229,28 @@ module HikeRoutes
           trip: trip
         )
         view("hikes/form")
+      end
+
+      # Drafts save themselves as they are written. Publishing is still the
+      # explicit POST below: autosave never flips status, never regenerates the
+      # slug, and refuses to touch a hike that is already live.
+      r.post String, "autosave" do |trip_slug|
+        account = authenticated_account
+        trip = owned_trip_from_slug(trip_slug, account)
+
+        if trip.draft?
+          attributes, errors = autosave_attributes(request.POST)
+          trip.update(attributes.merge(updated_at: Time.now)) unless attributes.empty?
+          payload = {saved_at: Time.now.iso8601, trip_id: trip.id}
+
+          if errors.empty?
+            json_payload(payload)
+          else
+            json_payload(payload.merge(errors: errors), status: 422)
+          end
+        else
+          json_payload({errors: {base: "Published hikes save with the Save changes button."}}, status: 422)
+        end
       end
 
       r.post String, "delete" do |trip_slug|
@@ -441,6 +477,86 @@ module HikeRoutes
     }
 
     [values, errors.uniq, attributes]
+  end
+
+  # Autosave is deliberately more forgiving than publishing: a half-typed number
+  # should not cost the writer the sentence they are in the middle of. Fields
+  # that parse are written, fields that do not come back as per-field errors the
+  # editor pins to the offending chip, and anything absent is left alone.
+  def autosave_attributes(params)
+    attributes = {}
+    errors = {}
+
+    if params.key?("name")
+      name = params["name"].to_s.strip
+      attributes[:name] = name.empty? ? DRAFT_NAME : name
+    end
+
+    if params.key?("hiked_at")
+      value = params["hiked_at"].to_s.strip
+      begin
+        attributes[:hiked_at] = Date.iso8601(value).to_time
+      rescue ArgumentError
+        errors[:hiked_at] = "Hike date must be a valid date." unless value.empty?
+      end
+    end
+
+    autosave_number(params, "nights", :nights, errors, integer: true, min: 0, blank: 0, label: "Nights") { |value| attributes[:nights] = value }
+    autosave_number(params, "mileage", :mileage, errors, min: 0, label: "Mileage") { |value| attributes[:mileage] = value }
+    autosave_number(params, "elevation", :elevation, errors, integer: true, min: 0, label: "Elevation") { |value| attributes[:elevation] = value }
+
+    attributes[:source_url] = optional_string(params["source_url"].to_s.strip) if params.key?("source_url")
+    attributes[:report_markdown] = params["report_markdown"].to_s if params.key?("report_markdown")
+
+    autosave_coordinates(params, attributes, errors)
+
+    [attributes, errors]
+  end
+
+  def autosave_number(params, key, error_key, errors, integer: false, min: nil, max: nil, blank: nil, label: nil)
+    return unless params.key?(key)
+
+    value = params[key].to_s.strip
+    return yield(blank) if value.empty?
+
+    parsed_errors = []
+    parsed = if integer
+      integer_value(value, label || key, parsed_errors, min: min, max: max)
+    else
+      decimal_value(value, label || key, parsed_errors, min: min, max: max)
+    end
+
+    if parsed_errors.empty?
+      yield(parsed)
+    else
+      errors[error_key] = parsed_errors.first
+    end
+  end
+
+  # Latitude and longitude move as a pair, so autosave rejects a half-set
+  # location the same way publishing does rather than storing a stray number.
+  def autosave_coordinates(params, attributes, errors)
+    return unless params.key?("lat") || params.key?("lng")
+
+    lat = params["lat"].to_s.strip
+    lng = params["lng"].to_s.strip
+
+    if lat.empty? && lng.empty?
+      attributes[:lat] = nil
+      attributes[:lng] = nil
+      return
+    end
+
+    pair_errors = []
+    parsed_lat = decimal_value(lat, "Latitude", pair_errors, min: -90, max: 90)
+    parsed_lng = decimal_value(lng, "Longitude", pair_errors, min: -180, max: 180)
+
+    if parsed_lat && parsed_lng && pair_errors.empty?
+      attributes[:lat] = parsed_lat
+      attributes[:lng] = parsed_lng
+    else
+      errors[:location] = pair_errors.first || "Drop a map pin with both latitude and longitude, or clear the location."
+    end
   end
 
   def parse_hiked_at(value, errors)
