@@ -1,6 +1,6 @@
 <article class="photo-page">
   <p class="breadcrumbs"><a href="<%= h(@trip.public_path) %>">Back to <%= h(@trip.name) %></a></p>
-  <h1 class="visually-hidden"><%= h(@photo.caption.to_s.empty? ? "Photo from #{@trip.name}" : @photo.caption) %></h1>
+  <h1 class="visually-hidden"><%= h(@photo.caption.to_s.empty? ? "Photo from #{@trip.name}" : "#{@photo.caption} — photo from #{@trip.name}") %></h1>
   <figure>
     <img src="<%= h(image_url(@photo, "original")) %>" alt="<%= h(@photo.caption) %>">
     <% metadata = photo_metadata_label(@photo) %>

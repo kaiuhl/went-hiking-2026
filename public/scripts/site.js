@@ -71,10 +71,12 @@
       return;
     }
 
-    // Tight padding and a higher zoom ceiling so the region fills the band
-    // instead of centring on open ocean.
+    // A higher zoom ceiling so the region fills the band instead of centring
+    // on open ocean, with enough top padding to clear a marker's 37px pin
+    // (it is anchored at the tip, so it hangs above its own coordinate).
     map.fitBounds(points, {
-      padding: options.padding || [18, 18],
+      paddingTopLeft: options.paddingTopLeft || [30, 48],
+      paddingBottomRight: options.paddingBottomRight || [30, 22],
       maxZoom: options.maxZoom || 12
     });
   };

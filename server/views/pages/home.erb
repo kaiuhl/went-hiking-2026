@@ -9,6 +9,10 @@
 <% end %>
 
 <section class="home-hero">
+  <div class="home-hero-lead">
+    <h1 class="home-title">A tool for recording your trips into the wilderness and discovering new ones.</h1>
+    <p class="lede">Join the hundreds of people recording their stories from the trail.</p>
+  </div>
   <p class="kicker inline-kicker home-kicker">
     <% if @archive_stats[:trips].positive? %>
       <span><%= h(format_number(@archive_stats[:trips])) %> <%= h(trip_label) %></span>
@@ -18,8 +22,6 @@
     <% end %>
     <span class="home-kicker-since">since 2010</span>
   </p>
-  <h1 class="home-title">A tool for recording your trips into the wilderness and discovering new ones.</h1>
-  <p class="lede">Join the hundreds of people recording their stories from the trail.</p>
 </section>
 
 <section class="section">
