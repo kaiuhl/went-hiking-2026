@@ -1644,12 +1644,20 @@
 
     var lat = fieldValue("lat");
     var lng = fieldValue("lng");
+    var label = lat && lng ? formatCoordinate(lat) + ", " + formatCoordinate(lng) : "";
 
-    if (lat && lng) {
+    // Rewriting the toggle's contents detaches everything inside it, including
+    // the span a click is still travelling up through — which is how clicking
+    // "Pin set" used to open the popover and close it again in the same gesture.
+    // So only touch the DOM when the pin has actually moved.
+    if (toggle.getAttribute("data-location-label") === label) return;
+    toggle.setAttribute("data-location-label", label);
+
+    if (label) {
       // Coordinates on a wide byline, a mark on a narrow one: CSS picks, so the
       // label reflows with the viewport instead of on a resize listener.
       toggle.innerHTML =
-        '<span class="compose-chip-wide">' + escapeHtml(formatCoordinate(lat) + ", " + formatCoordinate(lng)) + "</span>" +
+        '<span class="compose-chip-wide">' + escapeHtml(label) + "</span>" +
         '<span class="compose-chip-narrow">Pin set &check;</span>';
       toggle.classList.add("is-set");
     } else {
@@ -1679,6 +1687,25 @@
       summary.textContent = lat && lng ? "Pin set at " + formatCoordinate(lat) + ", " + formatCoordinate(lng) + "." : "Click the map to drop a pin.";
     }
 
+    // Purely the map's business. Showing an existing pin is not an edit, so
+    // opening the popover on a hike that already has one must not travel any
+    // further than this.
+    function placeMarker(lat, lng, options) {
+      if (!map) return;
+
+      if (!marker) {
+        marker = L.marker([lat, lng], {icon: pinIcon(), draggable: true}).addTo(map);
+        marker.on("dragend", function () {
+          var position = marker.getLatLng();
+          setPin(position.lat, position.lng);
+        });
+      } else {
+        marker.setLatLng([lat, lng]);
+      }
+
+      if (options && options.pan) map.panTo([lat, lng]);
+    }
+
     // Latitude and longitude are set and cleared together, so the old
     // half-filled-coordinate error has nowhere to come from.
     function setPin(lat, lng, options) {
@@ -1689,19 +1716,7 @@
       latInput.value = formatCoordinate(lat);
       lngInput.value = formatCoordinate(lng);
 
-      if (map) {
-        if (!marker) {
-          marker = L.marker([lat, lng], {icon: pinIcon(), draggable: true}).addTo(map);
-          marker.on("dragend", function () {
-            var position = marker.getLatLng();
-            setPin(position.lat, position.lng);
-          });
-        } else {
-          marker.setLatLng([lat, lng]);
-        }
-        if (options && options.pan) map.panTo([lat, lng]);
-      }
-
+      placeMarker(lat, lng, options);
       setSummary();
       refreshLocationChip();
       clearFieldError("location");
@@ -1753,7 +1768,7 @@
       map.on("click", function (event) {
         setPin(event.latlng.lat, event.latlng.lng);
       });
-      if (hasPin) setPin(lat, lng);
+      if (hasPin) placeMarker(lat, lng);
       window.setTimeout(function () {
         map.invalidateSize({pan: false});
       }, 60);
@@ -1773,9 +1788,14 @@
       }
     }
 
-    function close() {
+    // Dismissing by keyboard has to hand focus back to the control that opened
+    // the popover; dismissing by clicking elsewhere must not steal it.
+    function close(options) {
+      var wasOpen = !panel.hidden;
+
       panel.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
+      if (wasOpen && options && options.restoreFocus) toggle.focus();
     }
 
     toggle.addEventListener("click", function () {
@@ -1785,8 +1805,7 @@
 
     clear.addEventListener("click", clearPin);
     done.addEventListener("click", function () {
-      close();
-      toggle.focus();
+      close({restoreFocus: true});
     });
 
     function syncManual() {
@@ -1814,7 +1833,9 @@
       close();
     });
 
-    state.closeLocation = close;
+    state.closeLocation = function () {
+      close({restoreFocus: true});
+    };
     setSummary();
   }
 
