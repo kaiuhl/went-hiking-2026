@@ -1840,7 +1840,7 @@
       var lng = Number(fieldValue("lng"));
       var hasPin = Number.isFinite(lat) && Number.isFinite(lng) && fieldValue("lat") !== "";
 
-      map = L.map(mapNode, {scrollWheelZoom: false}).setView(
+      map = L.map(mapNode).setView(
         hasPin ? [lat, lng] : [Number(mapNode.dataset.defaultLat), Number(mapNode.dataset.defaultLng)],
         hasPin ? 11 : Number(mapNode.dataset.defaultZoom)
       );
@@ -1860,6 +1860,7 @@
     function open() {
       panel.hidden = false;
       toggle.setAttribute("aria-expanded", "true");
+      document.body.classList.add("compose-location-open");
       // Clicking into the map does not collapse a text selection, so the
       // formatting toolbar would otherwise hang around underneath the popover.
       hideToolbar();
@@ -1878,6 +1879,7 @@
 
       panel.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("compose-location-open");
       if (wasOpen && options && options.restoreFocus) toggle.focus();
       return wasOpen;
     }
@@ -1911,10 +1913,18 @@
     latInput.addEventListener("change", syncManual);
     lngInput.addEventListener("change", syncManual);
 
-    document.addEventListener("click", function (event) {
-      if (panel.hidden) return;
-      if (chip.contains(event.target)) return;
-      close();
+    // The scrim is the modal's own "outside": a click that both starts and
+    // ends there dismisses, while a map pan that strays off the dialog and
+    // releases over the scrim must not.
+    var scrimPress = false;
+
+    panel.addEventListener("mousedown", function (event) {
+      scrimPress = event.target === panel;
+    });
+
+    panel.addEventListener("click", function (event) {
+      if (scrimPress && event.target === panel) close();
+      scrimPress = false;
     });
 
     state.closeLocation = close;

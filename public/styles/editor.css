@@ -381,28 +381,47 @@
 }
 
 /* --------------------------------------------------------------------------
-   Location popover: the pin and both coordinates are set and cleared as one
-   thing, which is why the pair can never end up half filled.
+   Location modal: the pin and both coordinates are set and cleared as one
+   thing, which is why the pair can never end up half filled. It takes over
+   the page because finding the right lake on a 190px thumbnail never worked;
+   a map is only navigable at size.
    -------------------------------------------------------------------------- */
 
-.compose-chip-location {
-  position: relative;
+.compose-popover {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--scrim);
+  padding: var(--space-4);
 }
 
-.compose-popover {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: var(--z-overlay);
-  width: min(320px, calc(100vw - 32px));
+/* display: flex would otherwise defeat the hidden attribute. */
+.compose-popover[hidden] {
+  display: none;
+}
+
+/* The page under the scrim holds still; the wheel belongs to the map. */
+body.compose-location-open {
+  overflow: hidden;
+}
+
+.compose-popover-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1060px, 100%);
+  height: 100%;
   border: var(--border) solid var(--line);
   background: var(--paper);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xl);
   padding: var(--space-3);
 }
 
 .compose-map {
-  height: 190px;
+  flex: 1;
+  min-height: 0;
   background: var(--map-wash);
 }
 
@@ -1099,11 +1118,6 @@
 
   .compose-tray-drop {
     padding: var(--space-5) var(--space-3);
-  }
-
-  .compose-popover {
-    left: auto;
-    right: 0;
   }
 
   .compose-toolbar-input {

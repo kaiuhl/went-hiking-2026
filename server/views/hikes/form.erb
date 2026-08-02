@@ -212,27 +212,29 @@
         <input type="hidden" name="lat" value="<%= h(values[:lat]) %>" data-compose-field="lat">
         <input type="hidden" name="lng" value="<%= h(values[:lng]) %>" data-compose-field="lng">
 
-        <div class="compose-popover" role="dialog" aria-label="Hike location" data-compose-location-panel hidden>
-          <div
-            class="compose-map"
-            data-compose-map
-            data-tile-url="<%= h(leaflet_tile_url) %>"
-            data-default-lat="45.52"
-            data-default-lng="-122.67"
-            data-default-zoom="6"
-            role="application"
-            aria-label="Click the map to drop a pin"
-          ></div>
-          <p class="compose-popover-hint" data-compose-location-summary>Click the map to drop a pin.</p>
-          <div class="compose-popover-row">
-            <label class="compose-popover-label" for="compose-lat">Lat</label>
-            <input id="compose-lat" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" autocomplete="off" data-compose-lat>
-            <label class="compose-popover-label" for="compose-lng">Lng</label>
-            <input id="compose-lng" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lng]) %>" autocomplete="off" data-compose-lng>
-          </div>
-          <div class="compose-popover-actions">
-            <button class="compose-popover-clear" type="button" data-compose-location-clear>Clear pin</button>
-            <button class="compose-popover-done" type="button" data-compose-popover-close>Done</button>
+        <div class="compose-popover" role="dialog" aria-modal="true" aria-label="Hike location" data-compose-location-panel hidden>
+          <div class="compose-popover-dialog">
+            <div
+              class="compose-map"
+              data-compose-map
+              data-tile-url="<%= h(leaflet_tile_url) %>"
+              data-default-lat="45.52"
+              data-default-lng="-122.67"
+              data-default-zoom="6"
+              role="application"
+              aria-label="Click the map to drop a pin"
+            ></div>
+            <p class="compose-popover-hint" data-compose-location-summary>Click the map to drop a pin.</p>
+            <div class="compose-popover-row">
+              <label class="compose-popover-label" for="compose-lat">Lat</label>
+              <input id="compose-lat" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" autocomplete="off" data-compose-lat>
+              <label class="compose-popover-label" for="compose-lng">Lng</label>
+              <input id="compose-lng" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lng]) %>" autocomplete="off" data-compose-lng>
+            </div>
+            <div class="compose-popover-actions">
+              <button class="compose-popover-clear" type="button" data-compose-location-clear>Clear pin</button>
+              <button class="compose-popover-done" type="button" data-compose-popover-close>Done</button>
+            </div>
           </div>
         </div>
       </span>
