@@ -31,8 +31,8 @@ bin/prod-deploy --skip-smoke
 
 ## Host Defaults
 
-- Public preview: `https://new.wenthiking.com/`
-- Health check: `https://new.wenthiking.com/health`
+- Public site: `https://wenthiking.com/`
+- Health check: `https://wenthiking.com/health`
 - Raw instance preview: `http://35.160.199.53/`
 - SSH user: `ubuntu`
 - SSH key: `.deploy/lightsail.pem`

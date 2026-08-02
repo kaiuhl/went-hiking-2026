@@ -83,19 +83,20 @@ successful, production access is granted, and production has
 
 ## DNS Cutover
 
-`wenthiking.com` and `www.wenthiking.com` still resolve to the old Linode IP
-`173.255.199.39`; nameservers are now Cloudflare
-`karsyn.ns.cloudflare.com` and `ken.ns.cloudflare.com`. Point both hostnames at
-the Lightsail static IP `35.160.199.53`, then restore HTTPS in
-`infra/caddy/Caddyfile`.
+Complete (verified 2026-08-02). `wenthiking.com` and `www.wenthiking.com`
+resolve to the Lightsail static IP `35.160.199.53` on the Cloudflare
+nameservers `karsyn.ns.cloudflare.com` and `ken.ns.cloudflare.com`, and
+`infra/caddy/Caddyfile` serves HTTPS for both. `new.wenthiking.com` no longer
+has a DNS record; its vhost still sits in the Caddyfile and its origins still
+sit in the `media.tf` CORS list, and both can be dropped in a later cleanup.
 
 ## Current Caveats
 
 - The production database schema is migrated and the real legacy archive has been imported into Lightsail.
 - The S3 bucket exists with versioning enabled and public access blocked; the full trip-photo archive has been synced and the skip-existing confirmation uploaded no additional objects.
-- Caddy serves HTTPS for `new.wenthiking.com`. The apex `wenthiking.com`/`www.wenthiking.com`
-  cutover still needs DNS pointed at the new instance and HTTPS re-enabled for
-  those hostnames.
+- Caddy serves HTTPS for the apex `wenthiking.com`/`www.wenthiking.com`. The
+  `new.wenthiking.com` vhost is still declared but the hostname has no DNS
+  record, so its certificate will stop renewing.
 - Production auth email delivery is enabled through SES.
 - Production app credentials have a narrow inline IAM policy allowing object
   read/write/delete for `system/images/*` and `system/avatars/*` in the media
