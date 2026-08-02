@@ -187,6 +187,48 @@ class RodaApp < Roda
       def check_csrf?
         (request.path == revoke_path) ? false : super
       end
+
+      # RFC 7591 says to ignore unrecognized client metadata, but rodauth-oauth
+      # rejects it -- and Claude registers with its internal "claudeai" scope,
+      # which 400ed real connector setups. Sanitize the params in place (the
+      # same hash feeds validation, the stored application, and the response)
+      # before the strict validation runs.
+      def validate_client_registration_params(request_params = request.params)
+        request_params.keys.select { |key| unknown_client_metadata?(key) }.each { |key| request_params.delete(key) }
+
+        if request_params["scope"].is_a?(String)
+          supported = request_params["scope"].split(" ") & oauth_application_scopes
+          if supported.empty?
+            request_params.delete("scope")
+          else
+            request_params["scope"] = supported.join(" ")
+          end
+        end
+
+        super
+      end
+
+      # Assistant clients may request scopes we don't offer (e.g. "claudeai")
+      # at the authorization endpoint too; fall back to the server's scopes
+      # instead of erroring so consent still renders.
+      def scopes
+        requested = super
+        return requested unless requested.is_a?(Array)
+
+        supported = requested & oauth_application_scopes
+        supported.empty? ? oauth_application_scopes : supported
+      end
+
+      private
+
+      def unknown_client_metadata?(key)
+        return false if %w[
+          redirect_uris token_endpoint_auth_method grant_types response_types
+          client_uri logo_uri tos_uri policy_uri jwks_uri jwks scope contacts client_name
+        ].include?(key)
+
+        !respond_to?(:"oauth_applications_#{key}_column") && !db[oauth_applications_table].columns.include?(key.to_sym)
+      end
     end
   end
 

@@ -180,6 +180,69 @@ RSpec.describe "MCP connector" do
       expect(JSON.parse(last_response.body)["access_token"]).not_to be_nil
     end
 
+    it "tolerates Claude's registration quirks: unknown scopes and unrecognized metadata" do
+      client = register_client(
+        scope: "claudeai",
+        application_type: "web",
+        client_uri: "https://claude.ai",
+        software_statement_extra: "ignored"
+      )
+
+      expect(client["client_id"]).not_to be_nil
+      expect(client["scopes"]).to eq("hikes:read hikes:write")
+      expect(client).not_to have_key("scope")
+      expect(client).not_to have_key("application_type")
+
+      stored = WentHiking.db[:oauth_applications].where(client_id: client["client_id"]).first
+      expect(stored[:scopes]).to eq("hikes:read hikes:write")
+      expect(stored[:homepage_url]).to eq("https://claude.ai")
+    end
+
+    it "authorizes end to end even when the client requests an unknown scope" do
+      account = create_account
+      client = register_client(scope: "claudeai")
+      login_as(account)
+      verifier, challenge = pkce_pair
+
+      get "/authorize", {
+        "client_id" => client["client_id"],
+        "redirect_uri" => redirect_uri,
+        "response_type" => "code",
+        "code_challenge" => challenge,
+        "code_challenge_method" => "S256",
+        "scope" => "claudeai"
+      }
+      expect(last_response.status).to eq(200), last_response.body
+      expect(last_response.body).to include("hikes:write")
+      consent_token = csrf_field_token(last_response.body)
+      expect(consent_token).not_to be_nil, "consent page rendered without a CSRF field"
+
+      post "/authorize", {
+        "_csrf" => consent_token,
+        "client_id" => client["client_id"],
+        "redirect_uri" => redirect_uri,
+        "response_type" => "code",
+        "code_challenge" => challenge,
+        "code_challenge_method" => "S256",
+        "scope" => ["hikes:read", "hikes:write"]
+      }
+      expect(last_response.status).to eq(302), last_response.body
+      code = Rack::Utils.parse_query(URI(last_response.location).query).fetch("code")
+
+      post "/token", {
+        "grant_type" => "authorization_code",
+        "code" => code,
+        "redirect_uri" => redirect_uri,
+        "client_id" => client["client_id"],
+        "code_verifier" => verifier
+      }
+      expect(last_response.status).to eq(200), last_response.body
+
+      token = JSON.parse(last_response.body).fetch("access_token")
+      _, listing = mcp_tool_call(token, "list_my_hikes", {})
+      expect(listing["count"]).to eq(0)
+    end
+
     it "shows a consent page naming the client and the member" do
       account = create_account
       client = register_client(client_name: "Claude on iPhone")
