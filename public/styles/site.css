@@ -2974,7 +2974,10 @@ form.rodauth {
   .site-nav-authenticated.site-nav-has-menu .site-nav-menu {
     display: block;
     flex: 0 0 auto;
-    margin-left: var(--space-1);
+    /* The dots sit deep inside their 44px box while the plus fills more of
+       its own, so the boxes pull together to make the VISIBLE gaps match —
+       what the eye spaces is glyphs, not hit areas. */
+    margin-left: -18px;
   }
 
   /* On a phone the filled disc reads as a blob between a text link and the
@@ -2986,7 +2989,7 @@ form.rodauth {
     height: 44px;
     min-height: 0;
     padding: 0;
-    margin: 0;
+    margin: 0 0 0 8px;
     border: 0;
     background: none;
     color: var(--ink);
