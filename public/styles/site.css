@@ -651,10 +651,18 @@ main:focus-visible {
   text-transform: uppercase;
 }
 
+/* The rule threads between the label and any trailing aside (a privacy note,
+   a count), so the aside reads as the far end of the same line rather than a
+   second thought. */
 .section-caption::after {
   content: "";
   flex: 1;
+  order: 1;
   border-top: var(--border) solid var(--line);
+}
+
+.section-caption > * {
+  order: 2;
 }
 
 h1,
@@ -686,7 +694,7 @@ h3 {
 .lede {
   max-width: var(--measure);
   color: var(--ink-soft);
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   margin-bottom: 0;
 }
 
@@ -698,29 +706,45 @@ h3 {
   padding-top: 26px;
 }
 
+/* Section headings wear the caption treatment: the label interrupts the
+   hairline, and whatever else the row carries — a count, a "View all" — sits
+   at the far end of the same rule in the same quiet voice. Headings keep
+   their h1/h2 rank for the outline; only the volume changes, so the hikes
+   themselves are the only display type on a listing page. */
 .section-heading {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-6);
+  align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-6);
-  border-bottom: var(--border) solid var(--line);
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
+.section-heading::after {
+  content: "";
+  flex: 1;
+  order: 1;
+  border-top: var(--border) solid var(--line);
+}
+
+.section-heading > :not(h1, h2) {
+  order: 2;
+}
+
+.section-heading h1,
 .section-heading h2 {
-  margin-bottom: 0;
-  font-size: var(--text-3xl);
-  line-height: var(--leading-tight);
-}
-
-/* A section heading that is also the page title (/hikes, /search) reads a
-   step larger than the in-page section labels it sits alongside. */
-.section-heading h1 {
   max-width: none;
   margin-bottom: 0;
-  font-size: var(--text-4xl);
-  line-height: var(--leading-tight);
-  letter-spacing: -0.015em;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.section-heading .meta {
+  font-size: inherit;
+  letter-spacing: inherit;
 }
 
 .hike-index-section .search-form {
@@ -763,7 +787,7 @@ h3 {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-3);
 }
 
 .trip-row-heading h2,
@@ -775,20 +799,17 @@ h3 {
   letter-spacing: var(--tracking-display);
 }
 
-.trip-row .meta a {
-  color: inherit;
+.trip-row .trip-row-kicker {
+  margin-bottom: var(--space-3);
 }
 
-.trip-row-stats {
-  margin-bottom: 14px;
-}
-
+/* The excerpt reads at the story's own size — it is the story, cut short. */
 .trip-row-excerpt {
   max-width: var(--measure);
   margin-bottom: 0;
   color: var(--ink);
-  font-size: var(--text-2xl);
-  line-height: 1.65;
+  font-size: var(--text-l);
+  line-height: var(--leading-relaxed);
 }
 
 .trip-row .trip-photo-gallery {
@@ -849,44 +870,44 @@ h3 {
 
 .heart-form {
   flex: 0 0 auto;
-  margin: 4px 0 0;
+  margin: 0;
 }
 
-.trip-row-heading .heart-form,
-.trip-title-bar .heart-form {
-  margin-top: 0;
-}
-
+/* A glyph and a count, no box. The heart sits beside a headline the way the
+   kebab and the plus sit in the nav: ink shapes, not chips. */
 .heart-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
-  gap: 6px;
-  min-width: 42px;
-  height: 34px;
-  border: var(--border) solid var(--line);
-  border-radius: 0;
-  background: var(--paper-veil);
+  gap: 5px;
+  border: 0;
+  background: none;
   color: var(--muted);
-  padding: 0 10px;
+  padding: 0;
   font-size: var(--text-2xs);
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
-  transition:
-    background-color var(--dur-1) var(--ease-out),
-    border-color var(--dur-1) var(--ease-out),
-    color var(--dur-1) var(--ease-out),
-    transform var(--dur-1) var(--ease-out);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+/* The finger gets 44px even though the glyph stays a glyph. The extra area
+   falls inside the heading row's own gaps, so it cannot steal a tap from the
+   trip title. */
+.heart-button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
 }
 
 .heart-button:hover,
 .heart-button:focus-visible {
-  border-color: var(--ink);
-  background: var(--paper);
   color: var(--ink);
-  transform: translateY(-1px);
 }
 
 .heart-button:focus-visible {
@@ -895,21 +916,7 @@ h3 {
 }
 
 .heart-button.is-hearted {
-  border-color: var(--danger);
   color: var(--danger);
-}
-
-.heart-button-compact {
-  min-width: 36px;
-  height: 30px;
-  gap: 5px;
-  padding: 0 8px;
-}
-
-.trip-title-bar .heart-button {
-  min-width: 48px;
-  height: 34px;
-  padding: 0 10px;
 }
 
 .heart-icon {
@@ -949,6 +956,13 @@ h3 {
   min-width: 1ch;
   font-size: var(--text-3xs);
   font-weight: var(--weight-bold);
+}
+
+/* An unhearted hike shows the glyph alone — a row of "0"s is not information.
+   site.js keeps data-heart-count-value current, so the count appears the
+   moment there is one. */
+[data-heart-count-value="0"] .heart-count {
+  display: none;
 }
 
 .trip-post-layout {
@@ -1142,8 +1156,16 @@ h3 {
   gap: var(--space-7);
 }
 
+/* Column labels speak the caption voice; the first row's own hairline
+   finishes the treatment, so the label never needs a rule of its own. */
 .leaderboard-grid h3 {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .leaderboard-list {
@@ -1802,10 +1824,6 @@ body.profile-follow-modal-open {
   padding-top: var(--space-5);
 }
 
-.profile-trips-section .section-heading {
-  margin-bottom: 0;
-}
-
 /* Drafts are workspace, not published work, so the rail stays quiet: rules and
    label type, no cards, no photography. It sits under the year it belongs to
    and only the hiker who wrote them ever sees it. */
@@ -1821,14 +1839,7 @@ body.profile-follow-modal-open {
   max-width: var(--measure);
 }
 
-/* The caption's rule threads between the label and the privacy note, so the
-   note reads as the far end of the same line rather than a second thought. */
-.profile-drafts-caption::after {
-  order: 1;
-}
-
 .profile-drafts-note {
-  order: 2;
   color: var(--faint);
 }
 
@@ -3157,32 +3168,9 @@ form.rodauth {
     padding: var(--space-6) 0 30px;
   }
 
-  /* Hearting is a one-tap interaction now, so the finger gets the full 44px
-     even though the chip itself stays small enough to sit beside a headline.
-     The extra height falls inside the row's own gap, so it cannot steal a tap
-     from the trip title. */
-  .heart-button {
-    position: relative;
-  }
-
-  .heart-button::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: max(100%, 44px);
-    height: max(100%, 44px);
-    transform: translate(-50%, -50%);
-  }
-
-  .trip-row-stats {
-    font-size: var(--text-xs);
-    line-height: 1.35;
-  }
-
-  .trip-row-excerpt {
-    font-size: var(--text-l);
-    line-height: 1.6;
+  .trip-row-kicker {
+    gap: 4px 10px;
+    font-size: var(--text-3xs);
   }
 
   .trip-row .trip-photo-gallery .trip-photo-grid {

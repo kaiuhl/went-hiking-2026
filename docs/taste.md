@@ -39,6 +39,12 @@ its clothes. Chrome is a defeat: before adding a border, a background, a
 box — try type weight, size, or a hairline rule (`--line`) first. The script
 wordmark is the one flourish; it stays the only one.
 
+Display type belongs to the content, never to the furniture around it.
+Sections start with a caption, not a headline: the label sits small in its
+own hairline, and whatever else the row carries — a count, a "View all" —
+rides the far end of the same rule. A page of hikes has exactly one loud
+voice, and it is the hikes'.
+
 ## One vocabulary per row
 
 The mobile header failed twice because it mixed languages: a text link, a

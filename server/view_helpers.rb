@@ -352,13 +352,13 @@ module ViewHelpers
     trip.hearts_dataset.count
   end
 
-  def heart_button(trip, compact: false)
+  def heart_button(trip)
     heart_count = heart_count(trip)
     hearted = trip_hearted_by_current_account?(trip)
     label_on = "Remove heart from #{trip.name}"
     label_off = "Heart #{trip.name}"
     label = hearted ? label_on : label_off
-    button_class = ["heart-button", ("heart-button-compact" if compact), ("is-hearted" if hearted)].compact.join(" ")
+    button_class = ["heart-button", ("is-hearted" if hearted)].compact.join(" ")
     count_label = heart_count_label(heart_count)
     content = heart_icon_svg + %(<span class="heart-count" data-heart-count>#{h(format_number(heart_count))}</span>)
 
@@ -375,8 +375,10 @@ module ViewHelpers
         </form>
       HTML
     else
+      # The same data-heart-count-value the form carries, so the zero-count
+      # hiding in site.css needs only one selector for both renderings.
       <<~HTML
-        <a class="#{h(button_class)}" href="/login" aria-label="#{h("Log in to #{label.downcase}")}" title="#{h(count_label)}">
+        <a class="#{h(button_class)}" href="/login" aria-label="#{h("Log in to #{label.downcase}")}" title="#{h(count_label)}" data-heart-count-value="#{h(heart_count)}">
           #{content}
         </a>
       HTML

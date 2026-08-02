@@ -13,14 +13,23 @@
       <% photos = trip.photos %>
       <% trip_excerpt = trip.report_markdown.to_s.gsub(PHOTO_HANDLE_PATTERN, " ").gsub(/\s+/, " ").strip %>
       <% gallery_photo_count = (trip.lat && trip.lng) ? 5 : 6 %>
+      <% trip_stats = [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), night_count_label(trip.nights)].compact %>
       <article class="trip-row" <%= %(data-photo-lightbox-gallery data-photo-lightbox-items="#{h(json(photo_lightbox_items(photos)))}") unless photos.empty? %>>
         <div class="trip-row-content">
-          <p class="meta"><%= h(trip_date_label(trip)) %><% if with_author %> / <a href="<%= h(trip.account.public_path) %>"><%= h(trip.account.name) %></a><% end %></p>
+          <%# One byline, the same one the trip page opens with: date, author,
+              and the numbers all speak in a single kicker instead of splitting
+              into a meta line above the title and a stats line below it. %>
+          <p class="kicker inline-kicker trip-row-kicker">
+            <span><%= h(trip_date_label(trip)) %></span>
+            <% if with_author %><span><a href="<%= h(trip.account.public_path) %>"><%= h(trip.account.name) %></a></span><% end %>
+            <% trip_stats.each do |stat| %>
+              <span><%= h(stat) %></span>
+            <% end %>
+          </p>
           <div class="trip-row-heading">
             <<%= heading_tag %>><a class="trip-row-link" href="<%= h(trip.public_path) %>"><%= h(trip.name) %></a></<%= heading_tag %>>
-            <%= heart_button(trip, compact: true) %>
+            <%= heart_button(trip) %>
           </div>
-          <p class="trip-row-stats"><%= [number_label(trip.mileage, "miles"), number_label(trip.elevation, "feet gained"), night_count_label(trip.nights)].compact.join(" / ") %></p>
           <% unless trip_excerpt.empty? %>
             <p class="trip-row-excerpt"><%= h(trip_excerpt[0, 360]) %><%= "..." if trip_excerpt.length > 360 %></p>
           <% end %>
