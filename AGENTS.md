@@ -31,5 +31,8 @@
 
 ## Product/UX Direction
 
+- **Before designing or restyling anything, read `docs/taste.md`** — the design
+  sensibility behind the 2026 refinement (typography-first, one vocabulary per
+  row, optical spacing, honest states). New UI should pass its smell tests.
 - Favor polished, simple UX. Secondary actions should be unobtrusive but obvious, usually as small links or compact controls near the relevant context.
 - Avoid large persistent forms in primary page headers. For secondary flows such as subscribing to updates, prefer a compact trigger that opens a focused modal or similarly contained interaction.
