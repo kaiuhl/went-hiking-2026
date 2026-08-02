@@ -1012,6 +1012,13 @@ h3 {
   background: var(--soft);
 }
 
+/* Leaflet stacks its panes at z-index 400 and up, which beats the sticky
+   header's 100 the moment a map scrolls past it. Isolating each map keeps
+   those values internal, so a map slides under the header like any photo. */
+.leaflet-container {
+  isolation: isolate;
+}
+
 .map-band {
   width: 100%;
 }
@@ -1747,6 +1754,13 @@ body.profile-follow-modal-open {
   border-bottom-color: var(--ink);
   color: var(--ink);
   font-weight: var(--weight-bold);
+}
+
+/* Sixteen seasons of links wrap three rows deep on a phone, so below the
+   breakpoint the list yields to the platform's own picker. Wide screens never
+   show the form. */
+.profile-years-form {
+  display: none;
 }
 
 .profile-trips-section {
@@ -2963,11 +2977,27 @@ form.rodauth {
     margin-left: var(--space-1);
   }
 
+  /* A 44px filled disc almost fills the 56px bar and crowds the links beside
+     it. The disc slims to 36px; the ::after keeps the finger's 44. */
   .site-nav .site-nav-add {
-    width: 44px;
-    height: 44px;
+    position: relative;
+    width: 36px;
+    height: 36px;
+    min-height: 0;
     padding: 0;
-    margin-left: var(--space-1);
+    margin: 0 var(--space-1);
+  }
+
+  .site-nav .site-nav-add::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+  }
+
+  .site-nav .site-nav-add svg {
+    width: 16px;
+    height: 16px;
   }
 
   .home-hero {
@@ -3042,19 +3072,38 @@ form.rodauth {
   }
 
   .profile-years ul {
-    gap: 0 var(--space-4);
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-  }
-
-  .profile-years ul::-webkit-scrollbar {
     display: none;
   }
 
-  .profile-year {
+  .profile-years-form {
+    display: block;
+  }
+
+  /* Dressed as the current-year link it replaces: ink, bold, a 2px rule.
+     The chevron is the only admission that it opens a picker. */
+  .profile-year-select {
+    appearance: none;
+    -webkit-appearance: none;
     min-height: 44px;
+    border: 0;
+    border-bottom: var(--border-strong) solid var(--ink);
+    border-radius: 0;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111111' stroke-width='2.4' stroke-linecap='square'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right center / 14px;
+    color: var(--ink);
+    padding: 0 22px 2px 0;
+    font-family: inherit;
     font-size: var(--text-l);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+  }
+
+  .profile-years-go {
+    min-height: 44px;
+    border: var(--border) solid var(--ink);
+    background: none;
+    color: var(--ink);
+    padding: 0 var(--space-4);
+    font: inherit;
   }
 
   .profile-trips-section {

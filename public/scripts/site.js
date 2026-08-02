@@ -1255,6 +1255,15 @@
   // scripts load on the compose page, and sharing a name would ask twice.
   // Without JavaScript the form still posts — the prompt is a second thought,
   // not the authorisation.
+  // The mobile year picker is a plain GET form so it works without any of
+  // this; with JavaScript the Go button disappears (it lives in a noscript
+  // block) and choosing a year navigates immediately.
+  const buildYearSelect = (form) => {
+    const select = form.querySelector("select");
+    if (!select) return;
+    select.addEventListener("change", () => form.submit());
+  };
+
   const buildConfirmGuard = () => {
     document.addEventListener("submit", (event) => {
       const submitter = event.submitter || event.target.querySelector("[data-confirm-submit]");
@@ -1278,6 +1287,7 @@
     document.querySelectorAll("[data-trip-location-picker]").forEach(buildTripLocationPicker);
     document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
     document.querySelectorAll("[data-trip-photo-workbench]").forEach(buildTripPhotoWorkbench);
+    document.querySelectorAll("[data-year-select]").forEach(buildYearSelect);
     buildPhotoLightbox();
     buildConfirmGuard();
   });

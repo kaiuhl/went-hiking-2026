@@ -96,6 +96,18 @@
           </li>
         <% end %>
       </ul>
+      <%# Sixteen seasons wrap three rows deep on a phone. Narrow screens swap
+          the list for the platform's own picker; the links above stay for wide
+          screens and for anyone without JavaScript. %>
+      <form class="profile-years-form" method="get" action="<%= h(@account.public_path) %>" data-year-select>
+        <label class="visually-hidden" for="profile-year-select">Year</label>
+        <select class="profile-year-select" id="profile-year-select" name="year">
+          <% profile_years.each do |year| %>
+            <option value="<%= h(year) %>"<%= " selected" if year == @year %>><%= h(year) %></option>
+          <% end %>
+        </select>
+        <noscript><button class="profile-years-go" type="submit">Go</button></noscript>
+      </form>
     </nav>
   <% end %>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes logged for this year yet.", heading_level: "h3", show_author: false}) %>
