@@ -156,6 +156,62 @@ check("inline serialization is the exact inverse of parsing", function () {
   });
 });
 
+/* -- Dating a hike from its photos ------------------------------------------ */
+
+var tripDates = editor.tripDatesFromPhotos;
+var TODAY = "2026-08-02";
+
+check("one day of photos dates the hike with no nights", function () {
+  assert.deepStrictEqual(
+    tripDates(["2026-07-14", "2026-07-14"], TODAY),
+    {hikedAt: "2026-07-14", nights: 0}
+  );
+});
+
+check("a spread of days starts at the earliest and counts the nights", function () {
+  assert.deepStrictEqual(
+    tripDates(["2026-07-16", "2026-07-14", "2026-07-15"], TODAY),
+    {hikedAt: "2026-07-14", nights: 2}
+  );
+});
+
+check("full timestamps are read as their calendar day", function () {
+  assert.deepStrictEqual(
+    tripDates(["2026-07-14T18:40:00", "2026-07-15T06:05:00"], TODAY),
+    {hikedAt: "2026-07-14", nights: 1}
+  );
+});
+
+check("photos without dates are ignored, not fatal", function () {
+  assert.deepStrictEqual(
+    tripDates([null, "", "2026-07-14", undefined], TODAY),
+    {hikedAt: "2026-07-14", nights: 0}
+  );
+});
+
+check("no dated photos means no opinion", function () {
+  assert.strictEqual(tripDates([], TODAY), null);
+  assert.strictEqual(tripDates([null, "not a date"], TODAY), null);
+});
+
+check("reset camera clocks and future stamps are not believed", function () {
+  assert.deepStrictEqual(
+    tripDates(["1970-01-01", "2026-07-14", "2027-01-01"], TODAY),
+    {hikedAt: "2026-07-14", nights: 0}
+  );
+});
+
+check("a spread wider than one trip is not believed at all", function () {
+  assert.strictEqual(tripDates(["2025-05-01", "2026-07-14"], TODAY), null);
+});
+
+check("a month crossing counts its nights through the boundary", function () {
+  assert.deepStrictEqual(
+    tripDates(["2026-06-29", "2026-07-02"], TODAY),
+    {hikedAt: "2026-06-29", nights: 3}
+  );
+});
+
 process.stdout.write(
   (failures === 0 ? "OK" : "FAILED") + ": " + (checks - failures) + "/" + checks + " round-trip checks passed\n"
 );

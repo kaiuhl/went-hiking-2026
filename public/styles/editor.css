@@ -380,6 +380,44 @@
   text-transform: uppercase;
 }
 
+/* The photos dated the hike: same small label voice as the chip errors, but
+   muted — it is information, not a problem — with the undo as plain type. */
+.compose-photo-date-note {
+  display: block;
+  max-width: var(--measure);
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-photo-date-undo {
+  position: relative;
+  border: 0;
+  background: none;
+  margin-left: var(--space-2);
+  padding: 0;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* The visible word stays exactly this light; the tap target does not. */
+.compose-photo-date-undo::after {
+  content: "";
+  position: absolute;
+  inset: -15px -12px;
+}
+
+.compose-photo-date-undo:hover {
+  text-decoration-thickness: 2px;
+}
+
 /* --------------------------------------------------------------------------
    Location modal: the pin and both coordinates are set and cleared as one
    thing, which is why the pair can never end up half filled. It takes over

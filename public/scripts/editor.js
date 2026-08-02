@@ -319,7 +319,48 @@
     }
   };
 
-  var api = {markdownIO: markdownIO};
+  /* ------------------------------------------------------------------------
+     Dating a hike from its photos. Also DOM-free for the Node harness.
+
+     The min taken-on day becomes the hike date and the span to the max
+     becomes the nights out. Photos only get to speak when their dates are
+     believable: a camera with a reset clock stamps the distant past, a
+     mis-set one stamps the future, and a spread wider than a long carry
+     means the photos are not all from one trip.
+     ------------------------------------------------------------------------ */
+
+  var ISO_DAY = /^(\d{4}-\d{2}-\d{2})/;
+  var EARLIEST_BELIEVABLE_DAY = "1990-01-01";
+  var LONGEST_BELIEVABLE_TRIP_NIGHTS = 60;
+
+  function utcDay(day) {
+    var parts = day.split("-");
+    return Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  }
+
+  function tripDatesFromPhotos(takenDays, today) {
+    var days = [];
+
+    for (var index = 0; index < (takenDays || []).length; index += 1) {
+      var match = ISO_DAY.exec(String(takenDays[index] == null ? "" : takenDays[index]));
+      if (!match) continue;
+
+      var day = match[1];
+      if (day < EARLIEST_BELIEVABLE_DAY) continue;
+      if (today && day > today) continue;
+      days.push(day);
+    }
+
+    if (!days.length) return null;
+
+    days.sort();
+    var nights = Math.round((utcDay(days[days.length - 1]) - utcDay(days[0])) / 86400000);
+    if (nights > LONGEST_BELIEVABLE_TRIP_NIGHTS) return null;
+
+    return {hikedAt: days[0], nights: nights};
+  }
+
+  var api = {markdownIO: markdownIO, tripDatesFromPhotos: tripDatesFromPhotos};
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof window !== "undefined") window.WentHikingEditor = api;
@@ -553,7 +594,8 @@
     maxUploadBytes: 0,
     uploadQueue: [],
     activeUploads: 0,
-    cancelledPending: {}
+    cancelledPending: {},
+    autoDate: {active: false, nightsActive: true, applied: false, appliedNights: false, previous: null, note: null}
   };
 
   function hasPhoto(id) {
@@ -1495,6 +1537,7 @@
         URL.revokeObjectURL(previewUrl);
         markCanvasDirty();
         syncTray();
+        applyPhotoDates();
         scheduleAutosave();
         return item;
       })
@@ -1544,6 +1587,7 @@
     forgetPhoto(id);
     refreshPlaceholders();
     syncTray();
+    applyPhotoDates();
     scheduleAutosave();
   }
 
@@ -1929,6 +1973,199 @@
 
     state.closeLocation = close;
     setSummary();
+  }
+
+  /* ------------------------------------------------------------------------
+     The hike date follows the photos.
+
+     Until the writer picks a date themselves, the byline is filled in from
+     the photos' EXIF days: the earliest becomes the hike date, the span to
+     the latest becomes the nights out. Every automatic change announces
+     itself in place — a quiet line under the byline with the undo — and the
+     writer touching either chip ends the automation for good.
+     ------------------------------------------------------------------------ */
+
+  function todayIso() {
+    var now = new Date();
+    var month = String(now.getMonth() + 1);
+    var day = String(now.getDate());
+    if (month.length < 2) month = "0" + month;
+    if (day.length < 2) day = "0" + day;
+    return now.getFullYear() + "-" + month + "-" + day;
+  }
+
+  function photoTakenDays() {
+    var days = [];
+    state.photoOrder.forEach(function (id) {
+      var item = photoItem(id);
+      if (item && item.taken_on) days.push(item.taken_on);
+    });
+    return days;
+  }
+
+  // Undoing puts the date back to the draft default — the very value the
+  // server reads as "never touched" — so a reload would let the photos have
+  // another go at a date the writer just rejected. The rejection is
+  // remembered per draft for the rest of the browser session.
+  function dateClaimKey() {
+    return state.tripId ? "went-hiking-date-claimed-" + state.tripId : null;
+  }
+
+  function rememberDateClaimed() {
+    try {
+      var key = dateClaimKey();
+      if (key) window.sessionStorage.setItem(key, "1");
+    } catch (error) {
+      /* storage can be denied; the in-page flag still holds until reload */
+    }
+  }
+
+  function dateClaimedEarlier() {
+    try {
+      var key = dateClaimKey();
+      return !!key && window.sessionStorage.getItem(key) === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function dateNote() {
+    var auto = state.autoDate;
+    if (auto.note) return auto.note;
+
+    var note = element("p", "compose-photo-date-note", {"data-compose-date-note": "", role: "status", hidden: "hidden"});
+    var text = element("span");
+    var undo = element("button", "compose-photo-date-undo", {"data-compose-date-undo": ""});
+    undo.textContent = "Undo";
+    note.appendChild(text);
+    note.appendChild(undo);
+
+    undo.addEventListener("click", function () {
+      undoPhotoDates();
+    });
+
+    var byline = state.root.querySelector("[data-compose-byline]");
+    if (byline && byline.parentNode) byline.parentNode.insertBefore(note, byline.nextSibling);
+
+    auto.note = note;
+    return note;
+  }
+
+  function showDateNote(nightsToo) {
+    var note = dateNote();
+    note.firstChild.textContent = nightsToo
+      ? "The days of your hike were set by your photos."
+      : "The day of your hike was set by your photos.";
+    note.hidden = false;
+  }
+
+  function hideDateNote() {
+    if (state.autoDate.note) state.autoDate.note.hidden = true;
+  }
+
+  // Runs whenever the set of photos changes. The date is only ever written
+  // over a value the writer has not claimed, and the first automatic write
+  // remembers what it replaced so the undo can put it back.
+  function applyPhotoDates() {
+    var auto = state.autoDate;
+    if (!auto.active || state.mode === "published") return;
+
+    var dateField = fieldNode("hiked_at");
+    var nightsField = fieldNode("nights");
+    if (!dateField) return;
+
+    var computed = tripDatesFromPhotos(photoTakenDays(), todayIso());
+
+    if (!computed) {
+      // The dated photos are gone again; hand back what the writer had, but
+      // keep listening in case the next upload can speak.
+      if (auto.applied) undoPhotoDates({keepWatching: true});
+      return;
+    }
+
+    var settingNights = auto.nightsActive && !!nightsField && (computed.nights > 0 || auto.appliedNights);
+    var nightsValue = computed.nights > 0 ? String(computed.nights) : "";
+    var dateChanged = dateField.value !== computed.hikedAt;
+    var nightsChanged = settingNights && nightsField.value !== nightsValue;
+    if (!dateChanged && !nightsChanged) return;
+
+    if (!auto.applied) {
+      auto.previous = {hikedAt: dateField.value, nights: nightsField ? nightsField.value : ""};
+    }
+    auto.applied = true;
+
+    if (dateChanged) {
+      dateField.value = computed.hikedAt;
+      clearFieldError("hiked_at");
+    }
+
+    if (nightsChanged) {
+      nightsField.value = nightsValue;
+      auto.appliedNights = true;
+      clearFieldError("nights");
+    }
+
+    refreshChips();
+    // The note describes what the photos hold right now: nights may have been
+    // written earlier and rolled back to blank by a deletion since.
+    showDateNote(auto.appliedNights && nightsField.value !== "");
+    markDirty();
+    scheduleAutosave();
+  }
+
+  function undoPhotoDates(options) {
+    var auto = state.autoDate;
+    var keepWatching = options && options.keepWatching;
+
+    if (auto.applied && auto.previous) {
+      var dateField = fieldNode("hiked_at");
+      var nightsField = fieldNode("nights");
+      if (dateField) dateField.value = auto.previous.hikedAt;
+      if (nightsField && auto.appliedNights) nightsField.value = auto.previous.nights;
+      refreshChips();
+      markDirty();
+      scheduleAutosave();
+    }
+
+    auto.applied = false;
+    auto.appliedNights = false;
+    auto.previous = null;
+
+    if (!keepWatching) {
+      auto.active = false;
+      auto.nightsActive = false;
+      rememberDateClaimed();
+    }
+
+    hideDateNote();
+  }
+
+  function bindAutoDate() {
+    state.autoDate.active = state.root.getAttribute("data-date-untouched") === "true" &&
+      state.mode !== "published" &&
+      !dateClaimedEarlier();
+
+    var dateField = fieldNode("hiked_at");
+    var nightsField = fieldNode("nights");
+
+    // A programmatic value never fires these, so anything heard here is the
+    // writer taking the chip over.
+    var claimDate = function () {
+      state.autoDate.active = false;
+      rememberDateClaimed();
+      hideDateNote();
+    };
+
+    if (dateField) {
+      dateField.addEventListener("input", claimDate);
+      dateField.addEventListener("change", claimDate);
+    }
+
+    if (nightsField) {
+      nightsField.addEventListener("input", function () {
+        state.autoDate.nightsActive = false;
+      });
+    }
   }
 
   /* ------------------------------------------------------------------------
@@ -2486,6 +2723,7 @@
     buildToolbar();
     bindTitle();
     bindChips();
+    bindAutoDate();
     bindCanvas();
     bindTray();
     bindMenu();
@@ -2493,6 +2731,10 @@
     bindDragAndDrop();
     bindSubmit();
     bindGlobalKeys();
+
+    // Photos that arrived while this page was closed — the phone upload link —
+    // get their say as soon as the editor opens.
+    applyPhotoDates();
 
     setStatus(state.mode === "published" ? "published" : "draft");
 

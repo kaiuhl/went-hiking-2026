@@ -35,6 +35,13 @@
   nights_value = "" if nights_value == "0"
   has_location = !values[:lat].to_s.empty? && !values[:lng].to_s.empty?
 
+  # A draft's date starts as the day the draft was opened, and until the writer
+  # replaces it the editor may date the hike from its photos instead. A draft
+  # whose date still matches its creation day is wearing that default; any
+  # other date was chosen by a person, and a published hike always was.
+  date_untouched = trip.nil? ||
+    (!published && trip.hiked_at&.to_date == trip.created_at&.to_date)
+
   photo_items = photos.map { |photo| photo_editor_item(photo) }
   # JSON inside a <script> block: escaping "<" keeps a caption from closing the tag.
   photo_json = json(photo_items).gsub("<", "\\u003c")
@@ -59,6 +66,7 @@
   data-trip-url="<%= h(trip&.public_path) %>"
   data-direct-upload="<%= direct_photo_upload_available? ? "true" : "false" %>"
   data-max-upload-bytes="<%= WentHiking::PhotoFile::MAX_BYTES %>"
+  data-date-untouched="<%= date_untouched ? "true" : "false" %>"
 >
   <div class="compose-bar">
     <div class="compose-bar-inner">

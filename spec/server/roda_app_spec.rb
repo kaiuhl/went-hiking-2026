@@ -471,6 +471,33 @@ RSpec.describe RodaApp do
     expect(last_response.body).to include("Lake light")
     expect(last_response.body).to include(%(value="45.4"))
     expect(last_response.body).to include(%(value="-121.7"))
+    # The photo JSON carries each photo's calendar day so the editor can date
+    # a hike from its photos, and a published hike's date is never up for grabs.
+    expect(last_response.body).to include(%("taken_on":"2026-07-01"))
+    expect(last_response.body).to include('data-date-untouched="false"')
+  end
+
+  it "flags whether the hike date is still the draft default" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    get "/hikes/new"
+    expect(last_response.body).to include('data-date-untouched="true"')
+
+    post "/hikes/drafts"
+    draft = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    # A fresh draft wears the day it was opened; the editor may re-date it.
+    get "#{draft.public_path}/edit"
+    expect(last_response.body).to include('data-date-untouched="true"')
+
+    # Once the writer has picked a date, reopening the draft must not offer
+    # the photos another turn.
+    post "#{draft.public_path}/autosave", {"hiked_at" => "2026-05-17"}
+    expect(last_response).to be_ok
+
+    get "#{draft.public_path}/edit"
+    expect(last_response.body).to include('data-date-untouched="false"')
   end
 
   it "pins compose errors to the control that caused them" do
@@ -759,7 +786,7 @@ RSpec.describe RodaApp do
       read: "\xFF\xD8\xFFjpeg-bytes".b
     )
     allow(WentHiking::Storage).to receive(:current).and_return(storage)
-    allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200, camera_model: "Trail Camera")
+    allow(WentHiking::PhotoMetadata).to receive(:extract).and_return(width: 1600, height: 1200, camera_model: "Trail Camera", taken_at: Time.utc(2026, 4, 30, 18, 12))
     allow(WentHiking::PhotoVariantJob).to receive(:enqueue_photo)
     login_as(account_id)
 
@@ -784,6 +811,9 @@ RSpec.describe RodaApp do
     expect(last_response).to be_ok
     expect(photo.refresh.width).to eq(1600)
     expect(photo.camera_model).to eq("Trail Camera")
+    # Finalize is when the EXIF day first exists, and the editor dates the
+    # hike from exactly this field of the response.
+    expect(JSON.parse(last_response.body)["taken_on"]).to eq("2026-04-30")
     expect(WentHiking::PhotoVariantJob).to have_received(:enqueue_photo).with(photo.id)
   end
 

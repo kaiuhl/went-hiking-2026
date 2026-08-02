@@ -187,7 +187,10 @@ module ViewHelpers
       thumb_url: image_url(photo, "large"),
       full_url: image_url(photo, "original"),
       caption_url: "#{photo.trip.public_path}/photos/#{photo.id}/caption",
-      metadata: photo_metadata_label(photo)
+      metadata: photo_metadata_label(photo),
+      # The calendar day only: the editor dates the hike from its photos, and
+      # a wall-clock date is the one thing EXIF records without a timezone.
+      taken_on: photo.taken_at&.to_date&.iso8601
     }
   end
 
