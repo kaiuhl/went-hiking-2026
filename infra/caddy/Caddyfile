@@ -14,13 +14,17 @@ http://new.wenthiking.com {
 	redir https://new.wenthiking.com{uri} permanent
 }
 
-http://wenthiking.com, http://www.wenthiking.com {
+https://wenthiking.com, https://www.wenthiking.com {
 	encode zstd gzip
 
 	@www host www.wenthiking.com
-	redir @www http://wenthiking.com{uri} permanent
+	redir @www https://wenthiking.com{uri} permanent
 
 	reverse_proxy web:9292
+}
+
+http://wenthiking.com, http://www.wenthiking.com {
+	redir https://wenthiking.com{uri} permanent
 }
 
 :80 {
