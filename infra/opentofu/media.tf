@@ -28,8 +28,6 @@ resource "aws_s3_bucket_cors_configuration" "media" {
     allowed_origins = [
       "https://wenthiking.com",
       "https://www.wenthiking.com",
-      "https://new.wenthiking.com",
-      "http://new.wenthiking.com",
       "http://35.160.199.53",
       "http://localhost:9292"
     ]

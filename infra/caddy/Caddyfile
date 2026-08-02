@@ -4,16 +4,6 @@
 	}
 }
 
-https://new.wenthiking.com {
-	encode zstd gzip
-
-	reverse_proxy web:9292
-}
-
-http://new.wenthiking.com {
-	redir https://new.wenthiking.com{uri} permanent
-}
-
 https://wenthiking.com, https://www.wenthiking.com {
 	encode zstd gzip
 
