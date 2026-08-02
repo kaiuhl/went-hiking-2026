@@ -2977,27 +2977,34 @@ form.rodauth {
     margin-left: var(--space-1);
   }
 
-  /* A 44px filled disc almost fills the 56px bar and crowds the links beside
-     it. The disc slims to 36px; the ::after keeps the finger's 44. */
+  /* On a phone the filled disc reads as a blob between a text link and the
+     bare-dots menu — three visual languages in one short row. The add button
+     drops the disc and matches the kebab beside it: an ink glyph in the same
+     44px box. Desktop keeps the disc, where the nav has room for a CTA. */
   .site-nav .site-nav-add {
-    position: relative;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     min-height: 0;
     padding: 0;
-    margin: 0 var(--space-1);
+    margin: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    box-shadow: none;
   }
 
-  .site-nav .site-nav-add::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
+  .site-nav .site-nav-add:hover,
+  .site-nav .site-nav-add:focus-visible {
+    background: none;
+    color: var(--ink);
+    transform: none;
+    box-shadow: none;
   }
 
   .site-nav .site-nav-add svg {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
+    stroke-width: 2.2;
   }
 
   .home-hero {
