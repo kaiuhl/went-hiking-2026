@@ -1,5 +1,16 @@
+# Container logs are capped everywhere: unbounded json-file logs once grew to
+# gigabytes in production, where merely reading them brought a 512 MB box to
+# its knees. 20 MB x 3 files per service is days of history, not months.
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 20m
+      max-file: "3"
+
 services:
   web:
+    <<: *default-logging
     build: .
     command: bundle exec puma -C config/puma.rb
     env_file: .env
@@ -8,12 +19,14 @@ services:
     depends_on:
       - postgres
   worker:
+    <<: *default-logging
     build: .
     command: bundle exec que -w 2 ./jobs/worker.rb
     env_file: .env
     depends_on:
       - postgres
   postgres:
+    <<: *default-logging
     image: postgres:17
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-wenthiking_development}
