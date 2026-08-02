@@ -2195,7 +2195,7 @@
   }
 
   function collectFields() {
-    return {
+    var fields = {
       name: state.title.value.trim(),
       hiked_at: fieldValue("hiked_at"),
       nights: fieldValue("nights"),
@@ -2206,6 +2206,17 @@
       lng: fieldValue("lng"),
       report_markdown: syncSource()
     };
+
+    // The condition flags come off the DOM rather than a list here, so the
+    // vocabulary lives in one place (HikeFlags) and the markup carries it.
+    // Every group is sent, cleared ones as "", which is what clears the column.
+    var flags = state.root.querySelectorAll("[data-compose-conditions] input[type=radio]");
+    for (var index = 0; index < flags.length; index += 1) {
+      if (!(flags[index].name in fields)) fields[flags[index].name] = "";
+      if (flags[index].checked) fields[flags[index].name] = flags[index].value;
+    }
+
+    return fields;
   }
 
   function applyDraft(payload) {
@@ -2409,6 +2420,38 @@
     }
 
     refreshChips();
+  }
+
+  function bindConditions() {
+    var block = state.root.querySelector("[data-compose-conditions]");
+    if (!block) return;
+
+    var radios = block.querySelectorAll('input[type="radio"]');
+
+    function remember() {
+      for (var index = 0; index < radios.length; index += 1) {
+        radios[index].__wasChecked = radios[index].checked;
+      }
+    }
+
+    for (var index = 0; index < radios.length; index += 1) {
+      // Tapping the word that is already set takes it back; radios cannot say
+      // that on their own. Click fires on the taps change misses (a re-tap
+      // leaves the value alone), change fires on the keyboard moves click
+      // misses; both funnel into the same debounced autosave.
+      radios[index].addEventListener("click", function () {
+        if (this.__wasChecked) this.checked = false;
+        remember();
+        scheduleAutosave();
+      });
+
+      radios[index].addEventListener("change", function () {
+        remember();
+        scheduleAutosave();
+      });
+    }
+
+    remember();
   }
 
   function bindCanvas() {
@@ -2724,6 +2767,7 @@
     bindTitle();
     bindChips();
     bindAutoDate();
+    bindConditions();
     bindCanvas();
     bindTray();
     bindMenu();

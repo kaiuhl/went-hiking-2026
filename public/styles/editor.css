@@ -927,19 +927,104 @@ body.compose-location-open {
    two pictures never has to make a layout decision.
    -------------------------------------------------------------------------- */
 
-.compose-tray {
-  margin-top: var(--space-8);
-  border-top: var(--border) solid var(--line);
-  padding-top: var(--space-4);
+/* --------------------------------------------------------------------------
+   Condition flags. A footnote between the story and the photos: each row is a
+   label and its options as one segmented pill — a hairline outline, hairline
+   dividers, and the chosen word inked in with the site's 2px underline. The
+   pill is what makes two or three words read as a set rather than a scatter;
+   the type is what says which one was chosen.
+   -------------------------------------------------------------------------- */
+
+/* A sibling section to the photo tray above it; its caption carries the
+   hairline the same way. */
+.compose-conditions {
+  margin: var(--space-8) 0 0;
+  border: 0;
+  padding: 0;
 }
 
-.compose-tray-label {
-  margin: 0 0 var(--space-3);
-  color: var(--muted);
+.compose-condition {
+  display: flex;
+  align-items: center;
+  gap: 0 var(--space-4);
+  margin: 0 0 var(--space-2);
+  border: 0;
+  padding: 0;
+}
+
+.compose-condition-name {
+  flex: 0 0 8em;
+  color: var(--faint);
   font-size: var(--text-3xs);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
+
+.compose-condition-choices {
+  display: inline-flex;
+  border: var(--border) solid var(--line);
+  border-radius: 999px;
+}
+
+.compose-condition-choice {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.compose-condition-choice + .compose-condition-choice {
+  border-left: var(--border) solid var(--line);
+}
+
+.compose-condition-word {
+  padding: 6px 14px;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-condition-choice:hover .compose-condition-word {
+  color: var(--ink-soft);
+}
+
+.compose-condition-choice input:checked + .compose-condition-word {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-strong);
+  text-underline-offset: 0.32em;
+}
+
+/* One ring around the whole pill: the radio inside is visually hidden, so
+   the group carries the site's focus ring for it. */
+.compose-condition-choices:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+}
+
+/* On a phone the label column would squeeze the pill, so each flag becomes
+   its own two-line stanza: label above, pill below. */
+@media (max-width: 620px) {
+  .compose-condition {
+    display: block;
+    margin-bottom: var(--space-3);
+  }
+
+  .compose-condition-name {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .compose-condition-word {
+    padding: 6px 10px;
+  }
+}
+
+.compose-tray {
+  margin-top: var(--space-8);
+}
+
+/* Section captions wear the site-wide .section-caption rule treatment. */
 
 .compose-tray-grid {
   display: grid;
@@ -951,10 +1036,8 @@ body.compose-location-open {
   display: none;
 }
 
-/* With no photos yet the dropzone says everything the label would. */
-.compose-tray.is-empty .compose-tray-label {
-  display: none;
-}
+/* The label stays even with no photos: it is the section's rule now, and the
+   dropzone below still does the explaining. */
 
 .compose-tray-card {
   display: flex;

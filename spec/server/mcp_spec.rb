@@ -417,6 +417,32 @@ RSpec.describe "MCP connector" do
       expect(again["note"]).to include("already published")
     end
 
+    it "carries condition flags through create, update, and get" do
+      _, created = mcp_tool_call(token, "create_hike_draft", {
+        name: "Bug Bog",
+        hiked_at: "2026-07-18",
+        mosquitoes: "swarms",
+        swimming: "swam"
+      })
+      expect(created["mosquitoes"]).to eq("swarms")
+      expect(created["swimming"]).to eq("swam")
+
+      _, updated = mcp_tool_call(token, "update_hike", {trip_id: created["trip_id"], swimming: "", snow: "patches"})
+      expect(updated["snow"]).to eq("patches")
+      expect(updated["mosquitoes"]).to eq("swarms")
+      expect(updated).not_to have_key("swimming")
+
+      # The schema's enum turns tampering away before the handler even runs;
+      # apply_flag_args! stays behind it as the belt to this suspender.
+      result, message = mcp_tool_call(token, "update_hike", {trip_id: created["trip_id"], beauty: "meh"})
+      expect(result["isError"]).to be(true)
+      expect(message).to include("beauty")
+
+      _, details = mcp_tool_call(token, "get_hike", {trip_id: created["trip_id"]})
+      expect(details["mosquitoes"]).to eq("swarms")
+      expect(details["snow"]).to eq("patches")
+    end
+
     it "refuses to publish an unnamed draft" do
       trip = WentHiking::Models::Trip.create(
         account_id: account.id, name: "Untitled Hike", slug: "untitled-hike",

@@ -3,6 +3,7 @@
 require "date"
 require "json"
 require "mcp"
+require "went_hiking/hike_flags"
 require "went_hiking/hike_notification_scheduler"
 require "went_hiking/models"
 require "went_hiking/slug"
@@ -70,7 +71,40 @@ module WentHiking
               published_at: trip.published_at&.iso8601,
               report_markdown: trip.report_markdown.to_s,
               photos: trip.photos_dataset.order(:taken_at, :id).all.map { |photo| photo_details(photo) }
-            ).compact
+            ).merge(condition_flags(trip)).compact
+          end
+
+          def condition_flags(trip)
+            HikeFlags.keys.each_with_object({}) { |key, memo| memo[key] = trip[key] }
+          end
+
+          # The optional condition-flag properties, shared by create and
+          # update so the schemas cannot drift from the HikeFlags vocabulary.
+          # The empty string is in the enum because the MCP layer validates
+          # arguments against it, and "" is how a set flag is cleared.
+          def flag_properties
+            HikeFlags.all.each_with_object({}) do |flag, properties|
+              properties[flag.key] = {
+                type: "string",
+                enum: flag.tokens + [""],
+                description: "Optional flag: #{flag.label.downcase} observed on the hike. Set it only when the member said so; an empty string clears it."
+              }
+            end
+          end
+
+          def apply_flag_args!(args, target)
+            HikeFlags.all.each do |flag|
+              next unless args.key?(flag.key)
+
+              value = args[flag.key].to_s.strip
+              if value.empty?
+                target[flag.key] = nil
+              elsif HikeFlags.valid?(flag.key, value)
+                target[flag.key] = value
+              else
+                raise ToolError, "#{flag.key} must be one of: #{flag.tokens.join(", ")}. Pass an empty string to clear it."
+              end
+            end
           end
 
           def photo_details(photo)
@@ -139,7 +173,7 @@ module WentHiking
             lng: {type: "number", minimum: -180, maximum: 180, description: "Trailhead or trip longitude. Provide with lat or not at all."},
             source_url: {type: "string", description: "Optional reference link (trail guide, route page)."},
             report_markdown: {type: "string", description: "The trip report, in markdown. Can start empty and grow via update_hike."}
-          },
+          }.merge(flag_properties),
           required: %w[name hiked_at]
         )
         annotations(title: "Create a hike draft", read_only_hint: false, destructive_hint: false, idempotent_hint: false, open_world_hint: false)
@@ -153,7 +187,7 @@ module WentHiking
             raise ToolError, "Provide both lat and lng, or neither."
           end
 
-          trip = Models::Trip.create(
+          attributes = {
             account_id: account.id,
             name: name,
             slug: Slug.generate(name),
@@ -167,7 +201,10 @@ module WentHiking
             report_markdown: args[:report_markdown].to_s,
             status: "draft",
             published_at: nil
-          )
+          }
+          apply_flag_args!(args, attributes)
+
+          trip = Models::Trip.create(attributes)
 
           trip_details(trip).merge(upload_link(trip))
         end
@@ -200,7 +237,7 @@ module WentHiking
             lng: {type: "number", minimum: -180, maximum: 180},
             source_url: {type: "string"},
             report_markdown: {type: "string", description: "Replaces the whole report, so include the full text."}
-          },
+          }.merge(flag_properties),
           required: ["trip_id"]
         )
         annotations(title: "Update a hike", read_only_hint: false, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
@@ -223,6 +260,7 @@ module WentHiking
           updates[:elevation] = args[:elevation] if args.key?(:elevation)
           updates[:source_url] = args[:source_url].to_s.strip.empty? ? nil : args[:source_url].to_s.strip if args.key?(:source_url)
           updates[:report_markdown] = args[:report_markdown].to_s if args.key?(:report_markdown)
+          apply_flag_args!(args, updates)
 
           if args.key?(:lat) || args.key?(:lng)
             raise ToolError, "Provide both lat and lng together." unless args.key?(:lat) && args.key?(:lng)

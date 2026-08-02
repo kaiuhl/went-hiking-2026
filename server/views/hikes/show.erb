@@ -20,6 +20,14 @@
         <span><%= h(metric) %></span>
       <% end %>
     </p>
+    <% trip_conditions = trip_condition_labels(@trip) %>
+    <% unless trip_conditions.empty? %>
+      <p class="kicker inline-kicker trip-conditions">
+        <% trip_conditions.each do |label| %>
+          <span><%= h(label) %></span>
+        <% end %>
+      </p>
+    <% end %>
     <div class="trip-title-bar">
       <h1><%= h(@trip.name) %></h1>
       <%= heart_button(@trip) %>
@@ -48,7 +56,7 @@
           with hearts and no comments has nothing to say here. %>
       <% unless @comments.empty? %>
         <section class="legacy-social">
-          <h2>Trail Talk</h2>
+          <h2 class="section-caption">Trail Talk</h2>
           <% unless @hearts.empty? %>
             <p class="meta"><%= h(heart_summary(@hearts)) %></p>
           <% end %>

@@ -2,6 +2,7 @@
 
 require "cgi"
 require "json"
+require "went_hiking/hike_flags"
 require "went_hiking/legacy_urls"
 require "went_hiking/markdown"
 require "went_hiking/storage"
@@ -69,6 +70,12 @@ module ViewHelpers
     else
       start.strftime("%B %-d, %Y")
     end
+  end
+
+  # The condition flags an author tapped, as reading words in vocabulary
+  # order. Empty for the twenty years of hikes that never had flags.
+  def trip_condition_labels(trip)
+    WentHiking::HikeFlags.all.filter_map { |flag| flag.published_for(trip[flag.key]) }
   end
 
   def number_label(value, unit)

@@ -674,6 +674,96 @@ RSpec.describe RodaApp do
     expect(trip.refresh.name).to eq("Untitled Hike")
   end
 
+  it "stores condition flags and reads them back as the conditions line" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/hikes", {
+      "name" => "Ramona Falls",
+      "hiked_at" => "2026-07-04",
+      "beauty" => "sublime",
+      "mosquitoes" => "none",
+      "wildflowers" => "blooming",
+      "swimming" => "off_season",
+      "snow" => "patches",
+      "crowds" => "solitude"
+    }
+
+    trip = WentHiking::Models::Trip.first(name: "Ramona Falls")
+    expect(trip[:beauty]).to eq("sublime")
+    expect(trip[:mosquitoes]).to eq("none")
+    expect(trip[:wildflowers]).to eq("blooming")
+    expect(trip[:swimming]).to eq("off_season")
+    expect(trip[:snow]).to eq("patches")
+    expect(trip[:crowds]).to eq("solitude")
+
+    get trip.public_path
+    expect(last_response.body).to include("trip-conditions")
+    ["sublime", "no mosquitoes", "wildflowers blooming", "too cold to swim", "snow patches", "solitude"].each do |label|
+      expect(last_response.body).to include(label)
+    end
+
+    # A hike with no flags keeps the header it has always had.
+    bare_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Bare Hike", slug: "bare-hike", nights: 0, hiked_at: Time.utc(2026, 7, 1), report_markdown: "", created_at: Time.now, updated_at: Time.now)
+    get WentHiking::Models::Trip[bare_id].public_path
+    expect(last_response.body).not_to include("trip-conditions")
+  end
+
+  it "refuses condition flags outside the vocabulary" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+
+    post "/hikes", {"name" => "Meh Ridge", "hiked_at" => "2026-05-17", "beauty" => "meh"}
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.body).to include("Beauty isn&#39;t one of the offered choices.")
+    expect(WentHiking::Models::Trip.first(name: "Meh Ridge")).to be_nil
+  end
+
+  it "autosaves condition flags, clears them, and refuses unknown tokens" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    post "/hikes/drafts"
+    trip = WentHiking::Models::Trip[JSON.parse(last_response.body).fetch("trip_id")]
+
+    post "#{trip.public_path}/autosave", {"swimming" => "swam", "mosquitoes" => "swarms"}
+
+    expect(last_response.status).to eq(200)
+    trip.refresh
+    expect(trip[:swimming]).to eq("swam")
+    expect(trip[:mosquitoes]).to eq("swarms")
+
+    # Tapping the set word again sends the field back empty, which is a clear,
+    # not an omission: the column goes back to NULL and its neighbours stay.
+    post "#{trip.public_path}/autosave", {"swimming" => ""}
+
+    expect(last_response.status).to eq(200)
+    trip.refresh
+    expect(trip[:swimming]).to be_nil
+    expect(trip[:mosquitoes]).to eq("swarms")
+
+    post "#{trip.public_path}/autosave", {"snow" => "hip-deep", "name" => "Still Saved"}
+
+    expect(last_response.status).to eq(422)
+    expect(JSON.parse(last_response.body).fetch("errors")).to include("snow")
+    trip.refresh
+    expect(trip[:snow]).to be_nil
+    expect(trip.name).to eq("Still Saved")
+  end
+
+  it "renders the condition flags in the compose editor with the saved choice checked" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 7, 1), report_markdown: "", beauty: "beautiful", created_at: Time.now, updated_at: Time.now)
+    trip = WentHiking::Models::Trip[trip_id]
+    login_as(account_id)
+
+    get "#{trip.public_path}/edit"
+
+    expect(last_response.body).to include("data-compose-conditions")
+    expect(last_response.body).to match(/name="beauty"\s+value="beautiful"\s+checked/)
+    expect(last_response.body).not_to match(/name="snow"\s+value="[^"]+"\s+checked/)
+  end
+
   it "refuses to autosave a published hike" do
     account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
     trip_id = WentHiking.db[:trips].insert(account_id: account_id, name: "Burnt Lake", slug: "burnt-lake", nights: 0, hiked_at: Time.utc(2026, 7, 1), report_markdown: "Original.", created_at: Time.now, updated_at: Time.now)

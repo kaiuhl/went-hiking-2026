@@ -622,6 +622,41 @@ main:focus-visible {
   color: var(--faint);
 }
 
+/* The conditions line: whatever flags the author tapped, reading as a second,
+   fainter kicker tucked under the metrics. Absent entirely on unflagged
+   hikes, so the header the archive has always had stays exactly as it was. */
+.trip-conditions {
+  color: var(--faint);
+}
+
+.trip-header .inline-kicker:has(+ .trip-conditions) {
+  margin-bottom: 6px;
+}
+
+/* A caption that sits in its own rule: the word interrupts the hairline with
+   paper between the label and the line. Reserved for marking where a
+   secondary section starts — the compose page's photos and conditions, a
+   profile's drafts, the trip page's Trail Talk — never for page-header
+   kickers or control labels. */
+.section-caption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.section-caption::after {
+  content: "";
+  flex: 1;
+  border-top: var(--border) solid var(--line);
+}
+
 h1,
 h2,
 h3,
@@ -1781,22 +1816,20 @@ body.profile-follow-modal-open {
 /* The cap sits on the children, not the section: .section centres itself, so
    capping it there would pull the rail off the gutter every other block on the
    page is aligned to. */
-.profile-drafts-heading,
+.profile-drafts-caption,
 .profile-draft-list {
   max-width: var(--measure);
 }
 
-.profile-drafts-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
+/* The caption's rule threads between the label and the privacy note, so the
+   note reads as the far end of the same line rather than a second thought. */
+.profile-drafts-caption::after {
+  order: 1;
 }
 
-.profile-drafts-heading p {
-  margin: 0;
+.profile-drafts-note {
+  order: 2;
+  color: var(--faint);
 }
 
 .profile-draft-list {

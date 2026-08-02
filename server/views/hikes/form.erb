@@ -285,13 +285,42 @@
     </div>
 
     <section class="compose-tray" data-compose-tray aria-label="Photos in this hike">
-      <p class="compose-tray-label" data-compose-tray-label>Also from this hike</p>
+      <p class="section-caption" data-compose-tray-label>Photos</p>
       <div class="compose-tray-grid" data-compose-tray-grid></div>
       <button class="compose-tray-drop" type="button" data-compose-tray-drop>
         <span class="compose-tray-drop-line">Drop photos here</span>
         <span class="compose-tray-drop-hint">or click to choose files</span>
       </button>
     </section>
+
+    <%# Optional condition flags, last and footnote-weight on purpose: a row of
+        words to tap once the story and photos are down, never a form to fill
+        in. Plain radios so the no-JS post still works; JS adds
+        tap-again-to-clear and autosave. %>
+    <fieldset class="compose-conditions" data-compose-conditions>
+      <legend class="compose-visually-hidden">Conditions</legend>
+      <p class="section-caption" aria-hidden="true">Conditions</p>
+      <% WentHiking::HikeFlags.all.each do |flag| %>
+        <fieldset class="compose-condition">
+          <legend class="compose-visually-hidden"><%= h(flag.label) %></legend>
+          <span class="compose-condition-name" aria-hidden="true"><%= h(flag.label) %></span>
+          <span class="compose-condition-choices">
+            <% flag.options.each do |option| %>
+              <label class="compose-condition-choice">
+                <input
+                  type="radio"
+                  class="compose-visually-hidden"
+                  name="<%= h(flag.key) %>"
+                  value="<%= h(option.token) %>"
+                  <%= "checked" if values[flag.key].to_s == option.token %>
+                >
+                <span class="compose-condition-word"><%= h(option.chip) %></span>
+              </label>
+            <% end %>
+          </span>
+        </fieldset>
+      <% end %>
+    </fieldset>
 
     <input class="compose-visually-hidden" type="file" accept="image/jpeg,image/png,image/gif" multiple data-compose-file tabindex="-1" aria-hidden="true">
   </form>

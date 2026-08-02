@@ -2,6 +2,7 @@
 
 require "date"
 require "went_hiking/direct_photo_upload"
+require "went_hiking/hike_flags"
 require "went_hiking/hike_notification_scheduler"
 require "went_hiking/photo_upload"
 require "went_hiking/slug"
@@ -459,7 +460,7 @@ module HikeRoutes
       lng: "",
       report_markdown: "",
       account_name: account.name
-    }
+    }.merge(WentHiking::HikeFlags.keys.to_h { |key| [key, ""] })
   end
 
   def trip_form_values(trip)
@@ -474,7 +475,7 @@ module HikeRoutes
       lng: trip.lng,
       report_markdown: trip.report_markdown,
       account_name: trip.account.name
-    }
+    }.merge(WentHiking::HikeFlags.keys.to_h { |key| [key, trip[key].to_s] })
   end
 
   def trip_form_submission(params)
@@ -489,6 +490,7 @@ module HikeRoutes
       lng: params["lng"].to_s.strip,
       report_markdown: params["report_markdown"].to_s
     }
+    WentHiking::HikeFlags.keys.each { |key| values[key] = params[key.to_s].to_s.strip }
     errors = []
 
     errors << "Name is required." if values[:name].empty?
@@ -506,8 +508,19 @@ module HikeRoutes
       lng: decimal_value(values[:lng], "Longitude", errors, min: -180, max: 180),
       report_markdown: values[:report_markdown]
     }
+    WentHiking::HikeFlags.keys.each { |key| attributes[key] = flag_value(key, values[key], errors) }
 
     [values, errors.uniq, attributes]
+  end
+
+  # The flag chips are click-to-choose, so an unknown token only ever arrives
+  # by tampering; it is refused rather than laundered into the vocabulary.
+  def flag_value(key, value, errors)
+    return nil if value.empty?
+    return value if WentHiking::HikeFlags.valid?(key, value)
+
+    errors << "#{WentHiking::HikeFlags.label(key)} isn't one of the offered choices."
+    nil
   end
 
   # Autosave is deliberately more forgiving than publishing: a half-typed number
@@ -538,6 +551,18 @@ module HikeRoutes
 
     attributes[:source_url] = optional_string(params["source_url"].to_s.strip) if params.key?("source_url")
     attributes[:report_markdown] = params["report_markdown"].to_s if params.key?("report_markdown")
+
+    WentHiking::HikeFlags.keys.each do |key|
+      next unless params.key?(key.to_s)
+
+      flag_errors = []
+      value = flag_value(key, params[key.to_s].to_s.strip, flag_errors)
+      if flag_errors.empty?
+        attributes[key] = value
+      else
+        errors[key] = flag_errors.first
+      end
+    end
 
     autosave_coordinates(params, attributes, errors)
 

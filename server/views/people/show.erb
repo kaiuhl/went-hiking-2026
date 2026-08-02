@@ -122,10 +122,10 @@
     it was a URL nobody kept. %>
 <% if @profile_drafts && !@profile_drafts.empty? %>
   <section class="section profile-drafts" aria-labelledby="profile-drafts-label">
-    <div class="profile-drafts-heading">
-      <p class="kicker" id="profile-drafts-label">Drafts</p>
-      <p class="meta">Only you can see these</p>
-    </div>
+    <p class="section-caption profile-drafts-caption" id="profile-drafts-label">
+      Drafts
+      <span class="profile-drafts-note">Only you can see these</span>
+    </p>
     <ul class="profile-draft-list">
       <% @profile_drafts.each do |draft| %>
         <li class="profile-draft">
