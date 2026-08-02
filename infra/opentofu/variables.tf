@@ -24,8 +24,8 @@ variable "app_iam_user_name" {
 
 variable "lightsail_instance_name" {
   type        = string
-  description = "Lightsail preview instance name."
-  default     = "went-hiking-2026"
+  description = "Lightsail instance name. The -2gb suffix marks the small_3_0 box the site migrated to on 2026-08-01; Lightsail cannot rename instances, so the name records its history."
+  default     = "went-hiking-2026-2gb"
 }
 
 variable "lightsail_static_ip_name" {
@@ -48,8 +48,8 @@ variable "lightsail_blueprint_id" {
 
 variable "lightsail_bundle_id" {
   type        = string
-  description = "Lightsail bundle."
-  default     = "nano_3_0"
+  description = "Lightsail bundle. 2 GB: the nano thrashed swap at rest with Postgres, Puma, and the Que worker resident, and image work tipped it over."
+  default     = "small_3_0"
 }
 
 variable "lightsail_key_pair_name" {
