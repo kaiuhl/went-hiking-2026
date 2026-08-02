@@ -5,6 +5,14 @@ resource "aws_lightsail_instance" "web" {
   bundle_id         = var.lightsail_bundle_id
   key_pair_name     = var.lightsail_key_pair_name
   user_data         = var.lightsail_user_data_path == null ? null : file(var.lightsail_user_data_path)
+
+  # Daily snapshot at 2am Pacific, kept 7 deep by Lightsail. Declared here so
+  # an apply never quietly turns the backups off.
+  add_on {
+    type          = "AutoSnapshot"
+    snapshot_time = "09:00"
+    status        = "Enabled"
+  }
 }
 
 resource "aws_lightsail_static_ip" "web" {
