@@ -208,6 +208,30 @@ class RodaApp < Roda
         super
       end
 
+      # RFC 8414 metadata fixes for strict clients (Claude's platform, the MCP
+      # TS SDK reject the whole document otherwise): unset fields must be
+      # omitted rather than null, and code_challenge_methods_supported is an
+      # array -- rodauth-oauth emits the bare PKCE method string.
+      def oauth_server_metadata_body(*)
+        metadata = super
+        if metadata[:code_challenge_methods_supported].is_a?(String)
+          metadata[:code_challenge_methods_supported] = metadata[:code_challenge_methods_supported].split(" ")
+        end
+        metadata.reject { |_, value| value.nil? }
+      end
+
+      # RFC 7591 defines client_id_issued_at as integer seconds since epoch,
+      # but rodauth-oauth emits an ISO 8601 string. Strict clients (Claude's
+      # connector platform, the MCP TS SDK) validate the type and treat the
+      # whole registration as failed. Standard key for granted scopes is
+      # "scope"; the gem only emits its own "scopes".
+      def do_register(return_params = request.params.dup)
+        params = super
+        params["client_id_issued_at"] = Time.now.to_i if params.key?("client_id_issued_at")
+        params["scope"] ||= params["scopes"] if params["scopes"].is_a?(String)
+        params
+      end
+
       # Assistant clients may request scopes we don't offer (e.g. "claudeai")
       # at the authorization endpoint too; fall back to the server's scopes
       # instead of erroring so consent still renders.

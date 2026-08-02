@@ -57,7 +57,11 @@ RSpec.describe "MCP connector" do
 
     post "/register", JSON.generate(payload), {"CONTENT_TYPE" => "application/json"}
     expect(last_response.status).to eq(201), last_response.body
-    JSON.parse(last_response.body)
+    JSON.parse(last_response.body).tap do |client|
+      # RFC 7591 type contract: strict clients reject a string here and treat
+      # registration as failed even on 201.
+      expect(client["client_id_issued_at"]).to be_a(Integer)
+    end
   end
 
   def pkce_pair
@@ -155,10 +159,13 @@ RSpec.describe "MCP connector" do
       expect(metadata["authorization_endpoint"]).to eq("http://localhost:9292/authorize")
       expect(metadata["token_endpoint"]).to eq("http://localhost:9292/token")
       expect(metadata["registration_endpoint"]).to eq("http://localhost:9292/register")
-      expect(metadata["code_challenge_methods_supported"]).to include("S256")
+      expect(metadata["code_challenge_methods_supported"]).to eq(["S256"])
       expect(metadata["grant_types_supported"]).to include("authorization_code")
       expect(metadata["token_endpoint_auth_methods_supported"]).to include("none")
       expect(metadata["scopes_supported"]).to include("hikes:read", "hikes:write")
+      # RFC 8414: unset fields are omitted, never null -- strict clients
+      # reject the whole document over a single null.
+      expect(metadata.values).not_to include(nil)
     end
   end
 
@@ -190,7 +197,7 @@ RSpec.describe "MCP connector" do
 
       expect(client["client_id"]).not_to be_nil
       expect(client["scopes"]).to eq("hikes:read hikes:write")
-      expect(client).not_to have_key("scope")
+      expect(client["scope"]).to eq("hikes:read hikes:write")
       expect(client).not_to have_key("application_type")
 
       stored = WentHiking.db[:oauth_applications].where(client_id: client["client_id"]).first
