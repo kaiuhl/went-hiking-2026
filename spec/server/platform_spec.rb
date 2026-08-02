@@ -39,9 +39,8 @@ RSpec.describe "platform behaviour" do
 
   def make_real_jpeg(path)
     FileUtils.mkdir_p(File.dirname(path))
-    return path if system("convert", "-size", "800x600", "gradient:red-blue", path, out: File::NULL, err: File::NULL)
-
-    skip "ImageMagick convert is not available"
+    Vips::Image.black(800, 600).jpegsave(path)
+    path
   end
 
   def upload_root

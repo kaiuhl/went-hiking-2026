@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "mini_magick"
 require "que"
 require "tempfile"
+require "vips"
 require "went_hiking/models"
 require "went_hiking/photo_metadata"
 require "went_hiking/s3_keys"
@@ -10,12 +10,20 @@ require "went_hiking/storage"
 
 module WentHiking
   class PhotoVariantJob < Que::Job
+    # libvips rather than ImageMagick: it decodes at the target scale in
+    # streamed strips instead of inflating the full bitmap, which is the
+    # difference between tens of megabytes and hundreds per photo — a
+    # difference this app has felt.
+    #
+    # crop: true fills the exact box from the center (ImageMagick's "^" plus
+    # extent); without it the image fits inside the box and only ever shrinks
+    # (ImageMagick's ">").
     STYLES = {
-      "micro" => {resize: "25x25^", extent: "25x25", quality: 65},
-      "thumbnail" => {resize: "125x125^", extent: "125x125", quality: 65},
-      "bpl" => {resize: "550x900>", quality: 85},
-      "large" => {resize: "900x1200>", quality: 85},
-      "medium" => {resize: "300x300>", quality: 85}
+      "micro" => {width: 25, height: 25, crop: true, quality: 65},
+      "thumbnail" => {width: 125, height: 125, crop: true, quality: 65},
+      "bpl" => {width: 550, height: 900, quality: 85},
+      "large" => {width: 900, height: 1200, quality: 85},
+      "medium" => {width: 300, height: 300, quality: 85}
     }.freeze
 
     def self.enqueue_photo(photo_id)
@@ -65,26 +73,24 @@ module WentHiking
 
     def create_variant(photo, original_path, style, options)
       Tempfile.create(["went-hiking-#{style}", ".jpg"]) do |file|
-        image = MiniMagick::Image.open(original_path)
-        image.auto_orient
-        image.combine_options do |command|
-          command.resize options.fetch(:resize)
-          if options[:extent]
-            command.gravity "center"
-            command.extent options.fetch(:extent)
-          end
-          command.quality options.fetch(:quality)
-        end
-        image.format "jpg"
-        image.write file.path
+        # thumbnail applies the EXIF rotation itself, so the dimensions it
+        # reports are already what a browser will lay out.
+        image = Vips::Image.thumbnail(
+          original_path,
+          options.fetch(:width),
+          height: options.fetch(:height),
+          **(options[:crop] ? {crop: :centre} : {size: :down})
+        )
+        # JPEG has no alpha; flatten transparent PNGs onto white rather than
+        # letting the encoder pick a background.
+        image = image.flatten(background: [255, 255, 255]) if image.has_alpha?
+        image.jpegsave(file.path, Q: options.fetch(:quality), strip: true)
 
         key = S3Keys.photo_variant_key(photo_id: photo.id, style: style, filename: derivative_filename(photo.legacy_image_file_name))
         File.open(file.path, "rb") do |io|
           Storage.current.put(key, io: io, content_type: "image/jpeg")
         end
 
-        # Every derivative is auto-oriented before it is written, so what
-        # ImageMagick reports back is already what a browser will lay out.
         upsert_variant(photo, style, key, File.size(file.path), [image.width, image.height])
       end
     end

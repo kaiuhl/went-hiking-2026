@@ -5,7 +5,7 @@ WORKDIR /app
 ENV BUNDLE_WITHOUT=development:test
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential libpq-dev imagemagick pkg-config \
+  && apt-get install -y --no-install-recommends build-essential libpq-dev libvips42t64 pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
 COPY Gemfile Gemfile.lock* ./

@@ -19,11 +19,8 @@ RSpec.describe RodaApp do
 
   def make_real_jpeg(path)
     FileUtils.mkdir_p(File.dirname(path))
-    if system("convert", "-size", "800x600", "gradient:red-blue", path, out: File::NULL, err: File::NULL)
-      return path
-    end
-
-    skip "ImageMagick convert is not available"
+    Vips::Image.black(800, 600).jpegsave(path)
+    path
   end
 
   it "responds to health checks" do

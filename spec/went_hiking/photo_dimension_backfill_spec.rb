@@ -27,7 +27,8 @@ RSpec.describe WentHiking::PhotoDimensionBackfill do
   def store_jpeg(key, size: "640x480")
     path = WentHiking::Storage.current.path_for(key)
     FileUtils.mkdir_p(File.dirname(path))
-    skip "ImageMagick convert is not available" unless system("convert", "-size", size, "gradient:red-blue", path, out: File::NULL, err: File::NULL)
+    width, height = size.split("x").map(&:to_i)
+    Vips::Image.black(width, height).jpegsave(path)
     key
   end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "exifr/jpeg"
-require "mini_magick"
+require "vips"
 
 module WentHiking
   class PhotoMetadata
@@ -22,13 +22,16 @@ module WentHiking
       @path = path
     end
 
+    # new_from_file only parses the header, so both reads stay cheap; the
+    # pixels on disk are untouched, which is why the EXIF transpose above
+    # still applies.
     def dimensions
-      image = MiniMagick::Image.open(@path)
+      image = Vips::Image.new_from_file(@path)
       oriented(image.width, image.height)
     end
 
     def extract
-      image = MiniMagick::Image.open(@path)
+      image = Vips::Image.new_from_file(@path)
       exif = safe_exif
       width, height = oriented(image.width, image.height, exif: exif)
 
