@@ -58,6 +58,7 @@
   data-edit-url="<%= h(trip ? "#{trip.public_path}/edit" : "") %>"
   data-trip-url="<%= h(trip&.public_path) %>"
   data-direct-upload="<%= direct_photo_upload_available? ? "true" : "false" %>"
+  data-max-upload-bytes="<%= WentHiking::PhotoFile::MAX_BYTES %>"
 >
   <div class="compose-bar">
     <div class="compose-bar-inner">

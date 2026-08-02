@@ -698,13 +698,17 @@
   color: var(--ink);
 }
 
+/* An upload in flight has to look like one from across the room: the
+   thumbnail recedes into the void, a ring spins over it, and a bar carries
+   the percentage along the bottom. The original 3px hairline read as a
+   border, not as progress. */
 .compose-figure-progress,
 .compose-tray-progress {
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
-  height: 3px;
+  height: 5px;
   background: var(--on-dark-veil);
 }
 
@@ -719,7 +723,48 @@
 
 .compose-figure.is-uploading .compose-figure-image,
 .compose-tray-card.is-uploading .compose-tray-image {
-  opacity: 0.55;
+  opacity: 0.35;
+}
+
+.compose-figure.is-uploading .compose-figure-media::after,
+.compose-tray-card.is-uploading .compose-tray-media::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 3px solid var(--on-dark-faint);
+  border-top-color: var(--on-dark);
+  border-radius: 50%;
+  animation: compose-upload-spin 0.9s linear infinite;
+}
+
+@keyframes compose-upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Caption and actions wake up when the photo is real. */
+.compose-tray-card.is-uploading .compose-tray-actions,
+.compose-tray-card.is-uploading .compose-caption-input {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* A failed card should look like a failure, and "Add to story" would be a
+   lie — the only honest offer left is Delete. */
+.compose-figure.is-failed .compose-figure-image,
+.compose-tray-card.is-failed .compose-tray-image {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.compose-tray-card.is-failed .compose-tray-insert,
+.compose-tray-card.is-failed .compose-caption-input {
+  display: none;
 }
 
 .compose-upload-error {
@@ -1072,5 +1117,11 @@
   .compose-tray-progress-bar,
   .compose-tray-drop {
     transition: none;
+  }
+
+  /* The progress bar still moves with the upload; only the decoration rests. */
+  .compose-figure.is-uploading .compose-figure-media::after,
+  .compose-tray-card.is-uploading .compose-tray-media::after {
+    animation: none;
   }
 }

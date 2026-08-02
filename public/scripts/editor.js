@@ -394,6 +394,7 @@
 
       var request = new XMLHttpRequest();
       request.open("POST", upload.url);
+      request.timeout = 180000;
       request.upload.addEventListener("progress", function (event) {
         if (event.lengthComputable) onProgress(event.loaded / event.total);
       });
@@ -404,7 +405,18 @@
       request.addEventListener("error", function () {
         reject(new Error("Photo storage could not be reached."));
       });
+      request.addEventListener("timeout", function () {
+        reject(new Error("The upload timed out. Try again."));
+      });
       request.send(body);
+    });
+  }
+
+  // A saturated connection drops an upload now and then; the presigned ticket
+  // is still good, so one quiet retry beats surfacing the hiccup.
+  function uploadToStorage(upload, file, onProgress) {
+    return uploadWithProgress(upload, file, onProgress).catch(function () {
+      return uploadWithProgress(upload, file, onProgress);
     });
   }
 
@@ -537,7 +549,11 @@
     dragBlock: null,
     pendingSequence: 0,
     toolbar: null,
-    savedRange: null
+    savedRange: null,
+    maxUploadBytes: 0,
+    uploadQueue: [],
+    activeUploads: 0,
+    cancelledPending: {}
   };
 
   function hasPhoto(id) {
@@ -1358,6 +1374,7 @@
   function markUploadFailed(container, message) {
     if (!container) return;
     container.classList.add("is-failed");
+    container.classList.remove("is-uploading");
     clearProgress(container);
     var note = container.querySelector(".compose-upload-error");
     if (!note) {
@@ -1376,6 +1393,25 @@
     list.forEach(function (file) {
       uploadPhoto(file, target && target.kind === "canvas" ? {kind: "canvas", before: reference} : {kind: "tray"});
     });
+  }
+
+  // Dropping a dozen photos at once used to start a dozen simultaneous
+  // uploads, and a saturated uplink starves every one of them — including the
+  // small fetches this page needs to stay alive. Two at a time finishes each
+  // photo quickly and keeps its progress bar honest; the rest wait their turn
+  // with the spinner showing.
+  var MAX_PARALLEL_UPLOADS = 2;
+
+  function drainUploadQueue() {
+    while (state.activeUploads < MAX_PARALLEL_UPLOADS && state.uploadQueue.length) {
+      var run = state.uploadQueue.shift();
+      state.activeUploads += 1;
+      var settle = function () {
+        state.activeUploads -= 1;
+        drainUploadQueue();
+      };
+      run().then(settle, settle);
+    }
   }
 
   function uploadPhoto(file, target) {
@@ -1401,6 +1437,20 @@
     container.classList.add("is-uploading");
     setProgress(container, 0.04);
 
+    // The server would refuse this at ticket time anyway; saying so before
+    // any bytes move keeps the oversize file from blocking the queue.
+    if (state.maxUploadBytes && file.size > state.maxUploadBytes) {
+      markUploadFailed(container, "Image file must be " + Math.round(state.maxUploadBytes / (1024 * 1024)) + " MB or smaller.");
+      return Promise.resolve();
+    }
+
+    state.uploadQueue.push(function () {
+      return runUploadFlow(file, container, pendingId, previewUrl);
+    });
+    drainUploadQueue();
+  }
+
+  function runUploadFlow(file, container, pendingId, previewUrl) {
     return ensureTrip()
       .then(function () {
         return postJson(state.urls.upload, {
@@ -1411,7 +1461,7 @@
         });
       })
       .then(function (body) {
-        return uploadWithProgress(body.upload, file, function (amount) {
+        return uploadToStorage(body.upload, file, function (amount) {
           setProgress(container, Math.max(0.05, amount * 0.9));
         }).then(function () {
           return body;
@@ -1422,6 +1472,15 @@
         return postJson(body.finalize_url, {});
       })
       .then(function (item) {
+        // Deleted from the tray while the bytes were still moving: the upload
+        // finished anyway, so quietly remove the orphan it produced.
+        if (state.cancelledPending[pendingId]) {
+          delete state.cancelledPending[pendingId];
+          forgetPhoto(pendingId);
+          if (state.urls.photo) postJson(state.urls.photo + "/" + item.id + "/delete", {});
+          URL.revokeObjectURL(previewUrl);
+          return item;
+        }
         forgetPhoto(pendingId);
         registerPhoto(item);
         container.classList.remove("is-uploading");
@@ -1440,6 +1499,10 @@
         return item;
       })
       .catch(function (error) {
+        if (state.cancelledPending[pendingId]) {
+          delete state.cancelledPending[pendingId];
+          return;
+        }
         var messages = errorMessages(error);
         markUploadFailed(container, messages[0]);
       });
@@ -1470,23 +1533,36 @@
     }, 600);
   }
 
+  function removePhotoLocally(id) {
+    var figure = figureFor(id);
+    if (figure) {
+      figure.remove();
+      markCanvasDirty();
+    }
+    var card = trayCardFor(id);
+    if (card) card.remove();
+    forgetPhoto(id);
+    refreshPlaceholders();
+    syncTray();
+    scheduleAutosave();
+  }
+
   function deletePhoto(id) {
+    // A pending card is a local preview — an upload still moving, or one that
+    // failed. There is nothing on the server yet, so removal is immediate; if
+    // bytes are still in flight, the flag tells the finish line to clean up.
+    if (isPendingId(id)) {
+      state.cancelledPending[id] = true;
+      removePhotoLocally(id);
+      return Promise.resolve();
+    }
+
     var item = photoItem(id);
-    var url = state.urls.photo && !isPendingId(id) ? state.urls.photo + "/" + id + "/delete" : null;
+    var url = state.urls.photo ? state.urls.photo + "/" + id + "/delete" : null;
     if (!item || !url) return Promise.resolve();
 
     return postJson(url, {}).then(function () {
-      var figure = figureFor(id);
-      if (figure) {
-        figure.remove();
-        markCanvasDirty();
-      }
-      var card = trayCardFor(id);
-      if (card) card.remove();
-      forgetPhoto(id);
-      refreshPlaceholders();
-      syncTray();
-      scheduleAutosave();
+      removePhotoLocally(id);
     });
   }
 
@@ -2197,7 +2273,6 @@
     }
 
     if (action === "delete") {
-      if (!window.confirm("Delete this photo for good?")) return;
       deletePhoto(photoId);
     }
   }
@@ -2218,7 +2293,6 @@
         return;
       }
 
-      if (!window.confirm("Delete this photo for good?")) return;
       deletePhoto(photoId);
     });
 
@@ -2381,6 +2455,7 @@
       photo: root.getAttribute("data-photo-url"),
       edit: root.getAttribute("data-edit-url")
     };
+    state.maxUploadBytes = Number(root.getAttribute("data-max-upload-bytes")) || 0;
 
     if (!state.form || !state.canvas || !state.source) return;
 
