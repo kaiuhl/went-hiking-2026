@@ -1,0 +1,188 @@
+# Gazetteer sources for place search. Each dataset carries its own license
+# and attribution (license_name is NOT NULL in the schema — provenance is not
+# optional). Mappings are declarative: the importer reads whatever columns or
+# properties are named here, so adding a source is config, not code.
+#
+# Coverage today is PNW-first: GNIS state files for OR/WA/CA/ID/MT, and the
+# USFS trails layer clipped to an Oregon/Washington envelope. Going national
+# is adding the remaining state zips and deleting the trails `bounds` block.
+#
+# GNIS note: the Trail, Forest, Park, Locale, and Reserve feature classes
+# were retired from GNIS in 2021 and are absent from current downloads —
+# trails come from the USFS layer below, forests/parks from the areas table.
+datasets:
+  - slug: gnis
+    name: USGS Geographic Names Information System
+    source_url: https://www.usgs.gov/us-board-on-geographic-names/download-gnis-data
+    license_name: Public Domain
+    license_url: https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits
+    attribution_text: Geographic names from the U.S. Geological Survey Geographic Names Information System.
+    enabled: true
+    format: zip
+    zip_glob: "**/*.txt"
+    col_sep: "|"
+    data_urls:
+      - https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/DomesticNames_OR_Text.zip
+      - https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/DomesticNames_WA_Text.zip
+      - https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/DomesticNames_CA_Text.zip
+      - https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/DomesticNames_ID_Text.zip
+      - https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/DomesticNames_MT_Text.zip
+    feature_class_filter:
+      - Arch
+      - Area
+      - Arroyo
+      - Bar
+      - Basin
+      - Bay
+      - Beach
+      - Bench
+      - Bend
+      - Canal
+      - Cape
+      - Cave
+      - Cliff
+      - Crater
+      - Crossing
+      - Falls
+      - Flat
+      - Gap
+      - Glacier
+      - Gut
+      - Harbor
+      - Island
+      - Isthmus
+      - Lake
+      - Lava
+      - Levee
+      - Pillar
+      - Plain
+      - Range
+      - Rapids
+      - Reservoir
+      - Ridge
+      - Sea
+      - Slope
+      - Spring
+      - Stream
+      - Summit
+      - Swamp
+      - Valley
+      - Woods
+    mapping:
+      external_id:
+        - feature_id
+        - FEATURE_ID
+      name:
+        - feature_name
+        - FEATURE_NAME
+      place_type:
+        - feature_class
+        - FEATURE_CLASS
+      latitude:
+        - prim_lat_dec
+        - PRIM_LAT_DEC
+      longitude:
+        - prim_long_dec
+        - PRIM_LONG_DEC
+      state_code:
+        - state_alpha
+        - STATE_ALPHA
+      state_name:
+        - state_name
+        - STATE_NAME
+      aliases:
+        - variant_name
+        - VARIANT_NAME
+      metadata_fields:
+        county_name:
+          - county_name
+          - COUNTY_NAME
+        map_name:
+          - map_name
+          - MAP_NAME
+        state_name:
+          - state_name
+          - STATE_NAME
+        source_feature_class:
+          - feature_class
+          - FEATURE_CLASS
+      search_rank: 30
+      search_rank_map:
+        Basin: 48
+        Beach: 48
+        Falls: 52
+        Island: 44
+        Lake: 56
+        Reservoir: 52
+        Stream: 42
+        Summit: 50
+      place_type_map:
+        Arch: landmark
+        Area: destination
+        Basin: destination
+        Bay: water
+        Beach: beach
+        Falls: waterfall
+        Island: island
+        Lake: lake
+        Reservoir: lake
+        Ridge: ridge
+        Stream: river
+        Summit: peak
+        Valley: destination
+      confidence: 0.82
+
+  - slug: usfs-trails
+    name: USFS National Forest System Trails
+    source_url: https://data.fs.usda.gov/geodata/edw/datasets.php
+    license_name: USDA Forest Service public geodata
+    license_url: https://data.fs.usda.gov/geodata/
+    attribution_text: Trail data from USDA Forest Service Enterprise Data Warehouse.
+    enabled: true
+    format: geojson
+    arcgis_paged: true
+    data_url: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_TrailNFSPublish_01/MapServer/0/query?where=1%3D1&geometry=-124.9%2C41.9%2C-116.4%2C49.1&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=trail_no%2Ctrail_name%2Ctrail_type%2Ctrail_cn%2Cgis_miles%2Cadmin_org&returnGeometry=true&outSR=4326&geometryPrecision=5&orderByFields=objectid&resultRecordCount=2000&f=geojson'
+    bounds:
+      min_lat: 41.9
+      max_lat: 49.1
+      min_lon: -124.9
+      max_lon: -116.4
+    transform: trail_dedupe
+    mapping:
+      external_id: trail_cn
+      name: trail_name
+      default_place_type: trail
+      search_rank: 62
+      confidence: 0.8
+      metadata_fields:
+        trail_no: trail_no
+        trail_type: trail_type
+        admin_org: admin_org
+        gis_miles: gis_miles
+
+  - slug: usfs-campgrounds
+    name: USFS Campground Recreation Opportunities
+    source_url: https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0
+    license_name: USDA Forest Service public geodata
+    license_url: https://www.arcgis.com/home/item.html?id=3951e2fa0ce64e24ab1903ebdbb9de92
+    attribution_text: Campground recreation opportunity data from USDA Forest Service Enterprise Data Warehouse.
+    enabled: true
+    format: geojson
+    data_url: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0/query?where=markeractivity%20%3D%20%27Campground%20Camping%27&geometry=-125.1%2C37%2C-116%2C49.1&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=recareaid%2Crecareaname%2Cmarkeractivity%2Cmarkeractivitygroup%2Cforestname%2Crecareaurl%2Clatitude%2Clongitude&returnGeometry=true&resultRecordCount=2000&f=geojson'
+    mapping:
+      external_id: recareaid
+      name: recareaname
+      place_type: markeractivity
+      latitude: latitude
+      longitude: longitude
+      source_url: recareaurl
+      search_rank: 66
+      search_rank_map:
+        Campground Camping: 66
+      place_type_map:
+        Campground Camping: campground
+      metadata_fields:
+        forest_name: forestname
+        source_activity: markeractivity
+        activity_group: markeractivitygroup
+      confidence: 0.84

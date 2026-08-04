@@ -19,6 +19,17 @@
       <button type="submit">Search</button>
     </div>
   </form>
+  <% unless (@place_matches || []).empty? %>
+    <div class="search-places">
+      <p class="search-places-caption">Places</p>
+      <% @place_matches.each do |place| %>
+        <p class="search-place-row">
+          <a href="/places/<%= h(place[:slug]) %>"><%= h(place[:name]) %></a>
+          <% unless place[:subtitle].to_s.empty? %><span class="meta"><%= h(place[:subtitle]) %></span><% end %>
+        </p>
+      <% end %>
+    </div>
+  <% end %>
   <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes match that search yet. Try another peak, lake, or trail name.", heading_level: "h2", show_author: true}) %>
   <% if @pagination %>
     <%= render("shared/pager", locals: {pagination: @pagination, path: @pager[:path], params: @pager[:params], label: @pager[:label], noun: "hike"}) %>

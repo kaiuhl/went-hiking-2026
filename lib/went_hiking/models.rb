@@ -28,6 +28,10 @@ module WentHiking
 
     class Trip < Sequel::Model(:trips)
       many_to_one :account
+      # Dormant until went_hiking/places is loaded — the class names resolve
+      # lazily, and nothing calls these on a boot without the gazetteer.
+      many_to_one :place, class: "WentHiking::Places::Place", key: :place_id
+      many_to_one :area, class: "WentHiking::Places::Area", key: :area_id
       # Ordered to match the `photos_dataset.order(:taken_at, :id)` every caller
       # was writing out by hand, so a listing can eager-load the association and
       # get the same sequence it used to pay a query per row for.

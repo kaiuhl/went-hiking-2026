@@ -11,9 +11,13 @@
   are written as `.eml` files to `tmp/outbox/` instead of raising. Production fails
   fast at boot if `SES_FROM_EMAIL` is missing.
 - Run the test suite (the app image omits dev/test gems, so override `BUNDLE_WITHOUT`):
-  `docker compose run --rm -e BUNDLE_WITHOUT= -e RACK_ENV=test web sh -c "bundle install --quiet && bundle exec rake"`.
-  This runs RSpec (in-memory sqlite; never touches the dev Postgres) plus the editor's
-  markdown round-trip harness (`spec/js/editor_round_trip.js`, plain node, no deps).
+  `docker compose run --rm -e BUNDLE_WITHOUT= -e RACK_ENV=test -e TEST_DATABASE_URL=postgres://wenthiking:wenthiking@postgres:5432/wenthiking_test web sh -c "bundle install --quiet && bundle exec rake"`.
+  This runs RSpec plus the editor's markdown round-trip harness
+  (`spec/js/editor_round_trip.js`, plain node, no deps). Specs run against Postgres
+  in a separate `wenthiking_test` database (created automatically on first run;
+  truncated between examples) — the compose `postgres` service must be up. Host-side
+  runs (mise ruby, no container) reach it on `localhost:55432`, which
+  `compose.override.yaml` publishes for exactly this.
 - The compose editor (`/hikes/new`, `/hikes/:slug/edit`) serializes to
   `report_markdown` + `{{ photo:ID }}` handles and must round-trip byte-identically;
   the harness above is the guard. Treat any change to `public/scripts/editor.js`

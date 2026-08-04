@@ -257,7 +257,7 @@ module HikeRoutes
         trip = owned_trip_from_slug(trip_slug, account)
 
         if trip.draft?
-          attributes, errors = autosave_attributes(request.POST)
+          attributes, errors = autosave_attributes(request.POST, trip)
           trip.update(attributes.merge(updated_at: Time.now)) unless attributes.empty?
           payload = {saved_at: Time.now.iso8601, trip_id: trip.id}
 
@@ -283,7 +283,7 @@ module HikeRoutes
         account = authenticated_account
         trip = owned_trip_from_slug(trip_slug, account)
 
-        values, errors, attributes = trip_form_submission(request.POST)
+        values, errors, attributes = trip_form_submission(request.POST, trip: trip)
         values[:account_name] = account.name
         setup_trip_form(
           action: trip.public_path,
@@ -482,6 +482,8 @@ module HikeRoutes
       source_url: "",
       lat: "",
       lng: "",
+      place_id: "",
+      location_name: "",
       report_markdown: "",
       account_name: account.name
     }.merge(WentHiking::HikeFlags.keys.to_h { |key| [key, ""] })
@@ -497,12 +499,14 @@ module HikeRoutes
       source_url: trip.source_url,
       lat: trip.lat,
       lng: trip.lng,
+      place_id: trip.place_id.to_s,
+      location_name: trip.location_name.to_s,
       report_markdown: trip.report_markdown,
       account_name: trip.account.name
     }.merge(WentHiking::HikeFlags.keys.to_h { |key| [key, trip[key].to_s] })
   end
 
-  def trip_form_submission(params)
+  def trip_form_submission(params, trip: nil)
     values = {
       name: params["name"].to_s.strip,
       hiked_at: params["hiked_at"].to_s.strip,
@@ -512,6 +516,8 @@ module HikeRoutes
       source_url: params["source_url"].to_s.strip,
       lat: params["lat"].to_s.strip,
       lng: params["lng"].to_s.strip,
+      place_id: params["place_id"].to_s.strip,
+      location_name: trip&.location_name.to_s,
       report_markdown: params["report_markdown"].to_s
     }
     WentHiking::HikeFlags.keys.each { |key| values[key] = params[key.to_s].to_s.strip }
@@ -520,6 +526,14 @@ module HikeRoutes
     errors << "Name is required." if values[:name].empty?
     hiked_at = parse_hiked_at(values[:hiked_at], errors)
     validate_coordinate_pair(values, errors)
+
+    # Every hike names a place on the map before it goes public. The form
+    # only publishes — creating anew or flipping a draft — so the pin is
+    # required here; hikes published before the rule stay editable as-is.
+    publishing = trip.nil? || trip.draft?
+    if publishing && (values[:lat].empty? || values[:lng].empty?)
+      errors << "Every hike needs a place. Search for it or drop a pin on the map."
+    end
 
     attributes = {
       name: values[:name],
@@ -533,6 +547,16 @@ module HikeRoutes
       report_markdown: values[:report_markdown]
     }
     WentHiking::HikeFlags.keys.each { |key| attributes[key] = flag_value(key, values[key], errors) }
+
+    location_attributes, location_error = place_reference_change(params, trip)
+    if location_error
+      errors << location_error
+    elsif location_attributes
+      attributes.merge!(location_attributes)
+      values[:location_name] = location_attributes[:location_name].to_s
+    else
+      cascade_location_clear(attributes, trip)
+    end
 
     [values, errors.uniq, attributes]
   end
@@ -551,7 +575,7 @@ module HikeRoutes
   # should not cost the writer the sentence they are in the middle of. Fields
   # that parse are written, fields that do not come back as per-field errors the
   # editor pins to the offending chip, and anything absent is left alone.
-  def autosave_attributes(params)
+  def autosave_attributes(params, trip = nil)
     attributes = {}
     errors = {}
 
@@ -590,7 +614,68 @@ module HikeRoutes
 
     autosave_coordinates(params, attributes, errors)
 
+    location_attributes, location_error = place_reference_change(params, trip)
+    if location_error
+      errors[:location] = location_error
+    elsif location_attributes
+      attributes.merge!(location_attributes)
+    else
+      cascade_location_clear(attributes, trip)
+    end
+
     [attributes, errors]
+  end
+
+  # The client only ever sends the place's id; the byline text is snapshotted
+  # here from the gazetteer row, so nobody can post a stranger's byline. An
+  # unchanged id is a no-op — autosave resends every field, and resending must
+  # never disturb what a backfill wrote. Clearing and choosing both stamp
+  # location_source "author", which the backfill treats as untouchable.
+  def place_reference_change(params, trip)
+    return [nil, nil] unless params.key?("place_id")
+
+    value = params["place_id"].to_s.strip
+    return [nil, nil] if value == trip&.place_id.to_s
+
+    return [cleared_location_attributes, nil] if value.empty?
+
+    place = WentHiking::Places::Place.active.where(id: value.to_i).first
+    return [nil, "That place isn't in the gazetteer anymore. Search again or clear it."] unless place
+
+    area = most_specific_area_for(place)
+    [{
+      place_id: place.id,
+      location_name: place.name,
+      area_id: area&.fetch(:area_id),
+      area_name: area&.fetch(:name),
+      location_source: "author",
+      location_resolved_at: Time.now
+    }, nil]
+  end
+
+  def cleared_location_attributes
+    {place_id: nil, location_name: nil, area_id: nil, area_name: nil, location_source: "author", location_resolved_at: Time.now}
+  end
+
+  # A byline about a pin that no longer exists: when a save empties the
+  # coordinates and no new place arrived with it, the location words go too.
+  def cascade_location_clear(attributes, trip)
+    pin_cleared = attributes.key?(:lat) && attributes[:lat].nil? && attributes[:lng].nil?
+    return unless pin_cleared
+    return unless trip && (trip.place_id || trip.location_name || trip.area_name)
+
+    attributes.merge!(cleared_location_attributes)
+  end
+
+  def most_specific_area_for(place)
+    specificity = WentHiking::Places::Area::TYPES_BY_SPECIFICITY
+    WentHiking::Places::PlaceAreaMatch
+      .join(:areas, id: :area_id)
+      .where(:place_id => place.id, Sequel[:areas][:active] => true)
+      .select(Sequel[:place_area_matches][:area_id], Sequel[:areas][:name], Sequel[:areas][:area_type])
+      .all
+      .map { |row| {area_id: row[:area_id], name: row[:name], area_type: row[:area_type]} }
+      .min_by { |row| specificity.index(row[:area_type]) || specificity.length }
   end
 
   def autosave_number(params, key, error_key, errors, integer: false, min: nil, max: nil, blank: nil, label: nil)

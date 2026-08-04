@@ -58,6 +58,80 @@ namespace :db do
   end
 end
 
+namespace :places do
+  desc "Import configured place datasets into Postgres"
+  task :import do
+    require_relative "config/boot"
+    require "went_hiking/places/importer"
+
+    counts = WentHiking::Places::Importer.new.import
+    puts "Imported #{counts[:places]} places and #{counts[:names]} names from #{counts[:datasets]} place datasets."
+  end
+
+  desc "Import one configured place dataset by slug"
+  task :import_dataset, [:dataset_slug] do |_task, args|
+    require_relative "config/boot"
+    require "went_hiking/places/importer"
+
+    slug = args[:dataset_slug].to_s
+    raise "Usage: rake places:import_dataset[dataset_slug]" if slug.empty?
+
+    counts = WentHiking::Places::Importer.new.import(dataset_slugs: [slug])
+    puts "Imported #{counts[:places]} places and #{counts[:names]} names from #{counts[:datasets]} place datasets."
+  end
+
+  desc "Seed curated destinations from config/place_manual.yml"
+  task :seed_manual do
+    require_relative "config/boot"
+    require "went_hiking/places/manual_seeder"
+
+    counts = WentHiking::Places::ManualSeeder.new.seed
+    puts "Seeded #{counts[:places]} curated places and #{counts[:names]} names."
+  end
+
+  desc "Fetch containing-area boundaries (forests, wilderness, parks) into the areas table"
+  task :refresh_areas do
+    require_relative "config/boot"
+    require "went_hiking/places/area_refresher"
+
+    counts = WentHiking::Places::AreaRefresher.new.refresh
+    puts "Refreshed #{counts[:areas]} area boundaries."
+  end
+
+  desc "Resolve place-in-area containment matches (optionally for one dataset)"
+  task :resolve, [:dataset_slug] do |_task, args|
+    require_relative "config/boot"
+    require "went_hiking/places/resolver"
+
+    counts = WentHiking::Places::Resolver.new.resolve(dataset_slug: args[:dataset_slug])
+    puts "Resolved #{counts[:area_matches]} place-area matches."
+  end
+
+  desc "Import, seed, refresh areas, and resolve — the whole gazetteer"
+  task :refresh do
+    Rake::Task["places:import"].invoke
+    Rake::Task["places:seed_manual"].invoke
+    Rake::Task["places:refresh_areas"].invoke
+    Rake::Task["places:resolve"].invoke
+  end
+end
+
+namespace :trips do
+  desc "Name existing trips from their coordinates (DRY_RUN=1 to preview, FORCE=1 to redo auto rows)"
+  task :backfill_locations do
+    require_relative "config/boot"
+    require "went_hiking/places"
+
+    counts = WentHiking::Places::TripLocator.new.backfill(
+      dry_run: ENV["DRY_RUN"] == "1",
+      force: ENV["FORCE"] == "1",
+      logger: ->(line) { puts line }
+    )
+    verb = (ENV["DRY_RUN"] == "1") ? "Would name" : "Named"
+    puts "#{verb} #{counts[:named]} of #{counts[:trips]} trips (#{counts[:areas]} with areas)."
+  end
+end
+
 namespace :email do
   desc "Write sample auth email previews to tmp/email-previews"
   task :preview do

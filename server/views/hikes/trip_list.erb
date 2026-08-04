@@ -22,6 +22,9 @@
           <p class="kicker inline-kicker trip-row-kicker">
             <span><%= h(trip_date_label(trip)) %></span>
             <% if with_author %><span><a href="<%= h(trip.account.public_path) %>"><%= h(trip.account.name) %></a></span><% end %>
+            <% if (location = trip_location_label(trip)) %>
+              <span><%= h(location) %></span>
+            <% end %>
             <% trip_stats.each do |stat| %>
               <span><%= h(stat) %></span>
             <% end %>

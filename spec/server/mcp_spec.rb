@@ -342,7 +342,7 @@ RSpec.describe "MCP connector" do
       mcp_request(token, {jsonrpc: "2.0", id: 2, method: "tools/list"})
       tools = JSON.parse(last_response.body)["result"]["tools"].map { |tool| tool["name"] }
       expect(tools).to contain_exactly(
-        "list_my_hikes", "get_hike", "create_hike_draft", "update_hike",
+        "list_my_hikes", "get_hike", "search_places", "create_hike_draft", "update_hike",
         "set_photo_caption", "get_photo_upload_link", "publish_hike"
       )
     end
@@ -395,7 +395,7 @@ RSpec.describe "MCP connector" do
         updated_at: Time.now
       )
 
-      _, created = mcp_tool_call(token, "create_hike_draft", {name: "Goat Rocks", hiked_at: "2026-07-18"})
+      _, created = mcp_tool_call(token, "create_hike_draft", {name: "Goat Rocks", hiked_at: "2026-07-18", lat: 46.5, lng: -121.4})
       trip_id = created["trip_id"]
 
       _, updated = mcp_tool_call(token, "update_hike", {trip_id: trip_id, report_markdown: "Day one: larches.", mileage: 12})
@@ -441,6 +441,65 @@ RSpec.describe "MCP connector" do
       _, details = mcp_tool_call(token, "get_hike", {trip_id: created["trip_id"]})
       expect(details["mosquitoes"]).to eq("swarms")
       expect(details["snow"]).to eq("patches")
+    end
+
+    def create_gazetteer_place(name: "Burnt Lake", area: "Mount Hood Wilderness")
+      dataset_id = WentHiking.db[:place_datasets].insert(slug: "spec-dataset", name: "Spec", license_name: "Public Domain")
+      place_id = WentHiking.db[:places].insert(
+        slug: "spec-#{name.downcase.tr(" ", "-")}", name: name, place_type: "lake",
+        latitude: 45.36, longitude: -121.79, state_code: "or", search_rank: 60, source_dataset_id: dataset_id
+      )
+      WentHiking.db[:place_names].insert(
+        place_id: place_id, name: name,
+        normalized_name: WentHiking::Places::Normalizer.normalize(name), kind: "official", weight: 100
+      )
+      if area
+        area_id = WentHiking.db[:areas].insert(slug: area.downcase.tr(" ", "-"), name: area, area_type: "wilderness", agency: "USFS")
+        WentHiking.db[:place_area_matches].insert(
+          place_id: place_id, area_id: area_id,
+          relationship: "contains_point", match_method: "rgeo_v1", confidence: 0.98
+        )
+      end
+      place_id
+    end
+
+    it "searches places and threads a place_slug through create and update" do
+      create_gazetteer_place
+
+      _, found = mcp_tool_call(token, "search_places", {query: "burnt lake"})
+      expect(found["count"]).to eq(1)
+      expect(found["places"].first).to include(
+        "place_slug" => "spec-burnt-lake",
+        "name" => "Burnt Lake",
+        "where" => "Lake · Mount Hood Wilderness · Oregon"
+      )
+
+      _, created = mcp_tool_call(token, "create_hike_draft", {
+        name: "Burnt Lake loop", hiked_at: "2026-07-18", place_slug: "spec-burnt-lake"
+      })
+      expect(created["location_name"]).to eq("Burnt Lake")
+      expect(created["area_name"]).to eq("Mount Hood Wilderness")
+      expect(created["lat"]).to eq(45.36)
+
+      # A pin nudged nearby keeps its name; clearing the slug clears it all.
+      _, moved = mcp_tool_call(token, "update_hike", {trip_id: created["trip_id"], lat: 45.37, lng: -121.80})
+      expect(moved["location_name"]).to eq("Burnt Lake")
+
+      _, far = mcp_tool_call(token, "update_hike", {trip_id: created["trip_id"], lat: 48.7, lng: -113.7})
+      expect(far).not_to have_key("location_name")
+
+      result, message = mcp_tool_call(token, "create_hike_draft", {name: "Ghost", hiked_at: "2026-07-18", place_slug: "spec-nowhere"})
+      expect(result["isError"]).to be(true)
+      expect(message).to include("search_places")
+    end
+
+    it "refuses to publish without a location" do
+      _, created = mcp_tool_call(token, "create_hike_draft", {name: "Somewhere", hiked_at: "2026-07-18"})
+
+      result, message = mcp_tool_call(token, "publish_hike", {trip_id: created["trip_id"]})
+      expect(result["isError"]).to be(true)
+      expect(message).to include("location")
+      expect(WentHiking::Models::Trip[created["trip_id"]].draft?).to be(true)
     end
 
     it "refuses to publish an unnamed draft" do

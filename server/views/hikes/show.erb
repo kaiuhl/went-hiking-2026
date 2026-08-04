@@ -15,6 +15,9 @@
         <a href="<%= h(@account.public_path) %>"><%= h(@account.name) %></a>
         <span>went <%= @trip.backpacking? ? "backpacking" : "hiking" %></span>
       </span>
+      <% if (location = trip_location_label(@trip)) %>
+        <span><%= h(location) %></span>
+      <% end %>
       <span><%= h(trip_date_label(@trip)) %></span>
       <% trip_metrics.each do |metric| %>
         <span><%= h(metric) %></span>

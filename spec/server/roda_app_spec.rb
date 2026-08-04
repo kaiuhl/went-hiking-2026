@@ -681,6 +681,8 @@ RSpec.describe RodaApp do
     post "/hikes", {
       "name" => "Ramona Falls",
       "hiked_at" => "2026-07-04",
+      "lat" => "45.38",
+      "lng" => "-121.77",
       "beauty" => "sublime",
       "mosquitoes" => "none",
       "wildflowers" => "blooming",

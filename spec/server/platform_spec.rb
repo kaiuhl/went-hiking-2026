@@ -462,6 +462,8 @@ RSpec.describe "platform behaviour" do
         "name" => "Captioned Ridge",
         "hiked_at" => "2026-05-17",
         "nights" => "0",
+        "lat" => "45.5",
+        "lng" => "-121.7",
         "report_markdown" => "Nice.",
         "photo_captions" => {photo_id.to_s => "Edited caption"}
       }
@@ -482,6 +484,8 @@ RSpec.describe "platform behaviour" do
         "name" => "Fresh Ridge",
         "hiked_at" => "2026-05-17",
         "nights" => "0",
+        "lat" => "45.5",
+        "lng" => "-121.7",
         "report_markdown" => "Nice.",
         "photo_captions" => {photo_id.to_s => "Ignored for another trip"}
       }

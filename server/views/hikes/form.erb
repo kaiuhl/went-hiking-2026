@@ -209,19 +209,34 @@
         <span class="compose-chip-unit" aria-hidden="true" data-compose-unit-label>ft gained</span>
       </span>
 
-      <span class="compose-chip compose-chip-location" data-compose-chip="location" data-compose-location>
+      <span class="compose-chip compose-chip-location" data-compose-chip="location" data-compose-location data-place-name="<%= h(values[:location_name]) %>">
         <button
           class="compose-chip-button"
           type="button"
           aria-haspopup="dialog"
           aria-expanded="false"
           data-compose-location-toggle
-        ><%= has_location ? "Pin set &check;" : "+ drop a pin" %></button>
+        ><%= values[:location_name].to_s.empty? ? (has_location ? "Pin set &check;" : "+ where") : h(values[:location_name]) %></button>
         <input type="hidden" name="lat" value="<%= h(values[:lat]) %>" data-compose-field="lat">
         <input type="hidden" name="lng" value="<%= h(values[:lng]) %>" data-compose-field="lng">
+        <input type="hidden" name="place_id" value="<%= h(values[:place_id]) %>" data-compose-field="place_id">
 
         <div class="compose-popover" role="dialog" aria-modal="true" aria-label="Hike location" data-compose-location-panel hidden>
           <div class="compose-popover-dialog">
+            <div class="compose-place-search" data-compose-place-search>
+              <label class="compose-visually-hidden" for="compose-place-query">Search for a place</label>
+              <input
+                id="compose-place-query"
+                class="compose-popover-input compose-place-input"
+                type="search"
+                placeholder="Search peaks, lakes, trails&hellip;"
+                autocomplete="off"
+                spellcheck="false"
+                data-compose-place-input
+                data-place-search-url="/api/places/search"
+              >
+              <ul class="compose-place-results" data-compose-place-results role="listbox" aria-label="Matching places" hidden></ul>
+            </div>
             <div
               class="compose-map"
               data-compose-map
@@ -232,7 +247,7 @@
               role="application"
               aria-label="Click the map to drop a pin"
             ></div>
-            <p class="compose-popover-hint" data-compose-location-summary>Click the map to drop a pin.</p>
+            <p class="compose-popover-hint" data-compose-location-summary>Type a place name, or click the map to drop a pin.</p>
             <div class="compose-popover-row">
               <label class="compose-popover-label" for="compose-lat">Lat</label>
               <input id="compose-lat" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" autocomplete="off" data-compose-lat>

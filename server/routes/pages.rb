@@ -64,6 +64,7 @@ module PageRoutes
     r.get "search" do
       @query = request.params["q"].to_s.strip
       @trips, @pagination = search_trips(@query, request.params["page"])
+      @place_matches = search_places(@query, request.params["page"])
       @pager = {path: "/search", params: {"q" => @query}, label: "Search results pages"}
       @title = @query.empty? ? "Search Hikes" : "Search: #{@query}"
       # Every query mints a distinct URL over the same archive; none of those
@@ -104,10 +105,24 @@ module PageRoutes
     dataset = WentHiking::Models::Trip.published
     unless query.empty?
       pattern = "%#{query.downcase}%"
-      dataset = dataset.where(Sequel.lit("LOWER(name) LIKE ? OR LOWER(COALESCE(report_markdown, '')) LIKE ?", pattern, pattern))
+      # location_name/area_name make twenty years of backfilled hikes findable
+      # by "goat rocks" even when no report ever says it.
+      dataset = dataset.where(Sequel.lit(
+        "LOWER(name) LIKE ? OR LOWER(COALESCE(report_markdown, '')) LIKE ? OR LOWER(COALESCE(location_name, '')) LIKE ? OR LOWER(COALESCE(area_name, '')) LIKE ?",
+        pattern, pattern, pattern, pattern
+      ))
     end
 
     paginated_trip_list(dataset, page)
+  end
+
+  # A short strip of matching places above the text results, page one only —
+  # repeated on page two it would just be noise. Never a filter: a place link
+  # goes to its own page rather than silently narrowing the results below.
+  def search_places(query, page)
+    return [] if query.length < 2 || page.to_i > 1
+
+    WentHiking::Places::Searcher.new.search(query, limit: 3)
   end
 
   def archive_stats

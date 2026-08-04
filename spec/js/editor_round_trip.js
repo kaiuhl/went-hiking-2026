@@ -212,6 +212,57 @@ check("a month crossing counts its nights through the boundary", function () {
   );
 });
 
+/* --------------------------------------------------------------------------
+   Naming a pin after a chosen place.
+   -------------------------------------------------------------------------- */
+
+var places = editor.placesIO;
+
+check("distances come out in believable kilometers", function () {
+  // Portland to Hood River is about 95 km as the crow flies.
+  var km = places.distanceKm(45.5231, -122.6765, 45.7054, -121.5215);
+  assert.ok(km > 85 && km < 105, "expected ~95, got " + km);
+  assert.ok(places.distanceKm(45.5, -122.6, 45.5, -122.6) < 0.001);
+});
+
+check("a pin stays named near its place and lets go far away", function () {
+  // A drag across the lake basin keeps the name.
+  assert.strictEqual(places.pinNearPlace(45.3560, -121.7900, 45.3600, -121.7800), true);
+  // A different mountain range does not.
+  assert.strictEqual(places.pinNearPlace(45.3560, -121.7900, 46.8523, -121.7603), false);
+});
+
+var tripPin = editor.tripPinFromPhotos;
+
+check("one located photo pins the hike", function () {
+  assert.deepStrictEqual(tripPin([{lat: 45.36, lng: -121.79}]), {lat: 45.36, lng: -121.79});
+});
+
+check("a cluster pins at its median, ignoring one lying fix", function () {
+  var pin = tripPin([
+    {lat: 45.360, lng: -121.790},
+    {lat: 45.362, lng: -121.792},
+    {lat: 45.364, lng: -121.794},
+    // A fix from another state cannot drag the pin there.
+    {lat: 40.0, lng: -105.0}
+  ]);
+  assert.strictEqual(pin.lat, 45.362);
+  assert.strictEqual(pin.lng, -121.792);
+});
+
+check("an even split between two mountains says nothing", function () {
+  assert.strictEqual(tripPin([
+    {lat: 45.36, lng: -121.79},
+    {lat: 48.78, lng: -121.90}
+  ]), null);
+});
+
+check("null island and junk coordinates are not believed", function () {
+  assert.strictEqual(tripPin([{lat: 0, lng: 0}, {lat: null, lng: null}, {lat: 200, lng: -300}]), null);
+  assert.strictEqual(tripPin([]), null);
+  assert.strictEqual(tripPin(null), null);
+});
+
 process.stdout.write(
   (failures === 0 ? "OK" : "FAILED") + ": " + (checks - failures) + "/" + checks + " round-trip checks passed\n"
 );

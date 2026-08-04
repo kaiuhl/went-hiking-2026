@@ -457,6 +457,80 @@ body.compose-location-open {
   padding: var(--space-3);
 }
 
+/* The name search sits above the map; its results drop over it, the one
+   floating layer the popover earns. Leaflet's panes stack to 1000. */
+.compose-place-search {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+
+.compose-place-input {
+  font-size: var(--text-xs);
+}
+
+.compose-place-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--border) solid var(--line);
+  border-top: 0;
+  background: var(--paper);
+  box-shadow: var(--shadow-xl);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.compose-place-results[hidden] {
+  display: none;
+}
+
+.compose-place-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  /* Buttons site-wide are ink-filled; this one is a text row until hovered. */
+  color: var(--ink);
+  padding: 7px 8px;
+  text-align: left;
+  font-size: var(--text-xs);
+}
+
+.compose-place-result strong {
+  font-weight: 600;
+}
+
+.compose-place-result span {
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compose-place-empty {
+  padding: 7px 8px;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+
+.compose-place-result:hover,
+.compose-place-result.is-active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.compose-place-result:hover span,
+.compose-place-result.is-active span {
+  color: var(--paper);
+}
+
 .compose-map {
   flex: 1;
   min-height: 0;

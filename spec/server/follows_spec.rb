@@ -133,8 +133,8 @@ RSpec.describe "follow routes" do
       "mileage" => "8.5",
       "elevation" => "1700",
       "source_url" => "",
-      "lat" => "",
-      "lng" => "",
+      "lat" => "45.5",
+      "lng" => "-121.7",
       "report_markdown" => "Clear views."
     }
 

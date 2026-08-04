@@ -12,6 +12,7 @@ require_relative "routes/mcp"
 require_relative "routes/media"
 require_relative "routes/pages"
 require_relative "routes/people"
+require_relative "routes/places"
 require_relative "routes/seo"
 require_relative "routes/uploads"
 
@@ -22,6 +23,7 @@ require "sequel"
 require "went_hiking/avatar_upload"
 require "went_hiking/email"
 require "went_hiking/models"
+require "went_hiking/places"
 
 class RodaApp < Roda
   include ResponseHeaders
@@ -35,6 +37,7 @@ class RodaApp < Roda
   include MediaRoutes
   include PageRoutes
   include PeopleRoutes
+  include PlaceRoutes
   include SeoRoutes
   include UploadRoutes
 
@@ -307,6 +310,7 @@ class RodaApp < Roda
     route_follows(r)
     route_hikes(r)
     route_people(r)
+    route_places(r)
     route_pages(r)
 
     not_found

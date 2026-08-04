@@ -33,6 +33,7 @@ GEM
     crass (1.0.6)
     css_parser (2.2.0)
       addressable
+    csv (3.3.6)
     diff-lcs (1.6.2)
     dotenv (3.2.0)
     exifr (1.5.1)
@@ -44,6 +45,8 @@ GEM
     ffi (1.17.4-x86_64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
     ffi (1.17.4-x86_64-linux-musl)
+    ffi-geos (2.5.0)
+      ffi (>= 1.0.0)
     hana (1.3.7)
     htmlentities (4.4.2)
     jmespath (1.6.2)
@@ -103,6 +106,7 @@ GEM
     rake (13.4.2)
     redcarpet (3.6.1)
     regexp_parser (2.12.0)
+    rgeo (3.1.0)
     roda (3.104.0)
       rack
     rodauth (2.43.0)
@@ -146,6 +150,7 @@ GEM
     ruby-vips (2.3.0)
       ffi (~> 1.12)
       logger
+    rubyzip (2.4.1)
     sanitize (7.0.0)
       crass (~> 1.0.2)
       nokogiri (>= 1.16.8)
@@ -195,8 +200,10 @@ DEPENDENCIES
   aws-sdk-s3 (~> 1)
   aws-sdk-sesv2 (~> 1)
   bcrypt (~> 3.1)
+  csv (~> 3.3)
   dotenv (~> 3.1)
   exifr (~> 1.4)
+  ffi-geos (~> 2.5)
   mcp (~> 1.1)
   pg (~> 1.5)
   premailer (~> 1.29)
@@ -205,11 +212,13 @@ DEPENDENCIES
   rack-test (~> 2.1)
   rake (~> 13.2)
   redcarpet (~> 3.6)
+  rgeo (~> 3.0)
   roda (~> 3.102)
   rodauth (~> 2.43)
   rodauth-oauth (~> 1.6)
   rspec (~> 3.13)
   ruby-vips (~> 2.2)
+  rubyzip (~> 2.4)
   sanitize (~> 7.0)
   sequel (~> 5.103)
   sqlite3 (~> 2.0)
@@ -233,6 +242,7 @@ CHECKSUMS
   concurrent-ruby (1.3.6) sha256=6b56837e1e7e5292f9864f34b69c5a2cbc75c0cf5338f1ce9903d10fa762d5ab
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
   css_parser (2.2.0) sha256=23d1b247d7bc78cb2f2fe54629fb755e68d3004f1d1bd5c66d5096d42bff6325
+  csv (3.3.6) sha256=aba61e7e507a66f03d45cb1f3c4b6359861c3504038b422962875dce099e4456
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962
   dotenv (3.2.0) sha256=e375b83121ea7ca4ce20f214740076129ab8514cd81378161f11c03853fe619d
   exifr (1.5.1) sha256=ad87a5dbc92946fbf1d8ccd178d557d95d9168e8b3c5c5f381ea2bffcc312521
@@ -244,6 +254,7 @@ CHECKSUMS
   ffi (1.17.4-x86_64-darwin) sha256=aa70390523cf3235096cf64962b709b4cfbd5c082a2cb2ae714eb0fe2ccda496
   ffi (1.17.4-x86_64-linux-gnu) sha256=9d3db14c2eae074b382fa9c083fe95aec6e0a1451da249eab096c34002bc752d
   ffi (1.17.4-x86_64-linux-musl) sha256=3fdf9888483de005f8ef8d1cf2d3b20d86626af206cbf780f6a6a12439a9c49e
+  ffi-geos (2.5.0) sha256=ba8f0c3729a0f1f4eb17ac4408803db0f7ac7558d97b7e024f4484210a97477e
   hana (1.3.7) sha256=5425db42d651fea08859811c29d20446f16af196308162894db208cac5ce9b0d
   htmlentities (4.4.2) sha256=bbafbdf69f2eca9262be4efef7e43e6a1de54c95eb600f26984f71d2fe96c5c3
   jmespath (1.6.2) sha256=238d774a58723d6c090494c8879b5e9918c19485f7e840f2c1c7532cf84ebcb1
@@ -283,6 +294,7 @@ CHECKSUMS
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   redcarpet (3.6.1) sha256=d444910e6aa55480c6bcdc0cdb057626e8a32c054c29e793fa642ba2f155f445
   regexp_parser (2.12.0) sha256=35a916a1d63190ab5c9009457136ae5f3c0c7512d60291d0d1378ba18ce08ebb
+  rgeo (3.1.0) sha256=89c1804894b35acf65891e1f24e15bbf2fbd972d4183e63c444bb97c1ccaf5d5
   roda (3.104.0) sha256=1b1e64a4634a99c737b251b6f94cba7625c01755b0db4cb62280bebe49c898f7
   rodauth (2.43.0) sha256=4dc5f5c6b8013502352beb342f72b64515680af2f95603f7248031fd9203984a
   rodauth-oauth (1.6.5) sha256=d4a5c26afab6b47fafae5e17e2947bc647930515344aaf19805b9a7761cb4957
@@ -296,6 +308,7 @@ CHECKSUMS
   rubocop-performance (1.26.1) sha256=cd19b936ff196df85829d264b522fd4f98b6c89ad271fa52744a8c11b8f71834
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   ruby-vips (2.3.0) sha256=e685ec02c13969912debbd98019e50492e12989282da5f37d05f5471442f5374
+  rubyzip (2.4.1) sha256=8577c88edc1fde8935eb91064c5cb1aef9ad5494b940cf19c775ee833e075615
   sanitize (7.0.0) sha256=269d1b9d7326e69307723af5643ec032ff86ad616e72a3b36d301ac75a273984
   sequel (5.104.0) sha256=1521819b9204aa7f5c25b29fbb2a609ba3f6a82d2271f34f718e1169d31bf03e
   simpleidn (0.2.3) sha256=08ce96f03fa1605286be22651ba0fc9c0b2d6272c9b27a260bc88be05b0d2c29

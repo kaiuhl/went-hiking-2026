@@ -2619,6 +2619,41 @@ input[type="search"]::placeholder {
   color: var(--faint);
 }
 
+/* Matching places above the text results: a caption in its own hairline,
+   then rows of prose links with a muted where-it-is. */
+.search-places {
+  max-width: var(--measure-narrow);
+  margin: -12px 0 36px;
+  border-top: var(--border) solid var(--line);
+  padding-top: var(--space-3);
+}
+
+.search-places-caption {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.search-place-row {
+  margin: 6px 0;
+  font-size: var(--text-sm);
+}
+
+.search-place-row .meta {
+  margin-left: 10px;
+}
+
+.place-kicker {
+  margin-top: -6px;
+  margin-bottom: var(--space-5);
+}
+
+.place-attribution {
+  margin-top: var(--space-7);
+}
+
 /* --------------------------------------------------------------------------
    Dead ends. 404, 410, and 500 all used to stop the reader cold, so they now
    end with the same way out.

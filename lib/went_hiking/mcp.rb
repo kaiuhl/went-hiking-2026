@@ -14,13 +14,15 @@ module WentHiking
       Went Hiking is a community site for sharing hiking trip reports and trail
       photos. These tools act on behalf of the signed-in member.
 
-      The posting workflow: create a hike as a draft, share the photo upload
-      link so the member can add photos from their camera roll, iterate on the
-      trip report together, then publish. Drafts are private; publishing makes
-      the hike public and emails the member's followers, so always confirm with
-      the member before calling publish_hike. Before drafting a report, it can
-      help to fetch one or two of the member's past hikes to match their
-      writing voice.
+      The posting workflow: create a hike as a draft, use search_places to
+      find where it happened (every hike needs a location before it can
+      publish — pass the chosen place_slug so the byline gets a real name),
+      share the photo upload link so the member can add photos from their
+      camera roll, iterate on the trip report together, then publish. Drafts
+      are private; publishing makes the hike public and emails the member's
+      followers, so always confirm with the member before calling
+      publish_hike. Before drafting a report, it can help to fetch one or two
+      of the member's past hikes to match their writing voice.
 
       Trip reports are markdown. Uploaded photos can be embedded inline with
       their handle (for example {{ photo:123 }}); photos that are not embedded

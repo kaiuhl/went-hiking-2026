@@ -16,3 +16,8 @@ services:
       DATABASE_URL: postgres://wenthiking:wenthiking@postgres:5432/wenthiking_development
     volumes:
       - .:/app
+  postgres:
+    # Published on 55432 so host-side spec runs (mise ruby, no container) can
+    # reach it; 5432 is left to other projects on this machine.
+    ports:
+      - "127.0.0.1:55432:5432"

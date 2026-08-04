@@ -6,6 +6,7 @@ require "mcp"
 require "went_hiking/hike_flags"
 require "went_hiking/hike_notification_scheduler"
 require "went_hiking/models"
+require "went_hiking/places"
 require "went_hiking/slug"
 require "went_hiking/upload_tokens"
 
@@ -68,10 +69,44 @@ module WentHiking
               source_url: trip.source_url,
               lat: trip.lat,
               lng: trip.lng,
+              location_name: trip.location_name,
+              area_name: trip.area_name,
+              place_slug: trip.place_id ? trip.place&.slug : nil,
               published_at: trip.published_at&.iso8601,
               report_markdown: trip.report_markdown.to_s,
               photos: trip.photos_dataset.order(:taken_at, :id).all.map { |photo| photo_details(photo) }
             ).merge(condition_flags(trip)).compact
+          end
+
+          # The member's byline never carries text the caller typed: the name
+          # and containing area are snapshotted from the gazetteer row here.
+          def place_reference!(slug)
+            place = Places::Place.active.where(slug: slug.to_s.strip).first
+            raise ToolError, "No place matches '#{slug}'. Call search_places to find the right slug." unless place
+
+            place
+          end
+
+          def location_attributes_for(place)
+            area = Places::PlaceAreaMatch
+              .join(:areas, id: :area_id)
+              .where(:place_id => place.id, Sequel[:areas][:active] => true)
+              .select(Sequel[:place_area_matches][:area_id], Sequel[:areas][:name], Sequel[:areas][:area_type])
+              .all
+              .min_by { |row| Places::Area::TYPES_BY_SPECIFICITY.index(row[:area_type]) || Places::Area::TYPES_BY_SPECIFICITY.length }
+
+            {
+              place_id: place.id,
+              location_name: place.name,
+              area_id: area && area[:area_id],
+              area_name: area && area[:name],
+              location_source: "author",
+              location_resolved_at: Time.now
+            }
+          end
+
+          def cleared_location_attributes
+            {place_id: nil, location_name: nil, area_id: nil, area_name: nil, location_source: "author", location_resolved_at: Time.now}
           end
 
           def condition_flags(trip)
@@ -159,9 +194,41 @@ module WentHiking
         end
       end
 
+      class SearchPlaces < Base
+        tool_name "search_places"
+        description "Search the place gazetteer — peaks, lakes, trails, campgrounds, forests, wilderness areas — by name. Use this before create_hike_draft to find where the hike happened: pass the chosen result's place_slug so the hike gets real coordinates and a real location name in its byline instead of raw numbers."
+        input_schema(
+          properties: {
+            query: {type: "string", description: "Peak, lake, trail, campground, or town name, e.g. 'blanca lake' or 'goat rocks'."},
+            limit: {type: "integer", minimum: 1, maximum: 20, description: "Maximum results. Defaults to 6."}
+          },
+          required: ["query"]
+        )
+        annotations(title: "Search places", read_only_hint: true, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
+
+        def self.handle(account:, scopes:, args:)
+          results = Places::Searcher.new.search(args[:query].to_s, limit: args[:limit] || 6)
+          {
+            count: results.length,
+            places: results.map do |result|
+              {
+                place_slug: (result[:result_type] == "place") ? result[:slug] : nil,
+                name: result[:name],
+                kind: result[:place_type],
+                where: result[:subtitle],
+                lat: result[:latitude],
+                lng: result[:longitude],
+                page_url: public_url("/places/#{result[:slug]}"),
+                note: (result[:result_type] == "area") ? "An area, not a pin — use it to orient, then pick a specific place or pass lat/lng." : nil
+              }.compact
+            end
+          }
+        end
+      end
+
       class CreateHikeDraft < Base
         tool_name "create_hike_draft"
-        description "Create a new hike as a private draft. Nothing is public and nobody is notified until publish_hike is called. Returns the draft plus a photo_upload_url the member can open on their phone to add photos from their camera roll."
+        description "Create a new hike as a private draft. Nothing is public and nobody is notified until publish_hike is called. Returns the draft plus a photo_upload_url the member can open on their phone to add photos from their camera roll. Every hike needs a location before it can publish — pass place_slug (from search_places) or lat/lng."
         input_schema(
           properties: {
             name: {type: "string", description: "Trip name, e.g. 'Goat Rocks Loop'."},
@@ -169,7 +236,8 @@ module WentHiking
             nights: {type: "integer", minimum: 0, description: "Nights spent out. 0 for a day hike."},
             mileage: {type: "number", minimum: 0, description: "Round-trip distance in miles."},
             elevation: {type: "integer", minimum: 0, description: "Elevation gain in feet."},
-            lat: {type: "number", minimum: -90, maximum: 90, description: "Trailhead or trip latitude. Provide with lng or not at all."},
+            place_slug: {type: "string", description: "A place_slug from search_places. Sets the pin and the byline's location name; preferred over raw lat/lng."},
+            lat: {type: "number", minimum: -90, maximum: 90, description: "Trailhead or trip latitude. Provide with lng or not at all; place_slug is preferred."},
             lng: {type: "number", minimum: -180, maximum: 180, description: "Trailhead or trip longitude. Provide with lat or not at all."},
             source_url: {type: "string", description: "Optional reference link (trail guide, route page)."},
             report_markdown: {type: "string", description: "The trip report, in markdown. Can start empty and grow via update_hike."}
@@ -204,6 +272,15 @@ module WentHiking
           }
           apply_flag_args!(args, attributes)
 
+          if args.key?(:place_slug) && !args[:place_slug].to_s.strip.empty?
+            place = place_reference!(args[:place_slug])
+            attributes.merge!(location_attributes_for(place))
+            # The place's own coordinates fill an absent pin; explicit lat/lng
+            # still wins (a trailhead pin for a summit place is normal).
+            attributes[:lat] ||= place.latitude
+            attributes[:lng] ||= place.longitude
+          end
+
           trip = Models::Trip.create(attributes)
 
           trip_details(trip).merge(upload_link(trip))
@@ -233,6 +310,7 @@ module WentHiking
             nights: {type: "integer", minimum: 0},
             mileage: {type: "number", minimum: 0},
             elevation: {type: "integer", minimum: 0},
+            place_slug: {type: "string", description: "A place_slug from search_places; sets the pin and location name. Empty string clears the location entirely."},
             lat: {type: "number", minimum: -90, maximum: 90},
             lng: {type: "number", minimum: -180, maximum: 180},
             source_url: {type: "string"},
@@ -267,6 +345,25 @@ module WentHiking
 
             updates[:lat] = args[:lat]
             updates[:lng] = args[:lng]
+          end
+
+          if args.key?(:place_slug)
+            if args[:place_slug].to_s.strip.empty?
+              updates.merge!(cleared_location_attributes)
+            else
+              place = place_reference!(args[:place_slug])
+              updates.merge!(location_attributes_for(place))
+              updates[:lat] ||= place.latitude
+              updates[:lng] ||= place.longitude
+            end
+          elsif updates[:lat] && trip.place_id
+            # A pin moved a believable distance from its chosen place still
+            # means "same hike"; farther, and keeping the name would lie —
+            # the compose editor applies the same rule client-side.
+            place = Places::Place.where(id: trip.place_id).first
+            if place&.latitude && Places::Geometry.haversine_km(place.latitude, place.longitude, updates[:lat], updates[:lng]) > Places::PLACE_DETACH_KM
+              updates.merge!(cleared_location_attributes)
+            end
           end
 
           raise ToolError, "Nothing to update. Provide at least one field." if updates.empty?
@@ -347,6 +444,9 @@ module WentHiking
           name = trip.name.to_s.strip
           raise ToolError, "Give the hike a real name before publishing." if name.empty? || name == "Untitled Hike"
           raise ToolError, "Set hiked_at before publishing." unless trip.hiked_at
+          if trip.lat.nil? || trip.lng.nil?
+            raise ToolError, "Every hike needs a location before publishing. Call search_places and set place_slug, or provide lat/lng, via update_hike."
+          end
 
           trip.update(slug: Slug.generate(name), status: "published", published_at: Time.now)
           HikeNotificationScheduler.schedule_trip(trip)
@@ -363,6 +463,7 @@ module WentHiking
       ALL = [
         ListMyHikes,
         GetHike,
+        SearchPlaces,
         CreateHikeDraft,
         UpdateHike,
         SetPhotoCaption,

@@ -78,6 +78,15 @@ module ViewHelpers
     WentHiking::HikeFlags.all.filter_map { |flag| flag.published_for(trip[flag.key]) }
   end
 
+  # Where the hike happened, in words: the named place when one is known,
+  # otherwise the containing wilderness or forest, otherwise nothing — the
+  # byline never guesses.
+  def trip_location_label(trip)
+    label = trip.location_name.to_s.strip
+    label = trip.area_name.to_s.strip if label.empty?
+    label.empty? ? nil : label
+  end
+
   def number_label(value, unit)
     return nil if value.nil?
 
@@ -207,7 +216,11 @@ module ViewHelpers
       metadata: photo_metadata_label(photo),
       # The calendar day only: the editor dates the hike from its photos, and
       # a wall-clock date is the one thing EXIF records without a timezone.
-      taken_on: photo.taken_at&.to_date&.iso8601
+      taken_on: photo.taken_at&.to_date&.iso8601,
+      # GPS as the camera recorded it, so the editor can pin the hike from
+      # its photos the same way it dates it.
+      lat: photo.lat,
+      lng: photo.lng
     }
   end
 

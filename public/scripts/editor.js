@@ -360,7 +360,83 @@
     return {hikedAt: days[0], nights: nights};
   }
 
-  var api = {markdownIO: markdownIO, tripDatesFromPhotos: tripDatesFromPhotos};
+  /* ------------------------------------------------------------------------
+     Naming a pin after a chosen place. Also DOM-free for the Node harness.
+
+     Search picks a place, the pin drops on it, and the byline gets a name.
+     The name stays true while the pin stays near the place; drag it a
+     believable day's distance away and the name lets go rather than lie.
+     ------------------------------------------------------------------------ */
+
+  var PLACE_DETACH_KM = 20;
+  var MAX_BELIEVABLE_PIN_SPREAD_KM = 50;
+
+  function distanceKm(lat1, lng1, lat2, lng2) {
+    var toRadians = Math.PI / 180;
+    var dLat = (lat2 - lat1) * toRadians;
+    var dLng = (lng2 - lng1) * toRadians;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * toRadians) * Math.cos(lat2 * toRadians) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    // 12742 is the Earth's diameter in kilometers.
+    return 12742 * Math.asin(Math.sqrt(a));
+  }
+
+  function pinNearPlace(placeLat, placeLng, lat, lng) {
+    return distanceKm(placeLat, placeLng, lat, lng) <= PLACE_DETACH_KM;
+  }
+
+  function median(values) {
+    var sorted = values.slice().sort(function (a, b) { return a - b; });
+    var middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  // Where the photos say the hike was. Medians rather than means, so one lying
+  // GPS fix cannot drag the pin into the ocean; a strict majority within a
+  // long carry of the center, or the photos are not all from one trip and
+  // say nothing at all.
+  function tripPinFromPhotos(points) {
+    var valid = [];
+    for (var index = 0; index < (points || []).length; index += 1) {
+      var point = points[index] || {};
+      var lat = Number(point.lat);
+      var lng = Number(point.lng);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+      // A camera that "has" GPS but no fix stamps zeros; null island is not
+      // a trailhead.
+      if (Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5) continue;
+      valid.push({lat: lat, lng: lng});
+    }
+    if (!valid.length) return null;
+
+    var centerLat = median(valid.map(function (point) { return point.lat; }));
+    var centerLng = median(valid.map(function (point) { return point.lng; }));
+    var cluster = [];
+    for (var i = 0; i < valid.length; i += 1) {
+      if (distanceKm(centerLat, centerLng, valid[i].lat, valid[i].lng) <= MAX_BELIEVABLE_PIN_SPREAD_KM) cluster.push(valid[i]);
+    }
+    if (cluster.length * 2 <= valid.length) return null;
+
+    return {
+      lat: median(cluster.map(function (point) { return point.lat; })),
+      lng: median(cluster.map(function (point) { return point.lng; }))
+    };
+  }
+
+  var placesIO = {
+    distanceKm: distanceKm,
+    pinNearPlace: pinNearPlace,
+    PLACE_DETACH_KM: PLACE_DETACH_KM,
+    MAX_BELIEVABLE_PIN_SPREAD_KM: MAX_BELIEVABLE_PIN_SPREAD_KM
+  };
+
+  var api = {
+    markdownIO: markdownIO,
+    tripDatesFromPhotos: tripDatesFromPhotos,
+    tripPinFromPhotos: tripPinFromPhotos,
+    placesIO: placesIO
+  };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof window !== "undefined") window.WentHikingEditor = api;
@@ -1538,6 +1614,7 @@
         markCanvasDirty();
         syncTray();
         applyPhotoDates();
+        applyPhotoPin();
         scheduleAutosave();
         return item;
       })
@@ -1588,6 +1665,7 @@
     refreshPlaceholders();
     syncTray();
     applyPhotoDates();
+    applyPhotoPin();
     scheduleAutosave();
   }
 
@@ -1769,9 +1847,14 @@
     var toggle = state.root.querySelector("[data-compose-location-toggle]");
     if (!toggle) return;
 
+    var chip = toggle.closest("[data-compose-location]");
+    var placeName = (chip && chip.getAttribute("data-place-name")) || "";
     var lat = fieldValue("lat");
     var lng = fieldValue("lng");
-    var label = lat && lng ? formatCoordinate(lat) + ", " + formatCoordinate(lng) : "";
+    var coordinates = lat && lng ? formatCoordinate(lat) + ", " + formatCoordinate(lng) : "";
+    // The place's name is the point of the whole feature; coordinates are the
+    // fallback spelling for a pin nobody named.
+    var label = placeName || coordinates;
 
     // Rewriting the toggle's contents detaches everything inside it, including
     // the span a click is still travelling up through — which is how clicking
@@ -1780,15 +1863,18 @@
     if (toggle.getAttribute("data-location-label") === label) return;
     toggle.setAttribute("data-location-label", label);
 
-    if (label) {
+    if (placeName) {
+      toggle.textContent = placeName;
+      toggle.classList.add("is-set");
+    } else if (coordinates) {
       // Coordinates on a wide byline, a mark on a narrow one: CSS picks, so the
       // label reflows with the viewport instead of on a resize listener.
       toggle.innerHTML =
-        '<span class="compose-chip-wide">' + escapeHtml(label) + "</span>" +
+        '<span class="compose-chip-wide">' + escapeHtml(coordinates) + "</span>" +
         '<span class="compose-chip-narrow">Pin set &check;</span>';
       toggle.classList.add("is-set");
     } else {
-      toggle.textContent = "+ drop a pin";
+      toggle.textContent = "+ where";
       toggle.classList.remove("is-set");
     }
   }
@@ -1807,11 +1893,24 @@
     var done = chip.querySelector("[data-compose-popover-close]");
     var map = null;
     var marker = null;
+    var searchInput = null;
+    // The chosen place, if any: the 20 km staleness rule needs a reference
+    // point, and on a reopened draft the current pin stands in for it.
+    var place = readInitialPlace();
+
+    function readInitialPlace() {
+      var name = chip.getAttribute("data-place-name") || "";
+      var id = fieldValue("place_id");
+      var lat = Number(fieldValue("lat"));
+      var lng = Number(fieldValue("lng"));
+      if (!id || !name || fieldValue("lat") === "" || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return {id: id, name: name, lat: lat, lng: lng};
+    }
 
     function setSummary() {
       var lat = fieldValue("lat");
       var lng = fieldValue("lng");
-      summary.textContent = lat && lng ? "Pin set at " + formatCoordinate(lat) + ", " + formatCoordinate(lng) + "." : "Click the map to drop a pin.";
+      summary.textContent = lat && lng ? "Pin set at " + formatCoordinate(lat) + ", " + formatCoordinate(lng) + "." : "Type a place name, or click the map to drop a pin.";
     }
 
     // Purely the map's business. Showing an existing pin is not an edit, so
@@ -1838,24 +1937,55 @@
     function setPin(lat, lng, options) {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
+      // A pin the writer places or moves themselves ends the photo automation
+      // for good; the photos' own writes pass {auto: true} and do not.
+      if (!(options && options.auto)) claimPinByAuthor();
+
       fieldNode("lat").value = formatCoordinate(lat);
       fieldNode("lng").value = formatCoordinate(lng);
       latInput.value = formatCoordinate(lat);
       lngInput.value = formatCoordinate(lng);
 
+      // A pin dragged a believable distance from its chosen place still means
+      // "same hike"; farther than that, the name would be a lie and lets go.
+      var detachedFrom = null;
+      if (!(options && options.fromPlace) && place && !pinNearPlace(place.lat, place.lng, lat, lng)) {
+        detachedFrom = place.name;
+        clearPlace();
+      }
+
       placeMarker(lat, lng, options);
       setSummary();
+      if (detachedFrom) summary.textContent = "Pin moved away from " + detachedFrom + ", so the name was cleared.";
       refreshLocationChip();
       clearFieldError("location");
       markDirty();
       scheduleAutosave();
     }
 
-    function clearPin() {
+    function setPlace(result) {
+      place = {id: result.id, name: result.name, lat: Number(result.lat), lng: Number(result.lng)};
+      fieldNode("place_id").value = String(result.id);
+      chip.setAttribute("data-place-name", result.name);
+      setPin(place.lat, place.lng, {pan: true, fromPlace: true});
+      if (map) map.setView([place.lat, place.lng], Math.max(map.getZoom(), 12));
+    }
+
+    function clearPlace() {
+      place = null;
+      if (fieldNode("place_id")) fieldNode("place_id").value = "";
+      chip.setAttribute("data-place-name", "");
+      refreshLocationChip();
+    }
+
+    function clearPin(options) {
+      if (!(options && options.auto)) claimPinByAuthor();
+
       fieldNode("lat").value = "";
       fieldNode("lng").value = "";
       latInput.value = "";
       lngInput.value = "";
+      clearPlace();
       if (marker) {
         marker.remove();
         marker = null;
@@ -1914,6 +2044,9 @@
           map.invalidateSize({pan: false});
         }, 40);
       }
+      // Search leads: an unpinned hike opens ready to type, and the map
+      // below is the confirmation — or the fallback when no name matches.
+      if (searchInput && fieldValue("lat") === "") searchInput.focus();
     }
 
     // Dismissing by keyboard has to hand focus back to the control that opened
@@ -1933,7 +2066,9 @@
       else close();
     });
 
-    clear.addEventListener("click", clearPin);
+    clear.addEventListener("click", function () {
+      clearPin();
+    });
     done.addEventListener("click", function () {
       close({restoreFocus: true});
     });
@@ -1957,6 +2092,146 @@
     latInput.addEventListener("change", syncManual);
     lngInput.addEventListener("change", syncManual);
 
+    // Type a name instead of hunting terrain: a quiet typeahead over the
+    // gazetteer. Picking a place drops the pin and names the byline; picking
+    // an area (a forest, a wilderness) just frames the map, since an area is
+    // somewhere to look, not a spot to pin. A failed fetch renders nothing —
+    // the map underneath still works.
+    function bindPlaceSearch() {
+      var container = chip.querySelector("[data-compose-place-search]");
+      if (!container) return;
+
+      var input = container.querySelector("[data-compose-place-input]");
+      var list = container.querySelector("[data-compose-place-results]");
+      if (!input || !list) return;
+      searchInput = input;
+
+      var url = input.getAttribute("data-place-search-url") || "/api/places/search";
+      var results = [];
+      var active = -1;
+      var sequence = 0;
+      var timer = null;
+
+      function hideResults() {
+        list.hidden = true;
+        list.innerHTML = "";
+        results = [];
+        active = -1;
+        input.removeAttribute("aria-activedescendant");
+      }
+
+      function renderResults(items) {
+        results = items;
+        active = -1;
+        if (!items.length) {
+          // An honest dead end that points at the way through.
+          list.innerHTML = '<li class="compose-place-empty">No matches — click the map to drop a pin.</li>';
+          list.hidden = false;
+          return;
+        }
+
+        var html = "";
+        for (var index = 0; index < items.length; index += 1) {
+          html += '<li role="option" id="compose-place-option-' + index + '">' +
+            '<button type="button" class="compose-place-result" data-place-index="' + index + '">' +
+            "<strong>" + escapeHtml(items[index].name) + "</strong>" +
+            (items[index].subtitle ? "<span>" + escapeHtml(items[index].subtitle) + "</span>" : "") +
+            "</button></li>";
+        }
+        list.innerHTML = html;
+        list.hidden = false;
+      }
+
+      function choose(index) {
+        var result = results[index];
+        if (!result) return;
+
+        hideResults();
+        input.value = "";
+        var lat = Number(result.lat);
+        var lng = Number(result.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        if (result.id) {
+          setPlace(result);
+          summary.textContent = "Pinned at " + result.name + ". Drag to adjust.";
+        } else if (map) {
+          map.setView([lat, lng], 10);
+          summary.textContent = "Showing " + result.name + ". Click the map to drop a pin.";
+        }
+      }
+
+      function requestResults() {
+        var query = input.value.trim();
+        if (query.length < 2) {
+          hideResults();
+          return;
+        }
+
+        // The counter keeps a slow response from overwriting a newer query.
+        var mine = ++sequence;
+        fetch(url + "?q=" + encodeURIComponent(query) + "&limit=6")
+          .then(function (response) {
+            return response.ok ? response.json() : {results: []};
+          })
+          .then(function (payload) {
+            if (mine !== sequence) return;
+            renderResults((payload && payload.results) || []);
+          })
+          .catch(function () {
+            if (mine === sequence) hideResults();
+          });
+      }
+
+      function moveActive(delta) {
+        if (!results.length) return;
+
+        active = (active + delta + results.length) % results.length;
+        var buttons = list.querySelectorAll(".compose-place-result");
+        for (var index = 0; index < buttons.length; index += 1) {
+          buttons[index].classList.toggle("is-active", index === active);
+        }
+        input.setAttribute("aria-activedescendant", "compose-place-option-" + active);
+      }
+
+      input.addEventListener("input", function () {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(requestResults, 140);
+      });
+
+      // Enter and Escape stop here while results are up: the form-wide Enter
+      // blur and the document-level popover Escape both listen further along
+      // the bubble path and must not also fire.
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          moveActive(1);
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          moveActive(-1);
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          if (results.length) choose(active >= 0 ? active : 0);
+        } else if (event.key === "Escape" && !list.hidden) {
+          event.stopPropagation();
+          hideResults();
+        }
+      });
+
+      // Result presses must not blur the input before the click lands.
+      list.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+      });
+
+      list.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-place-index]");
+        if (button) choose(Number(button.getAttribute("data-place-index")));
+      });
+    }
+
+    bindPlaceSearch();
+
     // The scrim is the modal's own "outside": a click that both starts and
     // ends there dismisses, while a map pan that strays off the dialog and
     // releases over the scrim must not.
@@ -1972,6 +2247,16 @@
     });
 
     state.closeLocation = close;
+    // The photo auto-pin lives outside this closure but writes through the
+    // same setPin/clearPin, so the marker, byline, and autosave all follow.
+    state.pinControl = {
+      set: function (lat, lng, options) {
+        setPin(lat, lng, options);
+      },
+      clear: function (options) {
+        clearPin(options);
+      }
+    };
     setSummary();
   }
 
@@ -2169,6 +2454,146 @@
   }
 
   /* ------------------------------------------------------------------------
+     The map pin follows the photos.
+
+     Until the writer drops a pin themselves, the photos' EXIF GPS speaks:
+     the cluster's median becomes the pin, announced in place with an undo,
+     exactly as the date automation above. The writer touching the map — or
+     choosing a place by name — ends it for good.
+     ------------------------------------------------------------------------ */
+
+  function photoPinPoints() {
+    var points = [];
+    state.photoOrder.forEach(function (id) {
+      var item = photoItem(id);
+      if (item && item.lat != null && item.lng != null) points.push({lat: item.lat, lng: item.lng});
+    });
+    return points;
+  }
+
+  function pinClaimKey() {
+    return state.tripId ? "went-hiking-pin-claimed-" + state.tripId : null;
+  }
+
+  function rememberPinClaimed() {
+    try {
+      var key = pinClaimKey();
+      if (key) window.sessionStorage.setItem(key, "1");
+    } catch (error) {
+      /* storage can be denied; the in-page flag still holds until reload */
+    }
+  }
+
+  function pinClaimedEarlier() {
+    try {
+      var key = pinClaimKey();
+      return !!key && window.sessionStorage.getItem(key) === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Called from setPin/clearPin for every author gesture; hoisting makes it
+  // reachable from inside buildLocationChip's closure.
+  function claimPinByAuthor() {
+    var auto = state.autoPin;
+    if (!auto || !auto.active) return;
+
+    auto.active = false;
+    auto.applied = false;
+    rememberPinClaimed();
+    hidePinNote();
+  }
+
+  function pinNote() {
+    var auto = state.autoPin;
+    if (auto.note) return auto.note;
+
+    var note = element("p", "compose-photo-date-note", {"data-compose-pin-note": "", role: "status", hidden: "hidden"});
+    var text = element("span");
+    var undo = element("button", "compose-photo-date-undo", {"data-compose-pin-undo": ""});
+    undo.textContent = "Undo";
+    note.appendChild(text);
+    note.appendChild(undo);
+
+    undo.addEventListener("click", function () {
+      undoPhotoPin();
+    });
+
+    var byline = state.root.querySelector("[data-compose-byline]");
+    if (byline && byline.parentNode) byline.parentNode.insertBefore(note, byline.nextSibling);
+
+    auto.note = note;
+    return note;
+  }
+
+  function showPinNote() {
+    var note = pinNote();
+    note.firstChild.textContent = "The map pin was set from your photos.";
+    note.hidden = false;
+  }
+
+  function hidePinNote() {
+    if (state.autoPin && state.autoPin.note) state.autoPin.note.hidden = true;
+  }
+
+  // Runs whenever the set of photos changes, like applyPhotoDates above. It
+  // only ever writes over an empty pin or its own earlier suggestion.
+  function applyPhotoPin() {
+    var auto = state.autoPin;
+    if (!auto || !auto.active || state.mode === "published") return;
+    if (!state.pinControl) return;
+
+    var computed = tripPinFromPhotos(photoPinPoints());
+
+    if (!computed) {
+      // The located photos are gone again; hand the pin back, but keep
+      // listening in case the next upload can speak.
+      if (auto.applied) undoPhotoPin({keepWatching: true});
+      return;
+    }
+
+    var hasPin = fieldValue("lat") !== "" || fieldValue("lng") !== "";
+    if (hasPin && !auto.applied) return;
+    if (auto.applied &&
+      fieldValue("lat") === formatCoordinate(computed.lat) &&
+      fieldValue("lng") === formatCoordinate(computed.lng)) return;
+
+    auto.applied = true;
+    state.pinControl.set(computed.lat, computed.lng, {auto: true});
+    showPinNote();
+  }
+
+  function undoPhotoPin(options) {
+    var auto = state.autoPin;
+    var keepWatching = options && options.keepWatching;
+
+    if (auto.applied && state.pinControl) state.pinControl.clear({auto: true});
+    auto.applied = false;
+
+    if (!keepWatching) {
+      auto.active = false;
+      rememberPinClaimed();
+    }
+
+    hidePinNote();
+  }
+
+  function bindAutoPin() {
+    // An empty pin is the pin's own "untouched": unlike the date there is no
+    // server-provided default to distinguish from, so blank at load is the
+    // signal that the photos may speak.
+    state.autoPin = {
+      active: state.mode !== "published" &&
+        fieldValue("lat") === "" &&
+        fieldValue("lng") === "" &&
+        !pinClaimedEarlier(),
+      applied: false,
+      note: null
+    };
+  }
+
+  /* ------------------------------------------------------------------------
      Status, persistence, publishing.
      ------------------------------------------------------------------------ */
 
@@ -2204,6 +2629,7 @@
       source_url: fieldValue("source_url"),
       lat: fieldValue("lat"),
       lng: fieldValue("lng"),
+      place_id: fieldValue("place_id"),
       report_markdown: syncSource()
     };
 
@@ -2767,6 +3193,7 @@
     bindTitle();
     bindChips();
     bindAutoDate();
+    bindAutoPin();
     bindConditions();
     bindCanvas();
     bindTray();
@@ -2779,6 +3206,7 @@
     // Photos that arrived while this page was closed — the phone upload link —
     // get their say as soon as the editor opens.
     applyPhotoDates();
+    applyPhotoPin();
 
     setStatus(state.mode === "published" ? "published" : "draft");
 

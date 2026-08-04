@@ -461,104 +461,6 @@
 
   const formatCoordinate = (value) => Number(value).toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
 
-  const buildTripLocationPicker = (element) => {
-    const mapElement = element.querySelector("[data-location-map]");
-    const latInput = element.querySelector("[data-location-lat]");
-    const lngInput = element.querySelector("[data-location-lng]");
-    const summary = element.querySelector("[data-location-summary]");
-    const clearButton = element.querySelector("[data-location-clear]");
-    if (!mapElement || !latInput || !lngInput || typeof L === "undefined") return;
-
-    const defaultLat = Number(element.dataset.defaultLat || 45.52);
-    const defaultLng = Number(element.dataset.defaultLng || -122.67);
-    const defaultZoom = Number(element.dataset.defaultZoom || 6);
-    const parseInputCoordinate = (input) => {
-      if (!input.value.trim()) return null;
-      const parsed = Number(input.value);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
-    const initialLat = parseInputCoordinate(latInput);
-    const initialLng = parseInputCoordinate(lngInput);
-    const hasInitialPin = initialLat !== null && initialLng !== null;
-    const map = L.map(mapElement, {scrollWheelZoom: false}).setView(
-      hasInitialPin ? [initialLat, initialLng] : [defaultLat, defaultLng],
-      hasInitialPin ? 11 : defaultZoom
-    );
-    let marker = null;
-
-    L.tileLayer(element.dataset.tileUrl, tileOptions).addTo(map);
-
-    const updateSummary = (lat, lng) => {
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        summary.textContent = `Pin set at ${formatCoordinate(lat)}, ${formatCoordinate(lng)}.`;
-        clearButton.hidden = false;
-      } else if (latInput.value || lngInput.value) {
-        summary.textContent = "Set both latitude and longitude, or clear the location.";
-        clearButton.hidden = false;
-      } else {
-        summary.textContent = "Click the map to drop a pin.";
-        clearButton.hidden = true;
-      }
-    };
-
-    const setPin = (lat, lng, options = {}) => {
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        updateSummary(lat, lng);
-        return;
-      }
-
-      const point = [lat, lng];
-      if (!marker) {
-        marker = L.marker(point, {icon: tripIcon(), draggable: true}).addTo(map);
-        marker.on("dragend", () => {
-          const position = marker.getLatLng();
-          setPin(position.lat, position.lng);
-        });
-      } else {
-        marker.setLatLng(point);
-      }
-
-      latInput.value = formatCoordinate(lat);
-      lngInput.value = formatCoordinate(lng);
-      updateSummary(lat, lng);
-      if (options.pan) map.panTo(point);
-    };
-
-    const clearPin = () => {
-      if (marker) {
-        marker.remove();
-        marker = null;
-      }
-      latInput.value = "";
-      lngInput.value = "";
-      updateSummary();
-    };
-
-    map.on("click", (event) => setPin(event.latlng.lat, event.latlng.lng));
-    clearButton.addEventListener("click", clearPin);
-
-    const syncManualCoordinates = () => {
-      if (!latInput.value && !lngInput.value) {
-        clearPin();
-        return;
-      }
-
-      const lat = parseInputCoordinate(latInput);
-      const lng = parseInputCoordinate(lngInput);
-      if (lat !== null && lng !== null) {
-        setPin(lat, lng, {pan: true});
-      } else {
-        updateSummary(lat, lng);
-      }
-    };
-
-    latInput.addEventListener("input", syncManualCoordinates);
-    lngInput.addEventListener("input", syncManualCoordinates);
-
-    if (hasInitialPin) setPin(initialLat, initialLng);
-    refreshMapSize(map);
-  };
-
   const formatFileSize = (bytes) => {
     if (!Number.isFinite(bytes)) return "";
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -1322,7 +1224,6 @@
     document.querySelectorAll("[data-heart-form]").forEach(buildHeartForm);
     document.querySelectorAll("[data-profile-follow-modal]").forEach(buildProfileFollowModal);
     document.querySelectorAll("[data-markdown-editor]").forEach(buildMarkdownEditor);
-    document.querySelectorAll("[data-trip-location-picker]").forEach(buildTripLocationPicker);
     document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
     document.querySelectorAll("[data-trip-photo-workbench]").forEach(buildTripPhotoWorkbench);
     document.querySelectorAll("[data-year-select]").forEach(buildYearSelect);

@@ -1,0 +1,28 @@
+<% if @map_points.any? %>
+  <section class="map-band place-map-band" aria-label="<%= h(@place_heading) %> map">
+    <div class="map-panel site-map place-map" data-map-collection data-map-expandable data-tile-url="<%= h(leaflet_tile_url) %>" data-points="<%= h(json(@map_points)) %>"></div>
+  </section>
+<% elsif @place_lat && @place_lng %>
+  <section class="map-band place-map-band" aria-label="<%= h(@place_heading) %> map">
+    <div class="map-panel site-map place-map" data-map data-map-expandable data-lat="<%= h(@place_lat) %>" data-lng="<%= h(@place_lng) %>" data-title="<%= h(@place_heading) %>" data-tile-url="<%= h(leaflet_tile_url) %>"></div>
+  </section>
+<% end %>
+
+<section class="section place-section">
+  <div class="section-heading">
+    <h1><%= h(@place_heading) %></h1>
+    <% if @pagination && @pagination.total.positive? %>
+      <span class="meta"><%= h("#{format_number(@pagination.total)} #{(@pagination.total == 1) ? "hike" : "hikes"} #{@place_preposition} #{@place_heading}") %></span>
+    <% end %>
+  </div>
+  <% unless @place_subtitle.to_s.empty? %>
+    <p class="kicker inline-kicker place-kicker"><span><%= h(@place_subtitle) %></span></p>
+  <% end %>
+  <%= render("hikes/trip_list", locals: {trips: @trips, empty_message: "No hikes #{@place_preposition} #{@place_heading} yet. Be the first to report one.", heading_level: "h2", show_author: true}) %>
+  <% if @pagination %>
+    <%= render("shared/pager", locals: {pagination: @pagination, path: @pager[:path], params: @pager[:params], label: @pager[:label], noun: "hike"}) %>
+  <% end %>
+  <% if @place_attribution %>
+    <p class="meta place-attribution"><%= h(@place_attribution) %></p>
+  <% end %>
+</section>
