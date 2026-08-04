@@ -29,12 +29,13 @@ module PageRoutes
       @archive_stats = archive_stats
       @leaderboards = leaderboards_for(Date.today.year)
       @newest_members = WentHiking::Models::Account.reverse_order(:created_at).limit(8).all
-      @title = "Went Hiking"
+      @title = "Went Hiking — Hiking Trip Reports, Photos, and Maps"
       view("pages/home")
     end
 
     r.get "about" do
       @title = "About"
+      @description = "Went Hiking is a quiet place to record trips into the wilderness and discover new ones: hikes, photos, maps, and stories since 2010."
       view("pages/about")
     end
 
@@ -65,6 +66,9 @@ module PageRoutes
       @trips, @pagination = search_trips(@query, request.params["page"])
       @pager = {path: "/search", params: {"q" => @query}, label: "Search results pages"}
       @title = @query.empty? ? "Search Hikes" : "Search: #{@query}"
+      # Every query mints a distinct URL over the same archive; none of those
+      # spellings belongs in an index.
+      @noindex = true
       @kicker = "Search"
       @heading = @query.empty? ? "Search Hikes" : "Search Results"
       view("hikes/index")
@@ -147,6 +151,7 @@ module PageRoutes
   def retired_feature(feature, title: nil, body: nil)
     default_title, default_body = RETIRED_FEATURES.fetch(feature, ["This trail is closed for now.", "We simplified this corner of Went Hiking so hikes, photos, maps, and stories can move faster."])
     response.status = 410
+    @noindex = true
     @title = "Trail Closed"
     @retired_feature_title = title || default_title
     @retired_feature_body = body || default_body

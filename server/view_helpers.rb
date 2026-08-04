@@ -443,11 +443,33 @@ module ViewHelpers
     absolute_url(query.empty? ? request.path : "#{request.path}?#{query}")
   end
 
+  # The browser tab and the search result both need the site name, but a page
+  # that already says it (the home page) should not stutter.
+  def page_title
+    title = @title.to_s.strip
+    return "Went Hiking" if title.empty?
+
+    title.include?("Went Hiking") ? title : "#{title} · Went Hiking"
+  end
+
   def page_description
     return @description if @description
 
     excerpt = trip_description_excerpt
     excerpt || DEFAULT_DESCRIPTION
+  end
+
+  def social_image_alt
+    photo = social_image_photo
+    return photo.caption if photo && !photo.caption.to_s.empty?
+
+    @trip ? "Photo from #{@trip.name}" : "Went Hiking"
+  end
+
+  # The default card is a known 1200x630; a trip photo answers for itself.
+  def social_image_dimensions
+    photo = social_image_photo
+    photo ? photo_dimensions(photo, "large") : [1200, 630]
   end
 
   def social_image_url

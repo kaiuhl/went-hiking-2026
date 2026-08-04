@@ -3,20 +3,34 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><%= h(@title || "Went Hiking") %></title>
+    <title><%= h(page_title) %></title>
     <meta name="description" content="<%= h(page_description) %>">
+    <% if @noindex %>
+      <meta name="robots" content="noindex">
+    <% end %>
     <meta name="csrf-token" content="<%= h(csrf_token) %>">
     <meta name="theme-color" content="#f7f7f4">
     <meta property="og:site_name" content="Went Hiking">
+    <meta property="og:locale" content="en_US">
     <meta property="og:type" content="<%= h(@trip ? "article" : "website") %>">
-    <meta property="og:title" content="<%= h(@title || "Went Hiking") %>">
+    <meta property="og:title" content="<%= h(page_title) %>">
     <meta property="og:description" content="<%= h(page_description) %>">
     <meta property="og:url" content="<%= h(canonical_url) %>">
     <meta property="og:image" content="<%= h(social_image_url) %>">
+    <meta property="og:image:alt" content="<%= h(social_image_alt) %>">
+    <% if (social_dimensions = social_image_dimensions) %>
+      <meta property="og:image:width" content="<%= h(social_dimensions[0]) %>">
+      <meta property="og:image:height" content="<%= h(social_dimensions[1]) %>">
+    <% end %>
+    <% if @trip && @trip.published_at %>
+      <meta property="article:published_time" content="<%= h(@trip.published_at.iso8601) %>">
+      <meta property="article:author" content="<%= h(@trip.account.name) %>">
+    <% end %>
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="<%= h(@title || "Went Hiking") %>">
+    <meta name="twitter:title" content="<%= h(page_title) %>">
     <meta name="twitter:description" content="<%= h(page_description) %>">
     <meta name="twitter:image" content="<%= h(social_image_url) %>">
+    <meta name="twitter:image:alt" content="<%= h(social_image_alt) %>">
     <link rel="canonical" href="<%= h(canonical_url) %>">
     <link rel="icon" href="<%= h(static_asset_path("/favicon.ico")) %>" sizes="any">
     <%# Deliberately unversioned: site.css asks for this exact URL from an

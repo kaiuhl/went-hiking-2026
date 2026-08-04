@@ -21,6 +21,7 @@ module HikeRoutes
           @trips, @pagination = paginated_trip_list(WentHiking::Models::Trip.published, request.params["page"])
           @pager = {path: "/hikes", params: {}, label: "Hike archive pages"}
           @title = "Recent Hikes"
+          @description = "Browse #{@pagination.total} hiking and backpacking trip reports — routes, mileage, photos, and stories from the trail since 2010."
           view("hikes/index")
         end
 
@@ -110,6 +111,7 @@ module HikeRoutes
 
         @photos = trip_photos(@trip)
         @title = "Add photos to #{@trip.name}"
+        @noindex = true
         view("photos/mobile_upload")
       end
 
@@ -203,6 +205,7 @@ module HikeRoutes
         redirect_unless_canonical("#{@trip.public_path}/photos")
         @photos = trip_photos(@trip)
         @title = "Photos from #{@trip.name}"
+        @description = "#{@photos.size} #{(@photos.size == 1) ? "photo" : "photos"} from #{@trip.name}, hiked by #{@trip.account.name} on Went Hiking."
         view("photos/index")
       end
 

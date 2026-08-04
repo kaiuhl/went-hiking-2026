@@ -60,6 +60,36 @@ RSpec.describe "SEO surface" do
     end
   end
 
+  describe "titles and meta" do
+    it "suffixes page titles with the site name" do
+      get "/hikes"
+
+      expect(last_response.body).to include("<title>Recent Hikes · Went Hiking</title>")
+    end
+
+    it "does not stutter the site name on the home page" do
+      get "/"
+
+      expect(last_response.body).to include("<title>Went Hiking — Hiking Trip Reports, Photos, and Maps</title>")
+    end
+
+    it "marks search results noindex" do
+      get "/search", {"q" => "lake"}
+
+      expect(last_response.body).to include(%(<meta name="robots" content="noindex">))
+    end
+
+    it "leaves hike pages indexable with article metadata" do
+      trip = create_trip(create_account)
+
+      get trip.public_path
+
+      expect(last_response.body).not_to include(%(content="noindex"))
+      expect(last_response.body).to include(%(property="article:published_time"))
+      expect(last_response.body).to include(%(property="og:image:width"))
+    end
+  end
+
   describe "canonical link tag" do
     it "keeps the page parameter so page two does not claim to be page one" do
       account_id = create_account

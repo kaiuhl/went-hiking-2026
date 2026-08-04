@@ -17,6 +17,7 @@ module PeopleRoutes
         @accounts, @pagination = members_page(request.params["page"])
         @pager = {path: "/people", params: {}, label: "Member pages"}
         @title = "Hikers"
+        @description = "The hikers of Went Hiking and the trips they have logged — profiles, mileage, and trip reports from the trail."
         view("people/index")
       end
 
@@ -85,6 +86,12 @@ module PeopleRoutes
     @other_years = @trip_years - [@year]
     @profile_drafts = owned_drafts(@account)
     @title = @account.name
+    from = @account.location.to_s.strip
+    @description = [
+      "Hikes by #{@account.name}#{" from #{from}" unless from.empty?} on Went Hiking:",
+      "#{@year_totals[:trips]} #{(@year_totals[:trips] == 1) ? "trip" : "trips"} in #{@year},",
+      "with trip reports, photos, and maps."
+    ].join(" ")
   end
 
   # A draft is half a thought, and half a thought is not publishing: the list

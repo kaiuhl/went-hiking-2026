@@ -333,6 +333,7 @@ class RodaApp < Roda
 
   def not_found
     @title = "Not Found"
+    @noindex = true
     request.halt [404, {"Content-Type" => "text/html"}, [view("pages/not_found")]]
   end
 
