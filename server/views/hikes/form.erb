@@ -26,7 +26,7 @@
   nights_error = error_for.call("nights")
   mileage_error = error_for.call("mileage")
   elevation_error = error_for.call("elevation")
-  location_error = error_for.call("latitude", "longitude", "map pin")
+  location_error = error_for.call("latitude", "longitude", "map pin", "needs a location")
   url_error = error_for.call("reference url")
   claimed = [name_error, date_error, nights_error, mileage_error, elevation_error, location_error, url_error].compact
   other_errors = errors - claimed
@@ -216,7 +216,7 @@
           aria-haspopup="dialog"
           aria-expanded="false"
           data-compose-location-toggle
-        ><%= values[:location_name].to_s.empty? ? (has_location ? "Pin set &check;" : "+ where") : h(values[:location_name]) %></button>
+        ><%= values[:location_name].to_s.empty? ? (has_location ? "Pin set &check;" : "+ location") : h(values[:location_name]) %></button>
         <input type="hidden" name="lat" value="<%= h(values[:lat]) %>" data-compose-field="lat">
         <input type="hidden" name="lng" value="<%= h(values[:lng]) %>" data-compose-field="lng">
         <input type="hidden" name="place_id" value="<%= h(values[:place_id]) %>" data-compose-field="place_id">
@@ -249,10 +249,14 @@
             ></div>
             <p class="compose-popover-hint" data-compose-location-summary>Type a place name, or click the map to drop a pin.</p>
             <div class="compose-popover-row">
-              <label class="compose-popover-label" for="compose-lat">Lat</label>
-              <input id="compose-lat" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" autocomplete="off" data-compose-lat>
-              <label class="compose-popover-label" for="compose-lng">Lng</label>
-              <input id="compose-lng" class="compose-popover-input" type="text" inputmode="decimal" value="<%= h(values[:lng]) %>" autocomplete="off" data-compose-lng>
+              <span class="compose-coord">
+                <label class="compose-popover-label" for="compose-lat">Lat</label>
+                <input id="compose-lat" class="compose-coord-input" type="text" inputmode="decimal" value="<%= h(values[:lat]) %>" placeholder="&mdash;" autocomplete="off" data-compose-lat>
+              </span>
+              <span class="compose-coord">
+                <label class="compose-popover-label" for="compose-lng">Lng</label>
+                <input id="compose-lng" class="compose-coord-input" type="text" inputmode="decimal" value="<%= h(values[:lng]) %>" placeholder="&mdash;" autocomplete="off" data-compose-lng>
+              </span>
             </div>
             <div class="compose-popover-actions">
               <button class="compose-popover-clear" type="button" data-compose-location-clear>Clear pin</button>

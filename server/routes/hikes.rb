@@ -532,7 +532,7 @@ module HikeRoutes
     # required here; hikes published before the rule stay editable as-is.
     publishing = trip.nil? || trip.draft?
     if publishing && (values[:lat].empty? || values[:lng].empty?)
-      errors << "Every hike needs a place. Search for it or drop a pin on the map."
+      errors << "Every hike needs a location. Search for it or drop a pin on the map."
     end
 
     attributes = {

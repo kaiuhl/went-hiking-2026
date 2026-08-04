@@ -1806,14 +1806,41 @@
     return node ? node.value.trim() : "";
   }
 
+  // The size attribute guesses at average character width and always guesses
+  // wide, which reads as uneven gaps along the byline. A hidden span wearing
+  // the input's own classes gives the true rendered width instead.
+  function chipTextWidth(input, content) {
+    var span = state.chipMeasure;
+    if (!span) {
+      span = document.createElement("span");
+      span.setAttribute("aria-hidden", "true");
+      state.form.appendChild(span);
+      state.chipMeasure = span;
+    }
+    span.className = input.className + " compose-chip-measure";
+    span.textContent = content;
+    return Math.ceil(span.getBoundingClientRect().width);
+  }
+
   function autoSizeChip(input) {
     if (input.type === "date") return;
 
     var filled = input.value.trim() !== "";
     var content = input.value || input.getAttribute("placeholder") || "";
-    var length = Math.max(String(content).length, 3);
-    input.size = Math.min(length + 1, input.classList.contains("compose-chip-url") ? 32 : 12);
+    // is-set switches the URL chip out of kicker typography, so it has to be
+    // decided before the measuring span copies the class list.
     input.classList.toggle("is-set", filled);
+
+    // A page that has not been laid out yet (hidden tab, prerender) measures
+    // everything at zero; the character guess holds the line until the
+    // first-paint pass in bindChips gets a real answer.
+    var measured = chipTextWidth(input, content);
+    if (measured > 0) {
+      input.style.width = measured + 2 + "px";
+    } else {
+      input.style.width = "";
+      input.size = Math.min(Math.max(content.length, 3) + 1, input.classList.contains("compose-chip-url") ? 32 : 12);
+    }
 
     var chip = input.closest("[data-compose-chip]");
     if (chip) chip.classList.toggle("is-set", filled);
@@ -1874,7 +1901,7 @@
         '<span class="compose-chip-narrow">Pin set &check;</span>';
       toggle.classList.add("is-set");
     } else {
-      toggle.textContent = "+ where";
+      toggle.textContent = "+ location";
       toggle.classList.remove("is-set");
     }
   }
@@ -2846,6 +2873,22 @@
     }
 
     refreshChips();
+
+    // Chips measured against the fallback font are the wrong width once Inter
+    // arrives; one more pass after the swap settles them.
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(refreshChips);
+    }
+
+    // rAF holds off while the page is hidden and fires on the first painted
+    // frame, which is the earliest moment measuring can succeed.
+    if (state.form.getBoundingClientRect().width === 0) {
+      var waitForLayout = function () {
+        if (state.form.getBoundingClientRect().width > 0) return refreshChips();
+        window.requestAnimationFrame(waitForLayout);
+      };
+      window.requestAnimationFrame(waitForLayout);
+    }
   }
 
   function bindConditions() {

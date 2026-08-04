@@ -260,6 +260,7 @@
 
 .compose-chip-input {
   width: auto;
+  max-width: 100%;
   border: 0;
   border-bottom: var(--border) dashed transparent;
   background: transparent;
@@ -312,6 +313,11 @@
 .compose-chip-url.is-set {
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* A long URL gives up its tail rather than the row. */
+.compose-chip-url {
+  max-width: 18em;
 }
 
 .compose-chip-unit {
@@ -368,6 +374,14 @@
 
 .compose-chip-narrow {
   display: none;
+}
+
+/* Off-flow twin the chips are measured against. It wears each chip's own
+   classes, so its metrics are the input's metrics. */
+.compose-chip-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
 }
 
 .compose-error {
@@ -549,10 +563,13 @@ body.compose-location-open {
   text-transform: uppercase;
 }
 
+/* Coordinates are a caption under the map, not a form: label then number on
+   the same quiet underline the byline chips wear. */
 .compose-popover-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--space-4);
 }
 
 .compose-popover-label {
@@ -560,6 +577,38 @@ body.compose-location-open {
   font-size: var(--text-3xs);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
+}
+
+.compose-coord {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.compose-coord-input {
+  width: 8em;
+  border: 0;
+  border-bottom: var(--border) dashed var(--line);
+  background: transparent;
+  padding: 2px 0;
+  color: var(--ink-soft);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+}
+
+.compose-coord-input::placeholder {
+  color: var(--faint);
+}
+
+.compose-coord-input:hover {
+  border-bottom-color: var(--muted);
+}
+
+.compose-coord-input:focus {
+  outline: 0;
+  border-bottom-color: var(--ink);
+  color: var(--ink);
 }
 
 .compose-popover-input {

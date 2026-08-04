@@ -254,7 +254,7 @@ RSpec.describe "Place search and hike locations" do
 
       post "/hikes", {"name" => "Pinless", "hiked_at" => "2026-07-04", "nights" => "0"}
       expect(last_response.status).to eq(422)
-      expect(last_response.body).to include("Every hike needs a place")
+      expect(last_response.body).to include("Every hike needs a location")
 
       draft_id = create_trip(account_id: account_id, name: "Pin free draft", status: "draft")
       post "/hikes/#{draft_id}-pin-free-draft", {"name" => "Pin free draft", "hiked_at" => "2026-07-04", "nights" => "0"}
