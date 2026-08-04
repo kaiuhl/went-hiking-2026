@@ -40,7 +40,9 @@ module PeopleRoutes
       end
 
       r.get String do |person_slug|
-        setup_profile(account_from_slug(person_slug))
+        account = account_from_slug(person_slug)
+        redirect_unless_canonical(account.public_path)
+        setup_profile(account)
         @follow_notice = "Check your email to confirm this follow." if request.params["follow"] == "check-email"
         view("people/show")
       end

@@ -44,7 +44,7 @@ module PageRoutes
     end
 
     r.get "privacy_policy" do
-      redirect "/privacy"
+      redirect "/privacy", 301
     end
 
     r.get "privacy" do
@@ -53,11 +53,11 @@ module PageRoutes
     end
 
     r.get "donate" do
-      redirect "/about"
+      redirect "/about", 301
     end
 
     r.get "advanced_search" do
-      redirect "/search"
+      redirect "/search", 301
     end
 
     r.get "search" do

@@ -1173,7 +1173,7 @@ RSpec.describe RodaApp do
 
     get "/hikes/99"
 
-    expect(last_response.status).to eq(302)
+    expect(last_response.status).to eq(301)
     expect(last_response.location).to include("/hikes/")
   end
 end

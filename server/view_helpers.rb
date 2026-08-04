@@ -430,8 +430,17 @@ module ViewHelpers
     @needs_map == true
   end
 
+  # Pagination and the profile year picker produce genuinely different pages,
+  # so those two parameters survive into the canonical URL; every other query
+  # string (search terms, tracking junk) canonicalizes back to the bare path.
+  # Page one keeps the bare path, matching the URLs the pager itself emits.
+  CANONICAL_PARAMS = %w[year page].freeze
+
   def canonical_url
-    absolute_url(request.path)
+    params = request.params.slice(*CANONICAL_PARAMS).reject { |_key, value| value.to_s.empty? }
+    params.delete("page") if params["page"].to_i <= 1
+    query = CANONICAL_PARAMS.filter_map { |key| "#{key}=#{CGI.escape(params[key].to_s)}" if params.key?(key) }.join("&")
+    absolute_url(query.empty? ? request.path : "#{request.path}?#{query}")
   end
 
   def page_description

@@ -79,13 +79,14 @@ module HikeRoutes
       r.get Integer do |legacy_id|
         trip = WentHiking::Models::Trip.published.where(legacy_trip_id: legacy_id).first || WentHiking::Models::Trip.published.where(id: legacy_id).first
         not_found unless trip
-        redirect trip.public_path
+        redirect trip.public_path, 301
       end
 
       r.get String, "photos", Integer do |trip_slug, photo_id|
         @trip = trip_from_slug(trip_slug)
         @photo = @trip.photos_dataset.where(id: photo_id).first || @trip.photos_dataset.where(legacy_photo_id: photo_id).first
         not_found unless @photo
+        redirect_unless_canonical(@photo.public_path)
         @title = "#{@trip.name} photo"
         view("photos/show")
       end
@@ -199,6 +200,7 @@ module HikeRoutes
 
       r.get String, "photos" do |trip_slug|
         @trip = trip_from_slug(trip_slug)
+        redirect_unless_canonical("#{@trip.public_path}/photos")
         @photos = trip_photos(@trip)
         @title = "Photos from #{@trip.name}"
         view("photos/index")
@@ -311,6 +313,7 @@ module HikeRoutes
 
       r.get String do |trip_slug|
         @trip = trip_from_slug(trip_slug)
+        redirect_unless_canonical(@trip.public_path)
         @account = @trip.account
         @photos = trip_photos(@trip)
         @comments = @trip.comments_dataset.order(:created_at, :id).all
@@ -327,22 +330,32 @@ module HikeRoutes
       r.get Integer do |legacy_trip_id|
         trip = account.trips_dataset.published.where(legacy_trip_id: legacy_trip_id).first || WentHiking::Models::Trip.published.where(legacy_trip_id: legacy_trip_id).first
         not_found unless trip
-        redirect trip.public_path
+        redirect trip.public_path, 301
       end
 
       r.get do
-        redirect account.public_path
+        redirect account.public_path, 301
       end
     end
 
     r.on "with" do
       r.get true do
-        redirect "/people/#{r.remaining_path.to_s.sub(%r{\A/+}, "")}"
+        redirect "/people/#{r.remaining_path.to_s.sub(%r{\A/+}, "")}", 301
       end
     end
   end
 
   private
+
+  # Every spelling of a slug with the right ID prefix resolves — including the
+  # legacy-ID spelling and any stale slug from before a rename — so the wrong
+  # spellings permanently redirect rather than serving a duplicate of the page.
+  def redirect_unless_canonical(canonical_path)
+    return if request.path == canonical_path
+
+    query = request.query_string.to_s
+    redirect(query.empty? ? canonical_path : "#{canonical_path}?#{query}", 301)
+  end
 
   def create_draft(account)
     now = Time.now
