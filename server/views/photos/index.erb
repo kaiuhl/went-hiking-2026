@@ -15,7 +15,7 @@
     <div class="photo-gallery" data-photo-lightbox-gallery data-photo-lightbox-items="<%= h(json(photo_lightbox_items(@photos))) %>">
       <% @photos.each_with_index do |photo, index| %>
         <a href="<%= h(photo.public_path) %>" data-photo-lightbox-trigger data-photo-index="<%= h(index) %>">
-          <img src="<%= h(image_url(photo, "large")) %>"<%= photo_size_attributes(photo) %> alt="<%= h(photo.caption) %>" loading="lazy">
+          <img src="<%= h(image_url(photo, "large")) %>"<%= photo_size_attributes(photo) %> alt="<%= h(photo_alt(photo)) %>" <%= (index == 0) ? 'fetchpriority="high"' : 'loading="lazy"' %>>
           <% if photo.caption %>
             <span><%= h(photo.caption) %></span>
           <% end %>

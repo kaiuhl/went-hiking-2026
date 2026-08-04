@@ -167,6 +167,16 @@ module ViewHelpers
     ].compact.reject(&:empty?).join(" · ")
   end
 
+  # A caption when the author wrote one; the hike's name when they did not, so
+  # no photo ships an empty alt attribute.
+  def photo_alt(photo)
+    caption = photo.caption.to_s.strip
+    return caption unless caption.empty?
+
+    trip_name = photo.trip&.name.to_s.strip
+    trip_name.empty? ? "Trail photo" : "Photo from #{trip_name}"
+  end
+
   def photo_lightbox_items(photos)
     photos.map do |photo|
       caption = photo.caption.to_s
@@ -175,7 +185,7 @@ module ViewHelpers
         href: photo.public_path,
         full: image_url(photo, "original"),
         thumb: image_url(photo, "large"),
-        alt: caption,
+        alt: photo_alt(photo),
         caption: caption,
         metadata: photo_metadata_label(photo)
       }
@@ -250,7 +260,7 @@ module ViewHelpers
       photo = photos_by_id[photo_id]
       if photo && !inline_photo_ids.include?(photo_id)
         inline_photo_ids << photo_id
-        html << trip_inline_photo_figure(photo, index: photo_indexes[photo_id])
+        html << trip_inline_photo_figure(photo, index: photo_indexes[photo_id], eager: inline_photo_ids.size == 1)
       else
         html << h(match[0])
       end
@@ -262,7 +272,16 @@ module ViewHelpers
     TripReportRender.new(html: html, inline_photo_ids: inline_photo_ids)
   end
 
-  def trip_inline_photo_figure(photo, index: nil)
+  # The first inline photo is usually the largest thing above the fold, which
+  # makes it the LCP candidate: it loads eagerly at high priority and hands the
+  # layout a preload hint, while everything below it stays lazy.
+  def trip_inline_photo_figure(photo, index: nil, eager: false)
+    if eager
+      @lcp_image_url ||= image_url(photo, "large")
+      loading_attrs = %( fetchpriority="high")
+    else
+      loading_attrs = %( loading="lazy")
+    end
     caption = photo.caption.to_s
     metadata = photo_metadata_label(photo)
     figcaption = if caption.empty? && metadata.empty?
@@ -280,7 +299,7 @@ module ViewHelpers
     <<~HTML
       <figure class="trip-inline-photo">
         <a href="#{h(image_url(photo, "original"))}"#{lightbox_attrs}>
-          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(caption)}" loading="lazy">
+          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(photo_alt(photo))}"#{loading_attrs}>
         </a>
         #{figcaption}
       </figure>
@@ -296,7 +315,7 @@ module ViewHelpers
       index = photo_indexes[photo.id] || 0
       <<~HTML
         <a href="#{h(photo.public_path)}" data-photo-lightbox-trigger data-photo-index="#{h(index)}">
-          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(photo.caption)}" loading="lazy">
+          <img src="#{h(image_url(photo, "large"))}"#{photo_size_attributes(photo)} alt="#{h(photo_alt(photo))}" loading="lazy">
         </a>
       HTML
     end

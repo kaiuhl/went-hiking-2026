@@ -40,6 +40,11 @@
         @font-face rule that cannot be templated, and a preload that does not
         match it byte for byte downloads the font a second time. %>
     <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+    <%# Set by the view when its largest above-the-fold image is known — the
+        layout renders after the view in Roda, so the hint is ready by now. %>
+    <% if @lcp_image_url %>
+      <link rel="preload" href="<%= h(@lcp_image_url) %>" as="image" fetchpriority="high">
+    <% end %>
     <link rel="stylesheet" href="<%= h(static_asset_path("/styles/site.css")) %>">
     <% if @needs_editor %>
       <link rel="stylesheet" href="<%= h(static_asset_path("/styles/editor.css")) %>">
