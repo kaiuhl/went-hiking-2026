@@ -483,6 +483,25 @@ module ViewHelpers
     "#{WentHiking.public_base_url.to_s.sub(%r{/+\z}, "")}/#{path.to_s.sub(%r{\A/+}, "")}"
   end
 
+  # One JSON-LD block per page type that has an entity worth describing: the
+  # trip page is an Article at a Place, a profile is a ProfilePage, and the
+  # home page declares the site and its search box. Keyed off the canonical
+  # path so a photo page (which also holds @trip) does not claim to be the
+  # trip's article at a second URL.
+  def structured_data
+    if @trip&.published? && request.path == @trip.public_path
+      trip_structured_data(@trip)
+    elsif @account && request.path == @account.public_path
+      profile_structured_data(@account)
+    elsif request.path == "/"
+      website_structured_data
+    end
+  end
+
+  def structured_data_json(data)
+    JSON.generate(data, script_safe: true)
+  end
+
   def direct_photo_upload_available?
     WentHiking::Storage.current.direct_upload?
   rescue
@@ -510,6 +529,70 @@ module ViewHelpers
   end
 
   private
+
+  def trip_structured_data(trip)
+    data = {
+      "@context" => "https://schema.org",
+      "@type" => "Article",
+      "headline" => trip.name,
+      "url" => absolute_url(trip.public_path),
+      "mainEntityOfPage" => absolute_url(trip.public_path),
+      "description" => page_description,
+      "author" => {
+        "@type" => "Person",
+        "name" => trip.account.name,
+        "url" => absolute_url(trip.account.public_path)
+      },
+      "publisher" => {"@type" => "Organization", "name" => "Went Hiking", "url" => absolute_url("/")}
+    }
+    data["datePublished"] = trip.published_at.iso8601 if trip.published_at
+    data["dateModified"] = trip.updated_at.iso8601 if trip.updated_at
+
+    images = (@photos || []).first(3).map { |photo| image_url(photo, "large") }.grep(%r{\Ahttps?://})
+    data["image"] = images unless images.empty?
+
+    if trip.lat && trip.lng
+      data["contentLocation"] = {
+        "@type" => "Place",
+        "name" => trip.name,
+        "geo" => {"@type" => "GeoCoordinates", "latitude" => trip.lat.to_f, "longitude" => trip.lng.to_f}
+      }
+    end
+
+    data
+  end
+
+  def profile_structured_data(account)
+    person = {
+      "@type" => "Person",
+      "name" => account.name,
+      "url" => absolute_url(account.public_path)
+    }
+    location = account.location.to_s.strip
+    person["homeLocation"] = {"@type" => "Place", "name" => location} unless location.empty?
+    avatar = avatar_url(account, "medium")
+    person["image"] = avatar if avatar
+
+    {
+      "@context" => "https://schema.org",
+      "@type" => "ProfilePage",
+      "mainEntity" => person
+    }
+  end
+
+  def website_structured_data
+    {
+      "@context" => "https://schema.org",
+      "@type" => "WebSite",
+      "name" => "Went Hiking",
+      "url" => absolute_url("/"),
+      "potentialAction" => {
+        "@type" => "SearchAction",
+        "target" => {"@type" => "EntryPoint", "urlTemplate" => "#{absolute_url("/search")}?q={search_term_string}"},
+        "query-input" => "required name=search_term_string"
+      }
+    }
+  end
 
   def social_image_photo
     return @photo if @photo

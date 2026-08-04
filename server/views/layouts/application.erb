@@ -32,6 +32,9 @@
     <meta name="twitter:image" content="<%= h(social_image_url) %>">
     <meta name="twitter:image:alt" content="<%= h(social_image_alt) %>">
     <link rel="canonical" href="<%= h(canonical_url) %>">
+    <% if (schema = structured_data) %>
+      <script type="application/ld+json"><%= structured_data_json(schema) %></script>
+    <% end %>
     <link rel="icon" href="<%= h(static_asset_path("/favicon.ico")) %>" sizes="any">
     <%# Deliberately unversioned: site.css asks for this exact URL from an
         @font-face rule that cannot be templated, and a preload that does not

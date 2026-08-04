@@ -90,6 +90,40 @@ RSpec.describe "SEO surface" do
     end
   end
 
+  describe "structured data" do
+    it "marks a hike up as an Article at a Place" do
+      trip = create_trip(create_account, lat: 45.3, lng: -121.7)
+
+      get trip.public_path
+
+      expect(last_response.body).to include(%(<script type="application/ld+json">))
+      json = last_response.body[%r{<script type="application/ld\+json">(.*?)</script>}m, 1]
+      data = JSON.parse(json)
+      expect(data["@type"]).to eq("Article")
+      expect(data["headline"]).to eq("Burnt Lake")
+      expect(data["author"]).to include("name" => "Kai")
+      expect(data["contentLocation"]["geo"]).to include("latitude" => 45.3, "longitude" => -121.7)
+    end
+
+    it "marks a profile up as a ProfilePage" do
+      account = WentHiking::Models::Account[create_account]
+
+      get account.public_path
+
+      data = JSON.parse(last_response.body[%r{<script type="application/ld\+json">(.*?)</script>}m, 1])
+      expect(data["@type"]).to eq("ProfilePage")
+      expect(data["mainEntity"]).to include("name" => "Kai")
+    end
+
+    it "declares the site and its search action on the home page" do
+      get "/"
+
+      data = JSON.parse(last_response.body[%r{<script type="application/ld\+json">(.*?)</script>}m, 1])
+      expect(data["@type"]).to eq("WebSite")
+      expect(data.dig("potentialAction", "target", "urlTemplate")).to include("/search?q=")
+    end
+  end
+
   describe "canonical link tag" do
     it "keeps the page parameter so page two does not claim to be page one" do
       account_id = create_account
