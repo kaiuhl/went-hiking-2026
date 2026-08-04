@@ -321,6 +321,14 @@ module HikeRoutes
         @photos = trip_photos(@trip)
         @comments = @trip.comments_dataset.order(:created_at, :id).all
         @hearts = @trip.hearts_dataset.all
+        # A few doors deeper into the archive: the author's other recent hikes,
+        # so no trip page is a dead end for a reader or a crawler.
+        @more_trips = @account.trips_dataset
+          .published
+          .exclude(id: @trip.id)
+          .reverse_order(:hiked_at, :id)
+          .limit(4)
+          .all
         @title = @trip.name
         view("hikes/show")
       end

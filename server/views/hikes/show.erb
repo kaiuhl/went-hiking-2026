@@ -68,6 +68,20 @@
           <% end %>
         </section>
       <% end %>
+
+      <% if @more_trips && !@more_trips.empty? %>
+        <nav class="trip-more" aria-label="More hikes by <%= h(@account.name) %>">
+          <h2 class="section-caption">More from <%= h(first_name(@account)) %></h2>
+          <ul class="trip-more-list">
+            <% @more_trips.each do |more_trip| %>
+              <li>
+                <a href="<%= h(more_trip.public_path) %>"><%= h(more_trip.name) %></a>
+                <span class="meta"><%= h(trip_date_label(more_trip)) %></span>
+              </li>
+            <% end %>
+          </ul>
+        </nav>
+      <% end %>
     </div>
   </div>
 </article>
