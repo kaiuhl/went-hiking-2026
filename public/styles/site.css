@@ -2273,6 +2273,97 @@ body.photo-lightbox-open {
   gap: var(--space-7);
 }
 
+/* The profile page's avatar ring, editable in place. The whole circle is a
+   label for the hidden file input, so it needs the input's focus ring too. */
+.account-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  max-width: var(--measure);
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border: var(--border) solid var(--line);
+  border-radius: var(--radius-round);
+  background: var(--paper);
+  padding: 4px;
+  cursor: pointer;
+  text-transform: none;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-round);
+  object-fit: cover;
+}
+
+.account-avatar:hover img {
+  opacity: 0.78;
+}
+
+.account-avatar span {
+  color: var(--muted);
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.account-avatar-input:focus-visible ~ .account-avatar {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-offset);
+}
+
+.account-avatar-meta {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.account-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-5);
+}
+
+.account-avatar-change,
+.account-avatar-remove {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--text-3xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  /* Controls wrap as whole words or not at all — "CHANGE / PHOTO" on two
+     lines reads as two controls. */
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.account-avatar-remove {
+  color: var(--muted);
+}
+
+.account-avatar-change:hover,
+.account-avatar-change:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.32em;
+}
+
+.account-avatar-remove:hover,
+.account-avatar-remove:focus-visible {
+  background: transparent;
+  color: var(--danger);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

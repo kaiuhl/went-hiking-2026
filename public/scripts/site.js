@@ -1264,6 +1264,44 @@
     select.addEventListener("change", () => form.submit());
   };
 
+  // The account page's avatar picker works without any of this — the circle is
+  // a label for the file input. The script adds the honest middle state:
+  // choosing a photo shows it in the circle right away, with a note that Save
+  // is what makes it stick. Remove hides because it no longer describes what
+  // Save will do.
+  const buildAvatarField = (field) => {
+    const input = field.querySelector('input[type="file"]');
+    const preview = field.querySelector("[data-avatar-preview]");
+    if (!input || !preview) return;
+
+    const changeLabel = field.querySelector("[data-avatar-change]");
+    const removeButton = field.querySelector("[data-avatar-remove]");
+    const hint = field.querySelector("[data-avatar-hint]");
+    let previewUrl = null;
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(file);
+
+      let image = preview.querySelector("img");
+      if (!image) {
+        image = document.createElement("img");
+        image.className = "avatar";
+        image.alt = "";
+        preview.textContent = "";
+        preview.appendChild(image);
+      }
+      image.src = previewUrl;
+
+      if (changeLabel) changeLabel.textContent = "Change photo";
+      if (removeButton) removeButton.hidden = true;
+      if (hint) hint.textContent = "New photo ready — it takes effect when you save your profile.";
+    });
+  };
+
   const buildConfirmGuard = () => {
     document.addEventListener("submit", (event) => {
       const submitter = event.submitter || event.target.querySelector("[data-confirm-submit]");
@@ -1288,6 +1326,7 @@
     document.querySelectorAll("[data-photo-upload-form]").forEach(buildPhotoUploadForm);
     document.querySelectorAll("[data-trip-photo-workbench]").forEach(buildTripPhotoWorkbench);
     document.querySelectorAll("[data-year-select]").forEach(buildYearSelect);
+    document.querySelectorAll("[data-avatar-field]").forEach(buildAvatarField);
     buildPhotoLightbox();
     buildConfirmGuard();
   });

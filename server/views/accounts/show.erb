@@ -20,8 +20,33 @@
     </div>
   <% end %>
 
-  <form class="account-form" action="/account" method="post">
+  <form class="account-form" action="/account" method="post" enctype="multipart/form-data">
     <%= csrf_tag %>
+
+    <%# The circle is the one from the profile page, editable in place: the
+        input hides but stays focusable, and both the circle and the text
+        control are labels for it, so the picker opens without any script.
+        The input sits first so its focus ring can reach the circle in CSS. %>
+    <div class="account-avatar-row" data-avatar-field>
+      <input class="visually-hidden account-avatar-input" id="account-avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/gif">
+      <label class="account-avatar" for="account-avatar" data-avatar-preview>
+        <% if (avatar = avatar_url(@account, "medium")) %>
+          <img class="avatar" src="<%= h(avatar) %>" alt="">
+        <% else %>
+          <span><%= h(@account.name.to_s[0].to_s.upcase) %></span>
+        <% end %>
+      </label>
+      <div class="account-avatar-meta">
+        <div class="account-avatar-actions">
+          <label class="account-avatar-change" for="account-avatar" data-avatar-change><%= @account.avatar_file_name ? "Change photo" : "Add a photo" %></label>
+          <% if @account.avatar_file_name %>
+            <button class="account-avatar-remove" type="submit" form="account-avatar-remove-form" data-avatar-remove>Remove photo</button>
+          <% end %>
+        </div>
+        <p class="inline-hints" data-avatar-hint>Shown beside your hikes. JPEG, PNG, or GIF, cropped to a circle.</p>
+      </div>
+    </div>
+
     <div class="form-grid">
       <div class="form-row form-row-full">
         <label for="account-name">Name</label>
@@ -38,6 +63,14 @@
       <button type="submit">Save profile</button>
     </div>
   </form>
+
+  <%# Forms cannot nest, so the Remove button inside the profile form reaches
+      this one through its form attribute. %>
+  <% if @account.avatar_file_name %>
+    <form id="account-avatar-remove-form" action="/account/remove-avatar" method="post">
+      <%= csrf_tag %>
+    </form>
+  <% end %>
 
   <%# These are destinations, not things this form does — sitting in the same row
       as Save made three of them look like alternative submits. %>

@@ -204,9 +204,9 @@ RSpec.describe RodaApp do
 
   it "creates public signup accounts pending verification and sends email" do
     WentHiking::Email.clear_deliveries
-    fixture_path = File.join(WentHiking.root, "tmp/signup-avatar.jpg")
-    FileUtils.mkdir_p(File.dirname(fixture_path))
-    File.binwrite(fixture_path, "jpeg-ish".ljust(2048, "x"))
+    # A real JPEG: the avatar pipeline believes the bytes, not the declared
+    # content type, and cuts variants with vips.
+    fixture_path = make_real_jpeg(File.join(WentHiking.root, "tmp/signup-avatar.jpg"))
 
     post "/create-account", {
       "email" => "new@example.com",
@@ -1096,6 +1096,75 @@ RSpec.describe RodaApp do
     expect(last_response.status).to eq(422)
     expect(last_response.body).to include("Name is required.")
     expect(WentHiking::Models::Account[account_id].name).to eq("Kai")
+  end
+
+  it "saves a profile photo from the account page" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    fixture_path = make_real_jpeg(File.join(WentHiking.root, "tmp/account-avatar.jpg"))
+
+    get "/account"
+    expect(last_response.body).to include("Add a photo")
+    expect(last_response.body).not_to include("Remove photo")
+
+    post "/account", {
+      "name" => "Kai",
+      "location" => "Portland, OR",
+      "avatar" => Rack::Test::UploadedFile.new(fixture_path, "image/jpeg", true)
+    }
+
+    expect(last_response.status).to eq(302)
+    expect(last_response.location).to eq("/account?saved=1")
+    account = WentHiking.db[:accounts].where(id: account_id).first
+    expect(account).to include(avatar_file_name: "account-avatar.jpg", avatar_content_type: "image/jpeg")
+    expect(File.exist?(File.join(ENV.fetch("LOCAL_UPLOAD_ROOT"), "system/avatars/#{account_id}/medium/account-avatar.jpg"))).to be(true)
+
+    follow_redirect!
+
+    expect(last_response.body).to include("Profile saved.")
+    expect(last_response.body).to include("Change photo")
+    expect(last_response.body).to include("Remove photo")
+    expect(last_response.body).to include("system/avatars/#{account_id}/medium/account-avatar.jpg")
+  end
+
+  it "rejects a profile photo that is not an image and saves nothing" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    fixture_path = File.join(WentHiking.root, "tmp/not-an-image.jpg")
+    FileUtils.mkdir_p(File.dirname(fixture_path))
+    File.write(fixture_path, "plain text pretending to be a picture " * 60)
+
+    post "/account", {
+      "name" => "Kai Updated",
+      "avatar" => Rack::Test::UploadedFile.new(fixture_path, "image/jpeg", true)
+    }
+
+    expect(last_response.status).to eq(422)
+    expect(last_response.body).to include("Profile photos must be JPEG, PNG, or GIF.")
+    account = WentHiking.db[:accounts].where(id: account_id).first
+    expect(account[:name]).to eq("Kai")
+    expect(account[:avatar_file_name]).to be_nil
+  end
+
+  it "removes the profile photo in one tap" do
+    account_id = WentHiking.db[:accounts].insert(email: "kai@example.com", name: "Kai", slug: "kai", status_id: 2, created_at: Time.now, updated_at: Time.now)
+    login_as(account_id)
+    fixture_path = make_real_jpeg(File.join(WentHiking.root, "tmp/account-avatar.jpg"))
+    post "/account", {"name" => "Kai", "avatar" => Rack::Test::UploadedFile.new(fixture_path, "image/jpeg", true)}
+    expect(last_response.status).to eq(302)
+
+    post "/account/remove-avatar"
+
+    expect(last_response.status).to eq(302)
+    expect(last_response.location).to eq("/account?removed=1")
+    account = WentHiking.db[:accounts].where(id: account_id).first
+    expect(account[:avatar_file_name]).to be_nil
+    expect(File.exist?(File.join(ENV.fetch("LOCAL_UPLOAD_ROOT"), "system/avatars/#{account_id}/medium/account-avatar.jpg"))).to be(false)
+
+    follow_redirect!
+
+    expect(last_response.body).to include("Profile photo removed.")
+    expect(last_response.body).to include("Add a photo")
   end
 
   it "redirects old hike ids to canonical paths" do
