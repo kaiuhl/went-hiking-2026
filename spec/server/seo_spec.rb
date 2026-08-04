@@ -124,6 +124,38 @@ RSpec.describe "SEO surface" do
     end
   end
 
+  describe "robots.txt" do
+    it "allows the archive, blocks the private corners, and names the sitemap" do
+      get "/robots.txt"
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.headers["Content-Type"]).to include("text/plain")
+      expect(last_response.body).to include("User-agent: *")
+      expect(last_response.body).to include("Disallow: /search")
+      expect(last_response.body).to include("Disallow: /account")
+      expect(last_response.body).not_to include("Disallow: /hikes\n")
+      expect(last_response.body).to include("Sitemap: #{WentHiking.public_base_url}/sitemap.xml")
+    end
+  end
+
+  describe "sitemap.xml" do
+    it "lists the front doors, published hikes, and their hikers with lastmod" do
+      account_id = create_account
+      trip = create_trip(account_id)
+      create_trip(account_id, name: "Secret Draft", slug: "secret-draft", status: "draft", published_at: nil)
+
+      get "/sitemap.xml"
+
+      expect(last_response.status).to eq(200)
+      expect(last_response.headers["Content-Type"]).to include("application/xml")
+      expect(last_response.body).to include("<loc>#{WentHiking.public_base_url}/hikes</loc>")
+      expect(last_response.body).to include("<loc>#{WentHiking.public_base_url}#{trip.public_path}</loc>")
+      expect(last_response.body).to include("<loc>#{WentHiking.public_base_url}#{WentHiking::Models::Account[account_id].public_path}</loc>")
+      expect(last_response.body).not_to include("secret-draft")
+      expect(last_response.body).to include("<lastmod>")
+    end
+  end
+
   describe "canonical link tag" do
     it "keeps the page parameter so page two does not claim to be page one" do
       account_id = create_account

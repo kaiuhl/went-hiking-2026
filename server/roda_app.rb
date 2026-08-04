@@ -12,6 +12,7 @@ require_relative "routes/mcp"
 require_relative "routes/media"
 require_relative "routes/pages"
 require_relative "routes/people"
+require_relative "routes/seo"
 require_relative "routes/uploads"
 
 require "rack/conditional_get"
@@ -34,6 +35,7 @@ class RodaApp < Roda
   include MediaRoutes
   include PageRoutes
   include PeopleRoutes
+  include SeoRoutes
   include UploadRoutes
 
   opts[:root] = WentHiking.root
@@ -298,6 +300,7 @@ class RodaApp < Roda
     # RFC 8414 authorization server metadata (/.well-known/oauth-authorization-server).
     rodauth.load_oauth_server_metadata_route
 
+    route_seo(r)
     route_media(r)
     route_api(r)
     route_account(r)
